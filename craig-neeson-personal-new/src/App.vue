@@ -10,11 +10,13 @@ import Hero from './views/hero.vue';
 import GlobeGoogle, { MapStatus } from './components/GlobeGoogle.vue';
 import Loader from './components/Loader.vue';
 import StageSelector from './components/StageSelector.vue';
+import BelfastFlythroughIntro from './components/BelfastFlythroughIntro.vue';
 
 enum Stage {
   Loading = 'loading',
   Intro = 'intro',
   BelfastFlythrough = 'belfast_flythrough',
+  BelfastFlythroughTour = 'belfast_flythrough_tour',
 }
 
 const stagesInOrder = [
@@ -27,6 +29,7 @@ const mapStatus = {
   [Stage.Loading]: MapStatus.LOADING,
   [Stage.Intro]: MapStatus.READY,
   [Stage.BelfastFlythrough]: MapStatus.BELFAST_FLYTHROUGH,
+  [Stage.BelfastFlythroughTour]: MapStatus.BELFAST_FLYTHROUGH,
 };
 
 const stage = ref(Stage.Loading);
@@ -49,9 +52,10 @@ const moveToPrevStage = () => {
 
 <template>
   <StageSelector :stage="stage" @next="moveToNextStage" @prev="moveToPrevStage">
-    <Loader v-if="stage === Stage.Loading" />
-    <Hero v-show="stage === Stage.Intro" class="hero" />
-    <GlobeGoogle :status="mapStatus[stage]" @ready="onGlobeReady" />
+    <Loader v-show="stage === Stage.Loading" class="loader" />
+    <Hero v-if="stage === Stage.Intro" class="hero" />
+    <GlobeGoogle :status="mapStatus[stage]" @ready="onGlobeReady" @arrived-in-belfast="stage = Stage.BelfastFlythroughTour" />
+    <BelfastFlythroughIntro v-if="stage === Stage.BelfastFlythroughTour" />
   </StageSelector>
 </template>
 
@@ -65,10 +69,17 @@ const moveToPrevStage = () => {
   transform: translate(-50%, -50%);
 }
 
+.loader {
+  z-index: 1;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
 #app {
   font-family: Funnel Display, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #04030e;
 }
 </style>

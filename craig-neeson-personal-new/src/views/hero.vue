@@ -5,13 +5,16 @@ import Letters from '@/animations/letters.vue';
 export default defineComponent({
     name: 'Hero'
 });
+
+export const totalTransitionDuration = 2000;
 </script>
 <script lang="ts" setup>
 import { onMounted } from 'vue';
 import { createTimeline, stagger } from 'animejs';
 
 onMounted(() => {
-    createTimeline()
+    setTimeout(() => {
+        createTimeline()
         .add('[data-animate="title"]', {
             y: {
                 from: '1.8rem',
@@ -47,6 +50,7 @@ onMounted(() => {
                 { from: 'blur(20px)'}
             ]
         }, 900);
+    }, 1000)
 });
 </script>
 
@@ -57,7 +61,7 @@ onMounted(() => {
                 is="h1"
                 class="text-slate-50 text-6xl pb-6 mx-7" 
                 animate-key="title" 
-                str="Craig Neeson"  
+                str="Craig Neeson"
             />
             <hr class="border-b border-solid border-slate-600 opacity-0 mx-auto" data-animate="title-break">
             <h2 class="text-slate-300 text-5xl mt-5 flex gap-2">
