@@ -22,3 +22,10 @@ npm run lint
 
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
+
+- Reminders
+    - These files need to be copied to the assets folder during build (done manually for now):
+        - node_modules/cesium/Build/Cesium/Workers
+        - node_modules/cesium/Build/Cesium/ThirdParty
+        - node_modules/cesium/Build/Cesium/Assets
+        - node_modules/cesium/Build/Cesium/Widgets

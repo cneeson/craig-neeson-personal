@@ -1,56 +1,74 @@
-<template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Navigation Bar -->
-    <nav class="bg-blue-600 text-white shadow-md">
-      <div class="max-w-6xl mx-auto px-4">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <img alt="Vue logo" src="./assets/logo.png" class="h-8 w-8 mr-2">
-            <span class="font-bold text-lg">Vue Project</span>
-          </div>
-          <div class="flex space-x-4 items-center">
-            <router-link 
-              to="/" 
-              class="px-3 py-2 rounded-md hover:bg-blue-700 transition"
-              active-class="bg-blue-700 font-medium"
-            >
-              Home
-            </router-link>
-            <router-link 
-              to="/about" 
-              class="px-3 py-2 rounded-md hover:bg-blue-700 transition"
-              active-class="bg-blue-700 font-medium"
-            >
-              About
-            </router-link>
-          </div>
-        </div>
-      </div>
-    </nav>
+<script lang="ts">
+import { defineComponent, ref } from 'vue';
 
-    <!-- Main Content -->
-    <main class="max-w-6xl mx-auto mt-6 p-4">
-      <router-view />
-    </main>
-  </div>
-</template>
+export default defineComponent({
+  name: 'App',
+});
+</script>
+<script lang="ts" setup>
+import Hero from './views/hero.vue';
+import GlobeGoogle, { MapStatus } from './components/GlobeGoogle.vue';
+import Loader from './components/Loader.vue';
+import StageSelector from './components/StageSelector.vue';
 
-<script>
-export default {
-  name: 'App'
+enum Stage {
+  Loading = 'loading',
+  Intro = 'intro',
+  BelfastFlythrough = 'belfast_flythrough',
 }
+
+const stagesInOrder = [
+  Stage.Loading,
+  Stage.Intro,
+  Stage.BelfastFlythrough
+];
+
+const mapStatus = {
+  [Stage.Loading]: MapStatus.LOADING,
+  [Stage.Intro]: MapStatus.READY,
+  [Stage.BelfastFlythrough]: MapStatus.BELFAST_FLYTHROUGH,
+};
+
+const stage = ref(Stage.Loading);
+
+const onGlobeReady = () => {
+  stage.value = Stage.Intro;
+}
+
+const moveToNextStage = () => {
+  const currentStageIndex = stagesInOrder.findIndex((thisStage) => thisStage === stage.value);
+  stage.value = stagesInOrder[currentStageIndex + 1];
+}
+
+const moveToPrevStage = () => {
+  const currentStageIndex = stagesInOrder.findIndex((thisStage) => thisStage === stage.value);
+  stage.value = stagesInOrder[currentStageIndex - 1];
+}
+
 </script>
 
+<template>
+  <StageSelector :stage="stage" @next="moveToNextStage" @prev="moveToPrevStage">
+    <Loader v-if="stage === Stage.Loading" />
+    <Hero v-show="stage === Stage.Intro" class="hero" />
+    <GlobeGoogle :status="mapStatus[stage]" @ready="onGlobeReady" />
+  </StageSelector>
+</template>
+
 <style>
-body {
-  margin: 0;
-  padding: 0;
+@import url('https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&display=swap');
+
+.hero {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
+  font-family: Funnel Display, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
+  background: #04030e;
 }
 </style>
