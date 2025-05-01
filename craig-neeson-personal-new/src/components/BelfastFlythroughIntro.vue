@@ -80,7 +80,7 @@ onMounted(() => {
 <style scoped>
 .text {
     z-index: 1;
-    @apply absolute flex gap-2 items-center;
+    @apply absolute flex gap-3 items-center;
     top: 12%;
     left: 50%;
     transform: translate(-50%, -50%);
