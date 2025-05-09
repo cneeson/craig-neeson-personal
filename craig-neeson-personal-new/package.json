@@ -54,7 +54,8 @@
     "rules": {
       "vue/multi-word-component-names": "off",
       "no-unused-vars": "off",
-      "no-undef": "off"
+      "no-undef": "off",
+      "no-case-declarations": "off"
     }
   },
   "browserslist": [

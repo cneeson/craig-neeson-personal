@@ -12,6 +12,8 @@ import Loader from './components/Loader.vue';
 import StageSelector from './components/StageSelector.vue';
 import BelfastFlythroughIntro from './components/BelfastFlythroughIntro.vue';
 import TresScene from './components/TresScene.vue';
+import { TresCanvas } from '@tresjs/core'
+
 enum Stage {
   Loading = 'loading',
   Intro = 'intro',
@@ -51,9 +53,11 @@ const moveToPrevStage = () => {
 </script>
 
 <template>
-  <Suspense>
-      <TresScene/>
-  </Suspense>
+    <TresCanvas preset="realistic">
+      <Suspense>
+        <TresScene/>
+      </Suspense>
+    </TresCanvas>
   <!-- <StageSelector :stage="stage" @next="moveToNextStage" @prev="moveToPrevStage">
     <Loader v-show="stage === Stage.Loading" class="loader" />
     <Hero v-if="stage === Stage.Intro" class="hero" />
