@@ -8,16 +8,22 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@tresjs/cientos": "^4.3.0",
+    "@tresjs/core": "^4.3.3",
+    "@tresjs/leches": "^0.14.1",
+    "@tresjs/post-processing": "^2.3.1",
     "animejs": "^4.0.1",
     "cesium": "^1.128.0",
     "core-js": "^3.8.3",
     "pinia": "^3.0.2",
+    "three": "^0.176.0",
     "vue": "^3.2.13",
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",
     "@babel/eslint-parser": "^7.12.16",
+    "@types/three": "^0.176.0",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
     "@typescript-eslint/parser": "^5.4.0",
     "@vue/cli-plugin-babel": "~5.0.0",

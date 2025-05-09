@@ -11,7 +11,7 @@ import GlobeGoogle, { MapStatus } from './components/GlobeGoogle.vue';
 import Loader from './components/Loader.vue';
 import StageSelector from './components/StageSelector.vue';
 import BelfastFlythroughIntro from './components/BelfastFlythroughIntro.vue';
-
+import TresScene from './components/TresScene.vue';
 enum Stage {
   Loading = 'loading',
   Intro = 'intro',
@@ -51,12 +51,15 @@ const moveToPrevStage = () => {
 </script>
 
 <template>
-  <StageSelector :stage="stage" @next="moveToNextStage" @prev="moveToPrevStage">
+  <Suspense>
+      <TresScene/>
+  </Suspense>
+  <!-- <StageSelector :stage="stage" @next="moveToNextStage" @prev="moveToPrevStage">
     <Loader v-show="stage === Stage.Loading" class="loader" />
     <Hero v-if="stage === Stage.Intro" class="hero" />
     <GlobeGoogle :status="mapStatus[stage]" @ready="onGlobeReady" @arrived-in-belfast="stage = Stage.BelfastFlythroughTour" />
     <BelfastFlythroughIntro v-if="stage === Stage.BelfastFlythroughTour" />
-  </StageSelector>
+  </StageSelector> -->
 </template>
 
 <style>
@@ -77,9 +80,16 @@ const moveToPrevStage = () => {
   transform: translate(-50%, -50%);
 }
 
+html, body {
+  height: 100%;
+  width: 100%;
+}
+
 #app {
   font-family: Funnel Display, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  height: 100%;
+  width: 100%;
 }
 </style>
