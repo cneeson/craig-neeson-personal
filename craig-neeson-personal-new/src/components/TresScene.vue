@@ -1,79 +1,85 @@
 <template>
-    <TresPerspectiveCamera :position="cameraPosition" />
-    <TresDirectionalLight
-      cast-shadow
-      :position="[1, 1, 10]"
-      :intensity=".5"
+  <TresPerspectiveCamera :position="cameraPosition" />
+  <TresDirectionalLight
+    cast-shadow
+    :position="[1, 1, 10]"
+    :intensity=".5"
+  />
+
+  <Stars
+    ref="starsRef"
+    :rotation="[0, 0, 0]"
+    :radius="50"
+    :depth="100"
+    :count="20000"
+    :size="0.3"
+    :size-attenuation="true"
+  />
+
+  <Html
+      ref="nameHeroRef"
+      center
+      :position="[0, 1, 9]"
+      :scale="[1, 1, 1]"
+    >
+      <Hero :is-visible="isNameHeroVisible" />
+  </Html>
+  
+  <Suspense>
+    <Text3D
+      v-if="heroText"
+      :text="heroText"
+      :position="[0, 0, 9]"
+      font="/fonts/Funnel_Display.json"
+      :size="0.04"
+      :height="0.01"
+      :bevel-enabled=false
+      center
+      need-updates
+    >
+      <TresMeshStandardMaterial />
+    </Text3D>
+  </Suspense>
+
+  <TresMesh ref="earthRef" receive-shadow :position="[0, -1.1, 9.5]">
+    <TresSphereGeometry :args="[1, 32, 32]" />
+    <TresMeshStandardMaterial
+      :map="earthTexture.map"
     />
-
-    <ScrollControls v-if="stage === Stage.ScrollToEarth" v-model="scrollToEarthProgress" :distance="0" :pages="1" />
-    <ScrollControls v-if="stage === Stage.ScrollAroundEarth" v-model="scrollAroundEarthProgress" :distance="0" :pages="1" />
-
-    <Stars
-      :rotation="[0, 0, 0]"
-      :radius="50"
-      :depth="100"
-      :count="20000"
-      :size="0.3"
-      :size-attenuation="true"
-    />
-
-    <Html
-        ref="nameHeroRef"
-        center
-        :position="[0, 1, 9]"
-        :scale="[1, 1, 1]"
-      >
-        <Hero :is-visible="isNameHeroVisible" />
-    </Html>
-    
-    <Suspense>
-      <Text3D
-        v-if="isLocationHeroVisible"
-        text="I am a frontend developer based in Northern Ireland"
-        :position="[0, 0, 9]"
-        font="/fonts/Funnel_Display.json"
-        :size="0.04"
-        :height="0.01"
-        :bevel-enabled=false
-      >
-        <TresMeshStandardMaterial />
-      </Text3D>
-    </Suspense>
-
-    <Suspense>
-      <Text3D
-        v-if="isProjectLocationsHeroVisible"
-        text="I have worked on projects serving customers in NI, Europe and the US"
-        :position="[0, 0, 9]"
-        font="/fonts/Funnel_Display.json"
-        :size="0.04"
-        :height="0.01"
-        :bevel-enabled=false
-      >
-        <TresMeshStandardMaterial />
-      </Text3D>
-    </Suspense>
-
-    <TresMesh ref="earthRef" receive-shadow :position="[0, -1.1, 9.5]">
-      <TresSphereGeometry :args="[1, 32, 32]" />
-      <TresMeshStandardMaterial
-        :map="earthTexture.map"
-      />
-    </TresMesh>
+  </TresMesh>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { Euler, Vector3 } from 'three'
-import { useControls } from '@tresjs/leches'
-import LocationHero from './LocationHero.vue'
 
 export enum Stage {
-  Loading = 'loading',
   FocusEarth = 'focus-earth',
-  ScrollToEarth = 'scroll-to-earth',
-  ScrollAroundEarth = 'scroll-around-earth'
+  IntroduceNI = 'introduce-ni',
+  ViewProjectLocations = 'view-project-locations'
+}
+
+interface StageActionOptions {
+  renderLoop: RenderLoop;
+  camera: ComputedRef<Camera>;
+  refs: {
+    earth: ShallowRef<TresInstance>;
+    stars: ShallowRef<TresInstance>;
+    nameHero: ShallowRef<TresInstance>;
+  }
+}
+
+interface StageConfiguration {
+  key: Stage,
+  condition: {
+    from: number,
+    to: number
+  },
+  actions: (options: StageActionOptions) => void
+}
+
+enum HeroText {
+  RoleAndLocation = 'I am a frontend developer based in Northern Ireland',
+  ProjectLocations = 'I have worked on projects serving customers in NI, Europe and the US',
 }
 
 export default defineComponent({
@@ -82,13 +88,18 @@ export default defineComponent({
 </script>
 
 <script lang="ts" setup>
-import { Box, Stars, OrbitControls, Html, FBXModel, ScrollControls, Text3D } from '@tresjs/cientos'
-import { GodRaysPmndrs, EffectComposerPmndrs } from '@tresjs/post-processing'
-import { TresCanvas, TresInstance, useLoop, useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
-import { ref, shallowRef, onMounted, useTemplateRef, ShallowRef } from 'vue'
-import Hero, { totalTransitionDuration as totalHeroTransitionDuration } from '../views/hero.vue'  
-import Earth from './Earth.vue'
+import { Camera, Vector3 } from 'three'
+import { easeToTarget } from '@/services/three'
+import { Stars, Html, Text3D } from '@tresjs/cientos'
+import { RenderLoop, TresInstance, useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
+import { ref, shallowRef, onMounted, ShallowRef, watchEffect, ComputedRef } from 'vue'
 import '@tresjs/leches/styles'
+import { gsap, Linear } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { ScrollSmoother } from "gsap/ScrollSmoother";
+import Hero from '../views/hero.vue'  
+
+gsap.registerPlugin(ScrollTrigger,ScrollSmoother);
 
 const earthTexture = await useTexture({
   map: '/textures/earth/diffuse_map.jpg',
@@ -96,84 +107,129 @@ const earthTexture = await useTexture({
 
 const { camera } = useTresContext()
 
-const stage = ref<Stage>(Stage.Loading)
 const nameHeroRef = ref()
 const cameraPosition = ref<Vector3>(new Vector3(0, 1, 10))
 
 const isNameHeroVisible = ref(false);
-const isLocationHeroVisible = ref(false);
-const isProjectLocationsHeroVisible = ref(false);
-
 const earthRef: ShallowRef<TresInstance | null> = shallowRef(null)
-  
-const scrollToEarthProgress = ref(0)
-const scrollAroundEarthProgress = ref(0);
-
-useControls('fpsgraph')
+const starsRef: ShallowRef<TresInstance | null> = shallowRef(null)
+const heroText = ref<HeroText | undefined>(undefined);
 
 onMounted(() => {
   isNameHeroVisible.value = true;
-
-  setTimeout(() => {
-    stage.value = Stage.FocusEarth
-  }, totalHeroTransitionDuration + 1000)
 });
 
-const { onBeforeRender } = useLoop()
+const scrollPercent = ref(0);
+
+watchEffect(() => {
+  var tubePerc = {
+    percent: 0
+  }
+
+  const timeline = gsap.timeline({
+    scrollTrigger: {
+      trigger: ".scrollTarget",
+      start: "top top",
+      end: "bottom 100%",
+      scrub: 2,
+      markers: {color: "white"}
+    }
+  })
+
+  timeline.to(tubePerc, {
+    percent: .96,
+    ease: Linear.easeNone,
+    duration: 10,
+    onUpdate: function() {
+      scrollPercent.value = tubePerc.percent;
+    }
+  });
+})
+
 const { onLoop } = useRenderLoop();
 
-onLoop(({ elapsed }) => {
-  switch (stage.value) {
-    case Stage.Loading:
-      break;
-    case Stage.FocusEarth: {
+const stages: StageConfiguration[] = [
+  {
+    key: Stage.FocusEarth,
+    condition: {
+      from: 0,
+      to: 0.001
+    },
+    actions: ({ renderLoop: { elapsed }, camera }) => {
       isNameHeroVisible.value = true;
 
-      if (nameHeroRef.value.instance && camera.value && camera.value.position.y > 0) {
-        // TODO need to lerp
-        // TODO need to tilt slightly too
-        camera.value.position.y = camera.value.position.y - (elapsed * 0.001);
-        nameHeroRef.value.instance.position.y = nameHeroRef.value.instance.position.y - (elapsed * 0.001)
+      if (camera.value.position.y > 0.001) {
+        const options = {
+          target: 0,
+          elapsed,
+          factor: 0.2
+        };
+        camera.value.position.y = easeToTarget({
+          current: camera.value.position.y,
+          ...options,
+        });
+        nameHeroRef.value.instance.position.y = easeToTarget({
+          current: nameHeroRef.value.instance.position.y,
+          ...options,
+        });
+      }
+    }
+  },
+  {
+    key: Stage.IntroduceNI,
+    condition: {
+      from: 0.001,
+      to: 0.01
+    },
+    actions: ({ camera, refs: { earth } }) => {
+      earth.value.rotation.x = scrollPercent.value * 50
+      earth.value.rotation.y = scrollPercent.value * 50
+
+      camera.value.rotation.x = -scrollPercent.value * 25;
+      camera.value.position.z = 10 + (scrollPercent.value * 50);
+
+      isNameHeroVisible.value = scrollPercent.value < 0.0001
+      if (scrollPercent.value > 0.009) {
+        heroText.value = HeroText.RoleAndLocation;
       } else {
-        stage.value = Stage.ScrollToEarth
+        heroText.value = undefined;
       }
-      break;
     }
-    case Stage.ScrollToEarth: {
-      if (earthRef.value && camera.value) {
-        earthRef.value.rotation.x = scrollToEarthProgress.value * 1.1
-        earthRef.value.rotation.y = scrollToEarthProgress.value * 1.1
-
-        camera.value.rotation.x = -scrollToEarthProgress.value * 0.25;
-        camera.value.position.z = 10 + (scrollToEarthProgress.value * 0.5);
-
-        isNameHeroVisible.value = scrollToEarthProgress.value < 0.5
-        isLocationHeroVisible.value = scrollToEarthProgress.value > 0.8;
+  },
+  {
+    key: Stage.ViewProjectLocations,
+    condition: {
+      from: 0.01,
+      to: 0.015
+    },
+    actions: ({ camera, refs: { earth } }) => {
+      if (scrollPercent.value > 0.012) {
+        heroText.value = HeroText.ProjectLocations;
+      } else {
+        heroText.value = undefined;
       }
 
-      if (scrollToEarthProgress.value === 1) {
-        stage.value = Stage.ScrollAroundEarth
-      }
-      break;
+      earth.value.rotation.x = scrollPercent.value * 50
+      earth.value.rotation.y = scrollPercent.value * 50
+
+      camera.value.position.z = 10 + (scrollPercent.value * 50);
     }
-    case Stage.ScrollAroundEarth: {
-      if (earthRef.value && camera.value) {
-        // TODO highlight NI when scroll at 0
-        // TODO hide locationHero
-        // TODO show projectLocationsHero
-        // TODO need to allow transition back to previous stage
+  }
+]
 
-        // TODO instead of having two different text elements instead just reuse the same one and change the text
-        // isLocationHeroVisible.value = scrollAroundEarthProgress.value < 0.15;
-        isProjectLocationsHeroVisible.value = scrollAroundEarthProgress.value > 0.2;
+onLoop((renderLoop) => {
+  const currentStage = stages.find(stage => scrollPercent.value >= stage.condition.from && scrollPercent.value <= stage.condition.to);
 
-        // TODO need to marry up the last rotation before switching from ScrollAroundEarth stage
-        earthRef.value.rotation.x = scrollAroundEarthProgress.value * 1.1
-        earthRef.value.rotation.y = scrollAroundEarthProgress.value * 1.1
-      }
-
-      break;
-    }
+  if (earthRef.value && camera.value && nameHeroRef.value.instance) {
+    currentStage?.actions({ 
+      renderLoop,
+      camera,
+      refs: { 
+        earth: earthRef, 
+        stars: starsRef, 
+        nameHero: nameHeroRef 
+      } 
+    });
   }
 })
 

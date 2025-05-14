@@ -53,17 +53,12 @@ const moveToPrevStage = () => {
 </script>
 
 <template>
-    <TresCanvas preset="realistic">
-      <Suspense>
-        <TresScene/>
-      </Suspense>
-    </TresCanvas>
-  <!-- <StageSelector :stage="stage" @next="moveToNextStage" @prev="moveToPrevStage">
-    <Loader v-show="stage === Stage.Loading" class="loader" />
-    <Hero v-if="stage === Stage.Intro" class="hero" />
-    <GlobeGoogle :status="mapStatus[stage]" @ready="onGlobeReady" @arrived-in-belfast="stage = Stage.BelfastFlythroughTour" />
-    <BelfastFlythroughIntro v-if="stage === Stage.BelfastFlythroughTour" />
-  </StageSelector> -->
+  <TresCanvas preset="realistic" class="canvas">
+    <Suspense>
+      <TresScene/>
+  </Suspense>
+  </TresCanvas>
+  <div class="scrollTarget"></div>
 </template>
 
 <style>
@@ -93,7 +88,24 @@ html, body {
   font-family: Funnel Display, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  height: 100%;
+  height: 100vh;
   width: 100%;
+}
+
+.scrollTarget {
+  position: absolute;
+  height: 5000vh;
+  width: 100px;
+  top: 0;
+  z-index: 0;
+}
+
+.canvas {
+  position: fixed !important;
+  width: 100%;
+  height:100vh;
+  top: 0;
+  left: 0;
+  z-index: 1;
 }
 </style>
