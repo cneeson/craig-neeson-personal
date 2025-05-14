@@ -54,6 +54,7 @@ import { defineComponent } from 'vue';
 
 export enum Stage {
   FocusEarth = 'focus-earth',
+  ScrollToEarth = 'scroll-to-earth',
   IntroduceNI = 'introduce-ni',
   ViewProjectLocations = 'view-project-locations'
 }
@@ -176,10 +177,10 @@ const stages: StageConfiguration[] = [
     }
   },
   {
-    key: Stage.IntroduceNI,
+    key: Stage.ScrollToEarth,
     condition: {
       from: 0.001,
-      to: 0.01
+      to: 0.015
     },
     actions: ({ camera, refs: { earth } }) => {
       earth.value.rotation.x = scrollPercent.value * 50
@@ -189,18 +190,26 @@ const stages: StageConfiguration[] = [
       camera.value.position.z = 10 + (scrollPercent.value * 50);
 
       isNameHeroVisible.value = scrollPercent.value < 0.0001
-      if (scrollPercent.value > 0.009) {
-        heroText.value = HeroText.RoleAndLocation;
-      } else {
-        heroText.value = undefined;
-      }
+      heroText.value = undefined;
+    }
+  },
+  {
+    key: Stage.IntroduceNI,
+    condition: {
+      from: 0.015,
+      to: 0.03
+    },
+    actions: ({ camera, refs: { earth } }) => {
+      heroText.value = HeroText.RoleAndLocation;
+
+      // TODO highlight NI on earth
     }
   },
   {
     key: Stage.ViewProjectLocations,
     condition: {
-      from: 0.01,
-      to: 0.015
+      from: 0.03,
+      to: 0.05
     },
     actions: ({ camera, refs: { earth } }) => {
       if (scrollPercent.value > 0.012) {
@@ -210,7 +219,7 @@ const stages: StageConfiguration[] = [
       }
 
       earth.value.rotation.x = scrollPercent.value * 50
-      earth.value.rotation.y = scrollPercent.value * 50
+      earth.value.rotation.y = scrollPercent.value * 10
 
       camera.value.position.z = 10 + (scrollPercent.value * 50);
     }
