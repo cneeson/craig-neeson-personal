@@ -1,5 +1,6 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
+import { CineonToneMapping, LinearToneMapping, SRGBColorSpace } from 'three';
 
 export default defineComponent({
   name: 'App',
@@ -50,10 +51,18 @@ const moveToPrevStage = () => {
   stage.value = stagesInOrder[currentStageIndex - 1];
 }
 
+const gl = {
+  clearColor: '#0D0221',
+  alpha: false,
+  outputColorSpace: SRGBColorSpace,
+  toneMapping: LinearToneMapping,
+  shadows: true,
+}
+
 </script>
 
 <template>
-  <TresCanvas preset="realistic" class="canvas">
+  <TresCanvas preset="realistic" class="canvas" v-bind="gl">
     <Suspense>
       <TresScene/>
   </Suspense>
