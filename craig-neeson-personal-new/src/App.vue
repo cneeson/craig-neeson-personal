@@ -52,17 +52,19 @@ const moveToPrevStage = () => {
 }
 
 const gl = {
-  clearColor: '#0D0221',
-  alpha: false,
-  outputColorSpace: SRGBColorSpace,
-  toneMapping: LinearToneMapping,
+  // clearColor: '#0D0221',
+  alpha: true,
+  // outputColorSpace: SRGBColorSpace,
+  // toneMapping: LinearToneMapping,
   shadows: true,
+
+  powerPreference: "high-performance"
 }
 
 </script>
 
 <template>
-  <TresCanvas preset="realistic" class="canvas" v-bind="gl">
+  <TresCanvas class="canvas" v-bind="gl">
     <Suspense>
       <TresScene/>
   </Suspense>
