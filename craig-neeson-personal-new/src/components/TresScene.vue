@@ -3,7 +3,7 @@
   <TresDirectionalLight
     cast-shadow
     :position="[100, 100, -30]"
-    :intensity="2"
+    :intensity="1.2"
   />
 
   <Stars
@@ -13,6 +13,7 @@
     :depth="100"
     :count="15000"
     :size="0.25"
+    color="red"
     :size-attenuation="true"
   />
 
@@ -36,7 +37,7 @@
   </Html>
   
   <Suspense>
-    <Text3D
+    <!-- <Text3D
       v-if="heroText"
       :text="heroText"
       :position="[0, 0, 9]"
@@ -48,192 +49,117 @@
       need-updates
     >
       <TresMeshStandardMaterial />
-    </Text3D>
+    </Text3D> -->
   </Suspense>
 
   <TresGridHelper :args="[10, 10]" :position="[0, -1.1, 9.5]" />
 
+  <Suspense>
+      <EffectComposerPmndrs>
+        <BloomPmndrs
+          :radius="0.85"
+          :intensity="5.0"
+          :luminance-threshold="0.1"
+          :luminance-smoothing="0.3"
+          mipmap-blur
+        />
+      </EffectComposerPmndrs>
+    </Suspense>
+
   <TresGroup ref="earthRef" :position="[0, -1.1, 9.5]">
     <TresMesh :rotation-y="MathUtils.degToRad(270)" receive-shadow cast-shadow>
-      <TresSphereGeometry :args="[1, 64, 64]" />
+      <TresSphereGeometry :args="[1, 1000, 1000]" />
       <TresMeshStandardMaterial
         :map="earthTexture.map"
         :displacement-map="earthTexture.displacementMap"
-        :displacement-scale="0.01"
+        :displacement-bias="0"
+        :displacement-scale="0.009"
         :metalness-map="earthTexture.metalnessMap"
-        :metalness="1"
-        :roughness="0.5"
+        :roughness="1"
+        :metalness="0.5"
       />
     </TresMesh>
 
-    <!-- <TresMesh ref="earthCloudRef">
-      <TresSphereGeometry :args="[1.01, 64, 64]" />
+    <TresMesh ref="earthOceanRef" :rotation-y="MathUtils.degToRad(275)" receive-shadow cast-shadow>
+      <TresSphereGeometry :args="[1.0035, 1000, 1000]" />
+      <TresMeshPhongMaterial
+        color="#2e677a"
+        :bump-map="earthOceanTexture.displacementMap"
+        :bump-scale="0.1"
+        :shininess="10"
+        :blending="NormalBlending"
+      />
+    </TresMesh>
+
+    <TresMesh ref="earthCloudRef">
+      <TresSphereGeometry :args="[1.015, 64, 64]" />
       <TresMeshBasicMaterial
         :alpha-map="earthCloudTexture.alphaMap"
         :transparent="true"
-        :opacity="0.5"
+        :opacity="0.2"
       />
-    </TresMesh>  -->
+    </TresMesh> 
   </TresGroup>
 
-  <!-- <TresPointLight
-    color="#5198ed"
+  <TresGroup :position="[-20, -10, -30]">
+    <TresMesh ref="sunRef" :rotation-y="MathUtils.degToRad(270)">
+      <TresSphereGeometry :args="[.25, 16, 16]" />
+      <TresMeshStandardMaterial
+        :metalness="0"
+        :roughness="1"
+        color="orange"
+      />
+    </TresMesh>
+  </TresGroup>
+
+  <TresPointLight
+    :position="[-18, -5, -30]"
+    color="orange"
     cast-shadow
-    :position="[40, 10, -80]"
     :intensity="10000"
-    :distance="2000"
-    :decay="1.5"
+    :decay="1"
   />
 
   <TresPointLight
+    :position="[25, -5, -30]"
     color="#5198ed"
     cast-shadow
-    :position="[0, 10, -80]"
-    :intensity="10000"
-    :distance="2000"
-    :decay="1.5"
+    :angle="1"
+    :intensity="1000"
+    :decay="1"
   />
-
-  <TresPointLight
-    color="#5198ed"
-    cast-shadow
-    :position="[-40, 10, -80]"
-    :intensity="10000"
-    :distance="2000"
-    :decay="1.5"
-  /> -->
-
-  <!-- <TresSpotLight
-    color="#5198ed"
-    cast-shadow
-    :position="[40, 10, -80]"
-    :intensity="10000"
-    :distance="2000"
-    :decay="1.5"
-  /> -->
-
-  <TresSpotLight
-    color="#5198ed"
-    cast-shadow
-    :position="[0, 10, -80]"
-    :target="earthRef"
-    :intensity="10000"
-    :distance="2000"
-    :decay="1.5"
-  />
-
-  <!-- <TresSpotLight
-    color="#5198ed"
-    cast-shadow
-    :position="[-40, 10, -80]"
-    :intensity="10000"
-    :distance="2000"
-    :decay="1.5"
-  /> -->
-
-  <!-- <TresMesh ref="atmosphereRef" :position="[0, -1.1, 9.3]" :rotation-x="MathUtils.degToRad(360)" >
-    <TresSphereGeometry :args="[1, 64, 64, 0, 6.283185307179586, 0.5, 1]" />
-    <TresShaderMaterial 
-      :transparent="true"
-      :side="FrontSide"
-      :blending="AdditiveBlending"
-      v-bind="materialProps"
-    />
-  </TresMesh> -->
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { ref, shallowRef, onMounted, ShallowRef, watchEffect, ComputedRef } from 'vue'
-import { RenderLoop, TresInstance, useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
-import { Camera, Vector3, Vector2, MathUtils, AdditiveBlending, SubtractiveBlending, MultiplyBlending, Texture, MeshBasicMaterial, Color, FrontSide, BackSide } from 'three'
-import { easeToTarget } from '@/services/three'
-import { Stars, Html, Text3D, Outline, MeshGlassMaterial, Grid, CustomShaderMaterial } from '@tresjs/cientos'
+import { ref, shallowRef, onMounted, ShallowRef, watchEffect } from 'vue'
+import { TresInstance, useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
+import { Vector3, MathUtils, MultiplyBlending, Color, AdditiveBlending, NormalBlending } from 'three'
+import { Stars, Html } from '@tresjs/cientos'
 import '@tresjs/leches/styles'
 import { gsap, Linear } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ScrollSmoother } from "gsap/ScrollSmoother";
 import Hero from '../views/hero.vue'  
-// @ts-ignore-next-line
-import { BloomPmndrs, EffectComposerPmndrs, NoisePmndrs, GodRaysPmndrs, SelectiveBloomPmndrs, useEffectPmndrs } from '@tresjs/post-processing'
-// @ts-ignore-next-line
-import { BloomEffect, EffectComposer, EffectPass, RenderPass, SelectiveBloomEffect } from "postprocessing";
+import { stages } from './stages';
 
-// Note: texture CANNOT be loaded in the setup script
+// @ts-ignore-next-line
+import { BloomPmndrs, EffectComposerPmndrs, Lensflare } from '@tresjs/post-processing'
+
+// Note: textures CANNOT be loaded in the setup script
 const earthTexture = await useTexture({
   map: '/textures/earth/diffuse.jpg',
-  displacementMap: '/textures/earth/bump.jpg',
+  displacementMap: '/textures/earth/spec-inverted.jpg',
   metalnessMap: '/textures/earth/spec.jpg',
-  aoMap: '/textures/earth/spec.jpg',
+});
+
+const earthOceanTexture = await useTexture({
+  displacementMap: '/textures/earth/water-bump.jpg',
 });
 
 const earthCloudTexture = await useTexture({
   alphaMap: '/textures/earth/clouds.jpg',
 });
-
-const earthGlowTexture = await useTexture({
-  alphaMap: '/textures/earth/glow.png',
-});
-
-const materialProps = {
-  baseMaterial: MeshBasicMaterial,
-  fragmentShader: `
-     uniform vec3 glowColor;
-
-      varying float intensity;
-      void main() 
-      {
-          vec3 glow = glowColor * intensity;
-          gl_FragColor = vec4( glow, 1.0 );
-      }
-  `,
-  vertexShader: `
-     uniform vec3 viewVector;
-    uniform float c;
-    uniform float p;
-    varying float intensity;
-    void main()
-    {
-        vec3 vNormal = normalize( normalMatrix * normal );
-        vec3 vNormel = normalize( normalMatrix * viewVector );
-        intensity = pow( c - dot(vNormal, vNormel), p );
-        gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-    }
-  `,
-  uniforms: {
-    c:   { type: "f", value: 1 },
-    p:   { type: "f", value: 1.1 },
-    glowColor: { type: "c", value: new Color(0x00e1ff) },
-    viewVector: { type: "v3", value: new Vector3(0, 0, 0) }
-  },
-}
-
-export enum Stage {
-  FocusEarth = 'focus-earth',
-  ScrollToEarth = 'scroll-to-earth',
-  IntroduceNI = 'introduce-ni',
-  ViewProjectLocations = 'view-project-locations'
-}
-
-interface StageActionOptions {
-  renderLoop: RenderLoop;
-  camera: ComputedRef<Camera>;
-  refs: {
-    earth: ShallowRef<TresInstance>;
-    earthCloud: ShallowRef<TresInstance>;
-    stars: ShallowRef<TresInstance>;
-    nameHero: ShallowRef<TresInstance>;
-  }
-}
-
-interface StageConfiguration {
-  key: Stage,
-  condition: {
-    from: number,
-    to: number
-  },
-  actions: (options: StageActionOptions) => void
-}
 
 enum HeroText {
   RoleAndLocation = 'I am a frontend developer based in Northern Ireland',
@@ -249,20 +175,19 @@ export default defineComponent({
 
 gsap.registerPlugin(ScrollTrigger,ScrollSmoother);
 
-
-
-const { camera, scene, renderer } = useTresContext()
+const { camera } = useTresContext()
 
 const nameHeroRef = ref()
 const cameraPosition = ref<Vector3>(new Vector3(0, 1, 10))
-const atmosphereRef: ShallowRef<TresInstance | null> = shallowRef(null)
 
 const isNameHeroVisible = ref(false);
 const earthRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const earthCloudRef: ShallowRef<TresInstance | null> = shallowRef(null)
+const earthOceanRef: ShallowRef<TresInstance | null> = shallowRef(null)
+const sunRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const starsRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const starsRef2: ShallowRef<TresInstance | null> = shallowRef(null)
-const heroText = ref<HeroText | undefined>(undefined);
+// const heroText = ref<HeroText | undefined>(undefined);
 
 onMounted(() => {
   isNameHeroVisible.value = true;
@@ -295,113 +220,7 @@ watchEffect(() => {
   });
 })
 
-const { onLoop, onBeforeLoop } = useRenderLoop();
-
-onBeforeLoop(() => {
-  // const bloomEffect = new SelectiveBloomEffect(scene.value, camera.value, {
-  //   intensity: 20,
-  //   mipmapBlur: true,
-  //   luminanceThreshold: 0,
-  //   luminanceSmoothing: 0.2,
-  //   radius : 0.618,
-  //   resolutionScale: 4
-  // });
-
-  // const composer = new EffectComposer(renderer.value);
-  // composer.addPass(new RenderPass(scene.value, camera.value));
-  // composer.addPass(new EffectPass(camera.value, new BloomEffect({
-  //   intensity: 5,
-  //   mipmapBlur: true,
-  //   luminanceThreshold: 0,
-  //   luminanceSmoothing: 0.2,
-  //   radius : 0.618,
-  //   resolutionScale: 4
-  // })));
-
-  // composer.render();
-
-})
-
-const stages: StageConfiguration[] = [
-  {
-    key: Stage.FocusEarth,
-    condition: {
-      from: 0,
-      to: 0.001
-    },
-    actions: ({ renderLoop: { elapsed }, camera }) => {
-      isNameHeroVisible.value = true;
-
-      if (camera.value.position.y > 0.001) {
-        const options = {
-          target: 0,
-          elapsed,
-          factor: 0.2
-        };
-        camera.value.position.y = easeToTarget({
-          current: camera.value.position.y,
-          ...options,
-        });
-        nameHeroRef.value.instance.position.y = easeToTarget({
-          current: nameHeroRef.value.instance.position.y,
-          ...options,
-        });
-      }
-    }
-  },
-  {
-    key: Stage.ScrollToEarth,
-    condition: {
-      from: 0.001,
-      to: 0.015
-    },
-    actions: ({ camera, refs: { earth, earthCloud }, renderLoop: { elapsed } }) => {
-      // earth.value.rotation.x = scrollPercent.value * 50
-      // earth.value.rotation.y = scrollPercent.value * 50
-      
-      camera.value.rotation.x = -scrollPercent.value * 25;
-      camera.value.position.z = 10 + (scrollPercent.value * 50);
-
-      isNameHeroVisible.value = scrollPercent.value < 0.0001
-      heroText.value = undefined;
-    }
-  },
-  {
-    key: Stage.IntroduceNI,
-    condition: {
-      from: 0.015,
-      to: 0.03
-    },
-    actions: ({ camera, refs: { earth } }) => {
-      heroText.value = HeroText.RoleAndLocation;
-
-
-      // earth.value.rotation.x = scrollPercent.value * 10
-      // earth.value.rotation.y = scrollPercent.value * 10
-
-      camera.value.position.z = 10 + (scrollPercent.value * 50);
-
-      // TODO highlight NI on earth
-    }
-  },
-  {
-    key: Stage.ViewProjectLocations,
-    condition: {
-      from: 0.03,
-      to: 0.04
-    },
-    actions: ({ camera, refs: { earth } }) => {
-      if (scrollPercent.value > 0.012) {
-        heroText.value = HeroText.ProjectLocations;
-      } else {
-        heroText.value = undefined;
-      }
-
-      // earth.value.rotation.x = scrollPercent.value * 10
-      // earth.value.rotation.y = scrollPercent.value * 50
-    }
-  }
-]
+const { onLoop } = useRenderLoop();
 
 onLoop((renderLoop) => {
   // Actions that should occur regardless of the current stage
@@ -415,19 +234,8 @@ onLoop((renderLoop) => {
   }
 
   if (earthCloudRef.value) {
-    earthCloudRef.value.rotation.x = renderLoop.elapsed * 0.01
-    earthCloudRef.value.rotation.y = renderLoop.elapsed * 0.01
-  }
-
-  if (atmosphereRef.value) {
-    // atmosphereRef.value.rotation.z = renderLoop.elapsed * 0.005
-    // atmosphereRef.value.scale.setScalar(1 + Math.sin(renderLoop.elapsed * 0.5) * 0.02)
-  }
-
-  if (camera.value) {
-    materialProps.uniforms.viewVector.value = camera.value.position;
-    // materialProps.uniforms.c.value = 1.5 + scrollPercent.value * 10;
-    // materialProps.uniforms.p.value = 2 + scrollPercent.value * 10;
+    earthCloudRef.value.rotation.y = -(renderLoop.elapsed * 0.005)
+    earthCloudRef.value.rotation.x = -(renderLoop.elapsed * 0.005)
   }
 
   // Actions related to the current stage
@@ -441,8 +249,10 @@ onLoop((renderLoop) => {
         earth: earthRef, 
         earthCloud: earthCloudRef,
         stars: starsRef, 
-        nameHero: nameHeroRef 
-      } 
+        nameHero: nameHeroRef,
+        isNameHeroVisible: isNameHeroVisible,
+      },
+      scrollPercent
     });
   }
 })
