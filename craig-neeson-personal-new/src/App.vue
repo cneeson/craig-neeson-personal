@@ -8,6 +8,7 @@ export default defineComponent({
 </script>
 <script lang="ts" setup>
 import TresScene from './components/TresScene.vue';
+import FloatingText from './components/floating-text.vue'  
 import { TresCanvas } from '@tresjs/core'
 
 const gl = {
@@ -19,12 +20,17 @@ const gl = {
   powerPreference: "high-performance"
 }
 
+const text = ref(undefined);
+
 </script>
 
 <template>
+  <div class="text-overlay">
+    <FloatingText v-if="text" :text="text" />
+  </div>
   <TresCanvas class="canvas" v-bind="gl">
     <Suspense>
-      <TresScene/>
+      <TresScene v-model:text="text" />
   </Suspense>
   </TresCanvas>
   <div class="scrollTarget"></div>
@@ -68,5 +74,26 @@ html, body {
   top: 0;
   left: 0;
   z-index: 1;
+}
+
+.text-overlay {
+  color: white;
+  font-size: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+
+  p {
+    max-width: 80%;
+  }
+
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 50vh;
+  z-index: 2;
 }
 </style>
