@@ -9,7 +9,7 @@ export default defineComponent({
 export const totalTransitionDuration = 2000;
 </script>
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, toRefs, watch, ref } from 'vue';
+import { onMounted, toRefs, ref } from 'vue';
 import { createTimeline, stagger } from 'animejs';
 
 const props = defineProps<{
@@ -98,8 +98,11 @@ onMounted(() => {
 <style scoped>
 .hero {
     z-index: 1;
-    position: fixed;
     @apply text-center p-2 flex justify-center items-center;
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 .v-enter-active,

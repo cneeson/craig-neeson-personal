@@ -4,8 +4,7 @@ import About from '../views/About.vue'
 
 // Define routes
 const routes = [
-  { path: '/', component: HelloWorld, props: { msg: 'Welcome to Your Vue.js App' } },
-  { path: '/about', component: About }
+  { path: '/', component: HelloWorld },
 ]
 
 // Create router instance

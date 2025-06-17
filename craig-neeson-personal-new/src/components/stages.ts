@@ -11,15 +11,16 @@ export enum Stage {
     ScrollToNi = 'scroll-to-ni',
     IntroduceNI = 'introduce-ni',
     ViewProjectLocations = 'view-project-locations',
-    FocusIndustries = 'focus-industries',
-    Industries = 'industries'
-
+    PreFadeScene = 'pre-fade-scene',
+    FadeScene = 'fade-scene',
 }
 
 interface StageActionOptions {
     renderLoop: RenderLoop;
     camera: ComputedRef<Camera>;
+    emit: (event: string) => void;
     refs: {
+        fadeFactor: ShallowRef<number>;
         text: ShallowRef<string | undefined>;
         niHighlight: ShallowRef<TresInstance>;
         earth: ShallowRef<TresInstance>;
@@ -55,7 +56,7 @@ export const stages: StageConfiguration[] = [
             from: 0,
             to: 0.001
         },
-        actions: ({ renderLoop: { elapsed }, refs: { isNameHeroVisible, nameHero, text, niHighlight, cityRefs }, camera }) => {
+        actions: ({ renderLoop: { elapsed }, refs: { isNameHeroVisible, nameHero, text, niHighlight, cityRefs, fadeFactor, earth }, camera }) => {
             isNameHeroVisible.value = true;
 
             if (DEBUG_SKIP_FIRST_STAGE) {
@@ -83,6 +84,7 @@ export const stages: StageConfiguration[] = [
 
             // Defaults
             text.value = undefined;
+            earth.value.position.y = -1.1;
             niHighlight.value.intensity = easeToTarget({
                 current: niHighlight.value.intensity,
                 target: 0,
@@ -90,6 +92,7 @@ export const stages: StageConfiguration[] = [
                 factor: 0.2,
             });
             Object.values(cityRefs).forEach(cityRef => cityRef.value.visible = false);
+            fadeFactor.value = 0;
         }
     },
     {
@@ -98,7 +101,7 @@ export const stages: StageConfiguration[] = [
             from: 0.001,
             to: 0.015
         },
-        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { isNameHeroVisible, earth, text, niHighlight, cityRefs } }) => {
+        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { isNameHeroVisible, earth, text, niHighlight, cityRefs, fadeFactor } }) => {
             camera.value.rotation.x = -scrollPercent.value * 25;
             camera.value.position.z = 10 + (scrollPercent.value * 50);
             earth.value.rotation.y = -scrollPercent.value * 22;
@@ -113,7 +116,9 @@ export const stages: StageConfiguration[] = [
                 elapsed,
                 factor: 0.2,
             });
+            earth.value.position.y = -1.1;
             Object.values(cityRefs).forEach(cityRef => cityRef.value.visible = false);
+            fadeFactor.value = 0;
         }
     },
     {
@@ -122,7 +127,7 @@ export const stages: StageConfiguration[] = [
             from: 0.015,
             to: 0.025
         },
-        actions: ({ camera, renderLoop: { elapsed }, scrollPercent, refs: { earth, text, niHighlight, cityRefs } }) => {
+        actions: ({ camera, renderLoop: { elapsed }, scrollPercent, refs: { earth, text, niHighlight, cityRefs, fadeFactor } }) => {
             camera.value.position.z = 10 + (scrollPercent.value * 50);
             earth.value.rotation.y = -scrollPercent.value * 22;
 
@@ -135,7 +140,9 @@ export const stages: StageConfiguration[] = [
             });
 
             // Defaults
+            earth.value.position.y = -1.1;
             Object.values(cityRefs).forEach(cityRef => cityRef.value.visible = false);
+            fadeFactor.value = 0;
         }
     },
     {
@@ -144,7 +151,7 @@ export const stages: StageConfiguration[] = [
             from: 0.025,
             to: 0.05
         },
-        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, text, niHighlight, cityRefs } }) => {
+        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, text, niHighlight, cityRefs, fadeFactor } }) => {
             earth.value.rotation.y = -scrollPercent.value * 22;
 
             text.value = `For 8 years I have worked with companies\nacross Ireland, Europe and the US to deliver\nawesome user-experiences.`;
@@ -152,27 +159,29 @@ export const stages: StageConfiguration[] = [
             Object.values(cityRefs).forEach(cityRef => cityRef.value.visible = true);
 
             // Defaults
+            earth.value.position.y = -1.1;
             niHighlight.value.intensity = easeToTarget({
                 current: niHighlight.value.intensity,
                 target: 0,
                 elapsed,
                 factor: 0.2,
             });
+            fadeFactor.value = 0;
         }
     },
     {
-        key: Stage.FocusIndustries,
+        key: Stage.PreFadeScene,
         condition: {
             from: 0.05,
             to: 0.055
         },
-        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, text, niHighlight, cityRefs, sun } }) => {
+        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, text, niHighlight, cityRefs, fadeFactor } }) => {
             earth.value.rotation.y = -scrollPercent.value * 22;
             camera.value.position.z = 10 - (0.025 * 50) + (scrollPercent.value * 50);
-            // sun.value.position.x = -20 + (scrollPercent.value * 60)
 
             // Defaults
             text.value = undefined;
+            earth.value.position.y = -1.1;
             niHighlight.value.intensity = easeToTarget({
                 current: niHighlight.value.intensity,
                 target: 0,
@@ -183,15 +192,23 @@ export const stages: StageConfiguration[] = [
         }
     },
     {
-        key: Stage.Industries,
+        key: Stage.FadeScene,
         condition: {
             from: 0.055,
             to: 1
         },
-        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, text, niHighlight, cityRefs, sun } }) => {
+        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, text, niHighlight, cityRefs, fadeFactor } }) => {
             earth.value.rotation.y = -scrollPercent.value * 22;
             camera.value.position.z = 10 - (0.025 * 50) + (scrollPercent.value * 50);
-            // sun.value.position.x = -20 + (scrollPercent.value * 80)
+            fadeFactor.value = scrollPercent.value;
+            console.log(fadeFactor.value)
+
+            camera.value.rotation.x = easeToTarget({
+                current: camera.value.rotation.x,
+                target: -0.25,
+                elapsed,
+                factor: 0.2,
+            });
 
             // Defaults
             niHighlight.value.intensity = easeToTarget({
@@ -203,5 +220,5 @@ export const stages: StageConfiguration[] = [
             Object.values(cityRefs).forEach(cityRef => cityRef.value.visible = false);
             text.value = undefined;
         }
-    }
+    },
 ];

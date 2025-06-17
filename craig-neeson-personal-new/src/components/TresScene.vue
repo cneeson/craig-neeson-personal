@@ -26,21 +26,6 @@
     :size="0.25"
     :size-attenuation="true"
   />
-  <!-- <ScreenSpace :depth="0.5">
-    <Suspense>
-      <Text3D
-        v-if="text"
-        :text="text"
-        font="/fonts/Funnel_Display.json"
-        :size="0.01"
-        :height="0.005"
-        :bevel-enabled=false
-        need-updates
-      >
-        <TresMeshBasicMaterial />
-      </Text3D>
-    </Suspense>
-  </ScreenSpace> -->
   
   <Html
       ref="nameHeroRef"
@@ -51,8 +36,6 @@
       <Hero :is-visible="isNameHeroVisible" />
   </Html>
 
-  <!-- <TresGridHelper :args="[10, 10]" :position="[0, -1.1, 9.5]" /> -->
-
   <Suspense>
     <EffectComposerPmndrs>
       <BloomPmndrs
@@ -62,10 +45,7 @@
         :luminance-smoothing="0.3"
         mipmap-blur
       />
-      <NoisePmndrs
-        premultiply
-        :blend-function="BlendFunction.SCREEN"
-      />
+      <BarrelBlurPmndrs v-bind="{amount: fadeFactor * 0.1, offset: [0.4, 0.4]}" />
     </EffectComposerPmndrs>
   </Suspense>
 
@@ -138,47 +118,6 @@
     </TresMesh>
   </TresGroup>
 
-  <Suspense>
-    <GLTFModel ref="issRef" path="/models/iss/scene.gltf" draco :position="[-0.005, -0.05, 12]" :rotation-y="MathUtils.degToRad(20)" :rotation-x="MathUtils.degToRad(15)"  :scale="0.01" />
-  </Suspense>
-
-  <TresGroup :position="[0, -0.024, 12.4]">
-    <Suspense>
-      <Text3D
-        ref="textRef"
-        text="I have been fortunate enough to build products 
-        for a range of global industries including:"
-        font="/fonts/Funnel_Display.json"
-        :size="0.005"
-        :height="0.005"
-        :bevel-enabled=false
-        :look-at="camera?.position"
-        :curve-segments="100"
-      >
-        <TresMeshNormalMaterial />
-      </Text3D>
-    </Suspense>
-  </TresGroup>
-
-  <TresGroup :position="[-0.02, -0.024, 12.9]"> 
-    <TresMesh ref="industryHealthcare" :position="[0, 0.02, -0.001]"> 
-      <TresSphereGeometry :args="[0.005, 16, 16]" />
-      <TresMeshNormalMaterial  />
-    </TresMesh>
-    <Suspense>
-      <Text3D
-        text="Healthcare"
-        font="/fonts/Funnel_Display.json"
-        :size="0.005"
-        :height="0.005"
-        :bevel-enabled=false
-        :look-at="camera?.position"
-      >
-        <TresMeshNormalMaterial />
-      </Text3D>
-    </Suspense>
-  </TresGroup>
-
   <TresGroup ref="sunRef" :position="[-20, -10, -30]">
     <TresMesh :rotation-y="MathUtils.degToRad(270)">
       <TresSphereGeometry :args="[.5, 16, 16]" />
@@ -213,18 +152,14 @@
 import { defineComponent, nextTick } from 'vue';
 import { ref, shallowRef, onMounted, ShallowRef, watchEffect } from 'vue'
 import { TresInstance, useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
-import { Vector3, MathUtils, MultiplyBlending, Color, AdditiveBlending, NormalBlending } from 'three'
-import { Stars, Html, ScreenSpace, Text3D, GLTFModel, MouseParallax } from '@tresjs/cientos'
+import { Vector3, MathUtils, NormalBlending } from 'three'
+import { Stars, Html } from '@tresjs/cientos'
 import '@tresjs/leches/styles'
 import { gsap, Linear } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { ScrollSmoother } from "gsap/ScrollSmoother";
 import Hero from '../views/hero.vue'  
 import { stages } from './stages';
 // @ts-ignore-next-line
-import { BlendFunction } from 'postprocessing'
-// @ts-ignore-next-line
-import { BloomPmndrs, EffectComposerPmndrs, Lensflare, NoisePmndrs } from '@tresjs/post-processing'
+import { BloomPmndrs, EffectComposerPmndrs, BarrelBlurPmndrs } from '@tresjs/post-processing'
 
 // Note: textures CANNOT be loaded in the setup script
 const earthTexture = await useTexture({
@@ -241,11 +176,6 @@ const earthCloudTexture = await useTexture({
   alphaMap: '/textures/earth/clouds.jpg',
 });
 
-enum HeroText {
-  RoleAndLocation = 'I am a frontend developer based in Northern Ireland',
-  ProjectLocations = 'I have worked on projects serving customers in NI, Europe and the US',
-}
-
 export default defineComponent({
   name: 'TresScene',
 });
@@ -253,19 +183,15 @@ export default defineComponent({
 
 <script lang="ts" setup>
 
-gsap.registerPlugin(ScrollTrigger,ScrollSmoother);
-
 const { camera } = useTresContext()
 
 const nameHeroRef = ref()
-const textRef = ref()
 const londonHighlightRef = ref<TresInstance | null>(null)
 const parisHighlightRef = ref<TresInstance | null>(null)
 const berlinHighlightRef = ref<TresInstance | null>(null)
 const madridHighlightRef = ref<TresInstance | null>(null)
 const romeHighlightRef = ref<TresInstance | null>(null)
 const cameraPosition = ref<Vector3>(new Vector3(0, 1, 10))
-const issRef = ref<TresInstance | null>(null)
 
 const text = defineModel<string>('text', { required: true });
 
@@ -279,6 +205,7 @@ const starsRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const starsRef2: ShallowRef<TresInstance | null> = shallowRef(null)
 
 const scrollPercent = ref(0);
+const fadeFactor = ref(0);
 
 onMounted(() => {
   nextTick(() => {
@@ -312,6 +239,10 @@ watchEffect(() => {
       scrollPercent.value = tubePerc.percent;
     }
   });
+
+  timeline.add("fadeCanvas", 0.9)
+    .to('canvas', {duration: 1.5, y: '-100vh'}, "fadeCanvas")
+    .to('canvas', {duration: 1.5, filter: 'blur(20px)'}, "fadeCanvas");
 })
 
 const { onLoop } = useRenderLoop();
@@ -337,10 +268,12 @@ onLoop((renderLoop) => {
 
   if (earthRef.value && camera.value && nameHeroRef.value.instance && sunRef.value) {
     currentStage?.actions({ 
+      scrollPercent,
       renderLoop,
       camera,
       refs: { 
         text,
+        fadeFactor,
         earth: earthRef, 
         sun: sunRef,
         earthCloud: earthCloudRef,
@@ -356,16 +289,7 @@ onLoop((renderLoop) => {
         },
         isNameHeroVisible: isNameHeroVisible,
       },
-      scrollPercent
     });
   }
 })
-
 </script>
-
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
-.stage-selector {
-
-}
-</style>

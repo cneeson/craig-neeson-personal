@@ -1,10 +1,17 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
-import { CineonToneMapping, LinearToneMapping, SRGBColorSpace } from 'three';
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { ScrollSmoother } from "gsap/ScrollSmoother";
+import Skills from './views/skills.vue';
+import Experience from './views/experience.vue';
+import Contact from './views/contact.vue';
 
 export default defineComponent({
   name: 'App',
 });
+gsap.registerPlugin(ScrollTrigger,ScrollSmoother);
+
 </script>
 <script lang="ts" setup>
 import TresScene from './components/TresScene.vue';
@@ -14,14 +21,11 @@ import { TresCanvas } from '@tresjs/core'
 const gl = {
   clearColor: '#090118',
   alpha: true,
-  // outputColorSpace: SRGBColorSpace,
-  // toneMapping: LinearToneMapping,
   shadows: true,
   powerPreference: "high-performance"
 }
 
 const text = ref(undefined);
-
 </script>
 
 <template>
@@ -31,20 +35,19 @@ const text = ref(undefined);
   <TresCanvas class="canvas" v-bind="gl">
     <Suspense>
       <TresScene v-model:text="text" />
-  </Suspense>
+    </Suspense>
   </TresCanvas>
+  <div class="flat-plane">
+    <Skills />
+    <Experience />
+    <Contact />
+    <div class="text-white">Credits and attributions</div>
+  </div>
   <div class="scrollTarget"></div>
 </template>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&display=swap');
-
-.hero {
-  position: absolute;
-  top: 40%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
 
 html, body {
   height: 100%;
@@ -74,6 +77,20 @@ html, body {
   top: 0;
   left: 0;
   z-index: 1;
+}
+
+.flat-plane {
+  position: relative;
+  z-index: 1000;
+
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  @apply m-6;
+  margin-top: 8000px;
 }
 
 .text-overlay {
