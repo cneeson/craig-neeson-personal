@@ -134,7 +134,7 @@ export const stages: StageConfiguration[] = [
             text.value = `I am a frontend developer\nbased in Northern Ireland`;
             niHighlight.value.intensity = easeToTarget({
                 current: niHighlight.value.intensity,
-                target: 5,
+                target: 0.15,
                 elapsed,
                 factor: 0.2,
             });

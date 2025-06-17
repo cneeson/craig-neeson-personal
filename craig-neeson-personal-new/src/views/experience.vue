@@ -10,6 +10,7 @@ export const totalTransitionDuration = 2000;
 <script lang="ts" setup>
 import SkillItem from './skill-item.vue'
 import Divider from '../components/divider.vue';
+import Heading from './heading.vue';
 
 const props = defineProps<{
 }>();
@@ -19,7 +20,7 @@ const props = defineProps<{
 <template>
     <div class="experience" data-speed="0.8">
       <div class="left">
-        <h2>Experience</h2>
+        <Heading>Experience</Heading>
         <p>
           TODO
         </p>

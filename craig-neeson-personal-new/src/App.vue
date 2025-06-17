@@ -31,6 +31,7 @@ onMounted(() => {
     content: "#smooth-content",
     smooth: 1.5,
     effects: true,
+    normalizeScroll: true,
   });
 });
 

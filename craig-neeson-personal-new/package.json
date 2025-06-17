@@ -8,10 +8,10 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
-    "@tresjs/cientos": "^4.3.0",
-    "@tresjs/core": "^4.3.3",
+    "@tresjs/cientos": "^4.3.1",
+    "@tresjs/core": "^4.3.6",
     "@tresjs/leches": "^0.14.1",
-    "@tresjs/post-processing": "^2.3.1",
+    "@tresjs/post-processing": "^2.4.0",
     "animejs": "^4.0.1",
     "cesium": "^1.128.0",
     "core-js": "^3.8.3",

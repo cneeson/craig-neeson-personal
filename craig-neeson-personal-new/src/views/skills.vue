@@ -10,6 +10,7 @@ export const totalTransitionDuration = 2000;
 <script lang="ts" setup>
 import SkillItem from './skill-item.vue'
 import Divider from '../components/divider.vue';
+import Heading from './heading.vue';
 
 const props = defineProps<{
 }>();
@@ -19,9 +20,12 @@ const props = defineProps<{
 <template>
     <div class="skills" data-speed="0.8">
       <div class="left">
-        <h2>Skills</h2>
+        <Heading>Skills</Heading>
         <p>
-          Working on UI code is my passion in software development. I have extensive experience architecting and implementing UIs for the web and mobile using a variety of development setups. I have a deep knowledge of JavaScript/Typescript and am just as comfortable working in vanilla JS as with a UI framework. I have architected web projects from the ground up and enjoy working with teams to strategise around solutions to some of the more challenging parts of UI design. I have experience working both as an individual contributor who owns the full frontend, and also as one of many team-players who all have a stake in the codebase.
+          I'm passionate about UI development and have extensive experience designing and building web and mobile interfaces. With deep expertise in JavaScript/TypeScript, I'm comfortable working in both vanilla JS and modern frameworks.
+        </p>
+        <p>
+          I've led frontend architecture from scratch and thrive in collaborative environments—whether owning the entire UI or contributing as part of a team tackling complex design challenges.
         </p>
       </div>
 

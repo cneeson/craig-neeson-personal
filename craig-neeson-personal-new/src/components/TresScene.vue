@@ -3,7 +3,7 @@
   <TresDirectionalLight
     cast-shadow
     :position="[100, 100, -30]"
-    :intensity="1.2"
+    :intensity=".8"
   />
 
   <Stars
@@ -13,7 +13,6 @@
     :depth="100"
     :count="20000"
     :size="0.15"
-    color="red"
     :size-attenuation="true"
   />
 
@@ -40,47 +39,46 @@
     <EffectComposerPmndrs>
       <BloomPmndrs
         :radius="0.85"
-        :intensity="5.0"
+        :intensity="8.0"
         :luminance-threshold="0.1"
         :luminance-smoothing="0.3"
         mipmap-blur
       />
       <!-- <BarrelBlurPmndrs v-bind="{amount: fadeFactor * 0.1, offset: [0.4, 0.4]}" /> -->
+      <SMAAPmndrs v-bind="{  preset: SMAAPreset.MEDIUM}" />
+      <GodRaysPmndrs
+          v-bind="{
+            opacity: 1,
+            exposure: .6,
+            resolutionScale: 0.5
+          }"
+          :lightSource="godRaysRef"
+        />
     </EffectComposerPmndrs>
   </Suspense>
 
   <TresGroup ref="earthRef" :position="[0, -1.1, 9.5]">
     <TresMesh :rotation-y="MathUtils.degToRad(310)" receive-shadow cast-shadow>
-      <TresSphereGeometry :args="[1, 1000, 1000]" />
+      <TresSphereGeometry :args="[1, 100, 100]" />
       <TresMeshStandardMaterial
         :map="earthTexture.map"
-        :displacement-map="earthTexture.displacementMap"
-        :displacement-bias="0"
-        :displacement-scale="0.009"
+        :bump-map="earthTexture.displacementMap"
+        :bump-scale="1"
         :metalness-map="earthTexture.metalnessMap"
         :roughness="1"
         :metalness="0.5"
       />
-    </TresMesh>
-
-    <TresMesh ref="earthOceanRef" :rotation-y="MathUtils.degToRad(275)" receive-shadow cast-shadow>
-      <TresSphereGeometry :args="[1.0035, 1000, 1000]" />
-      <TresMeshPhongMaterial
-        color="#2e677a"
-        :bump-map="earthOceanTexture.displacementMap"
-        :bump-scale="0.1"
-        :shininess="10"
-        :blending="NormalBlending"
-      />
+      <Outline :thickness="4" color="#82dbc5" />
     </TresMesh>
 
     <TresMesh ref="earthCloudRef">
-      <TresSphereGeometry :args="[1.018, 32, 32]" />
+      <TresSphereGeometry :args="[1.01, 100, 100]" />
       <TresMeshBasicMaterial
         :alpha-map="earthCloudTexture.alphaMap"
         :transparent="true"
         :opacity="0.2"
       />
+      <Outline :thickness="0.01" color="#5c5c5c" />
     </TresMesh>
 
     <TresPointLight
@@ -119,7 +117,7 @@
   </TresGroup>
 
   <TresGroup ref="sunRef" :position="[-20, -10, -30]">
-    <TresMesh :rotation-y="MathUtils.degToRad(270)">
+    <TresMesh :rotation-y="MathUtils.degToRad(270)" ref="godRaysRef">
       <TresSphereGeometry :args="[.5, 16, 16]" />
       <TresMeshStandardMaterial
         :metalness="0"
@@ -153,13 +151,15 @@ import { computed, defineComponent, nextTick } from 'vue';
 import { ref, shallowRef, onMounted, ShallowRef, watchEffect } from 'vue'
 import { TresInstance, useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
 import { Vector3, MathUtils, NormalBlending } from 'three'
-import { Stars, Html } from '@tresjs/cientos'
+import { Stars, Html, Outline, Ocean } from '@tresjs/cientos'
 import '@tresjs/leches/styles'
 import { gsap, Linear } from "gsap";
 import Hero from '../views/hero.vue'  
 import { stages } from './stages';
 // @ts-ignore-next-line
-import { BloomPmndrs, EffectComposerPmndrs, BarrelBlurPmndrs } from '@tresjs/post-processing'
+import { BloomPmndrs, EffectComposerPmndrs, BarrelBlurPmndrs, GodRaysPmndrs, SMAAPmndrs } from '@tresjs/post-processing'
+// @ts-ignore-next-line
+import { SMAAPreset } from 'postprocessing'
 
 // Note: textures CANNOT be loaded in the setup script
 const earthTexture = await useTexture({
@@ -199,6 +199,7 @@ const text = defineModel<string>('text', { required: true });
 
 const isNameHeroVisible = ref(false);
 const earthRef: ShallowRef<TresInstance | null> = shallowRef(null)
+const godRaysRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const earthCloudRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const earthOceanRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const niHighlightRef: ShallowRef<TresInstance | null> = shallowRef(null)
@@ -268,7 +269,7 @@ onLoop((renderLoop) => {
 
   if (earthCloudRef.value) {
     earthCloudRef.value.rotation.y = -(renderLoop.elapsed * 0.005)
-    earthCloudRef.value.rotation.x = -(renderLoop.elapsed * 0.005)
+    earthCloudRef.value.rotation.x = 90 + -(renderLoop.elapsed * 0.005)
   }
 
   // Actions related to the current stage
