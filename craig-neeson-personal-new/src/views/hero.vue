@@ -76,7 +76,7 @@ onMounted(() => {
 
 <template>
     <Transition>
-        <section class="hero" v-show="isVisible">
+        <section class="hero" v-show="isVisible" data-speed="0.5">
             <div>
                 <Letters 
                     is="h1"

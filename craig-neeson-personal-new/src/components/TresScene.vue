@@ -45,7 +45,7 @@
         :luminance-smoothing="0.3"
         mipmap-blur
       />
-      <BarrelBlurPmndrs v-bind="{amount: fadeFactor * 0.1, offset: [0.4, 0.4]}" />
+      <!-- <BarrelBlurPmndrs v-bind="{amount: fadeFactor * 0.1, offset: [0.4, 0.4]}" /> -->
     </EffectComposerPmndrs>
   </Suspense>
 
@@ -149,7 +149,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, nextTick } from 'vue';
+import { computed, defineComponent, nextTick } from 'vue';
 import { ref, shallowRef, onMounted, ShallowRef, watchEffect } from 'vue'
 import { TresInstance, useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
 import { Vector3, MathUtils, NormalBlending } from 'three'
@@ -186,6 +186,8 @@ export default defineComponent({
 const { camera } = useTresContext()
 
 const nameHeroRef = ref()
+const earthGeometryRef = ref()
+const earthOceanGeometryRef = ref()
 const londonHighlightRef = ref<TresInstance | null>(null)
 const parisHighlightRef = ref<TresInstance | null>(null)
 const berlinHighlightRef = ref<TresInstance | null>(null)
@@ -236,13 +238,19 @@ watchEffect(() => {
     ease: Linear.easeNone,
     duration: 10,
     onUpdate: function() {
+      console.log(tubePerc.percent)
       scrollPercent.value = tubePerc.percent;
     }
   });
 
   timeline.add("fadeCanvas", 0.9)
     .to('canvas', {duration: 1.5, y: '-100vh'}, "fadeCanvas")
-    .to('canvas', {duration: 1.5, filter: 'blur(20px)'}, "fadeCanvas");
+    .to('canvas', {duration: 1.5, filter: 'blur(40px)'}, "fadeCanvas");
+})
+
+const isLowPoly = computed(() => {
+  console.log(scrollPercent.value > 0.086)
+  return scrollPercent.value > 0.86;
 })
 
 const { onLoop } = useRenderLoop();
