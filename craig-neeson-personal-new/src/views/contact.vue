@@ -25,7 +25,7 @@ const props = defineProps<{
         </p>
       </div>
 
-      <Divider />
+      <Divider class="h-[215px]" />
 
       <div class="right">
         <a href="https://www.linkedin.com/in/craig-neeson-b2808278" target="_blank">
@@ -44,7 +44,6 @@ const props = defineProps<{
 <style scoped>
 .contact {
   @apply flex justify-around gap-12 items-center;
-  margin-bottom: 14.5rem;
 }
 
 h2 {

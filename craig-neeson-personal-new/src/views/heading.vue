@@ -1,5 +1,6 @@
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, onMounted } from 'vue';
+import { gsap } from "gsap";
 
 export default defineComponent({
     name: 'Heading'
@@ -11,6 +12,18 @@ export default defineComponent({
 
 defineProps<{
 }>();
+
+onMounted(() => {
+  // gsap.to('.text1', {
+  //   xPercent: -20,
+  //   ease: "none",
+  //   scrollTrigger: {
+  //     trigger: ".text1",
+  //     pin: true,
+  //     scrub: 1,
+  //   }
+  // });
+});
 
 </script>
 

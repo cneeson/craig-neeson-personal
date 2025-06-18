@@ -4,7 +4,7 @@ import { Camera } from "three";
 import { ComputedRef } from "vue";
 import { ShallowRef } from "vue";
 
-const DEBUG_SKIP_FIRST_STAGE = true;
+const DEBUG_SKIP_FIRST_STAGE = false;
 
 export enum Stage {
     FocusEarth = 'focus-earth',
@@ -131,7 +131,7 @@ export const stages: StageConfiguration[] = [
             camera.value.position.z = 10 + (scrollPercent.value * 50);
             earth.value.rotation.y = -scrollPercent.value * 22;
 
-            text.value = `I am a frontend developer\nbased in Northern Ireland`;
+            text.value = `Hi, I'm Craig.\nI am a frontend developer\nbased in Northern Ireland`;
             niHighlight.value.intensity = easeToTarget({
                 current: niHighlight.value.intensity,
                 target: 0.15,

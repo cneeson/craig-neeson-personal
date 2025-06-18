@@ -1,5 +1,5 @@
 <template>
-   <div>
+   <div class="relative">
       <hr class="absolute bg-white top-0 h-[105%] w-1 rounded-full">
       <hr class="absolute bg-white top-0 h-[105%] w-3 blur-[20px] rounded-full">
     </div>

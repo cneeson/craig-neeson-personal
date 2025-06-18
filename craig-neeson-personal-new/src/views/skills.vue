@@ -18,7 +18,7 @@ const props = defineProps<{
 </script>
 
 <template>
-    <div class="skills" data-speed="0.8">
+    <div class="skills" data-lag="0.8">
       <div class="left">
         <Heading>Skills</Heading>
         <p>
@@ -29,7 +29,7 @@ const props = defineProps<{
         </p>
       </div>
 
-      <Divider />
+      <Divider class="h-[300px]" />
 
       <div class="right">
         <SkillItem icon="images/skills/ts.svg">Typescript</SkillItem>

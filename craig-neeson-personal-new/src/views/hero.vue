@@ -80,12 +80,12 @@ onMounted(() => {
             <div>
                 <Letters 
                     is="h1"
-                    class="text-slate-50 text-6xl pb-6 mx-7" 
+                    class="text-slate-50 text-6xl pb-6 mx-7 font-extrabold" 
                     animate-key="title"
                     str="Craig Neeson"
                 />
                 <hr class="border-b border-solid border-slate-600 opacity-0 mx-auto" data-animate="title-break">
-                <h2 class="text-slate-300 text-5xl mt-5 flex gap-2">
+                <h2 class="text-slate-300 text-5xl mt-5 flex gap-2 ">
                     <span class="opacity-0" data-animate="subtitle">Senior</span>
                     <span class="opacity-0" data-animate="subtitle">Frontend</span>
                     <span class="opacity-0" data-animate="subtitle">Developer</span>
@@ -103,6 +103,10 @@ onMounted(() => {
     top: 40%;
     left: 50%;
     transform: translate(-50%, -50%);
+}
+
+.letters {
+    font-weight: 600;
 }
 
 .v-enter-active,
