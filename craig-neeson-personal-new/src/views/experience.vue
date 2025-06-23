@@ -1,6 +1,7 @@
 <script lang="ts">
 import { defineComponent, onMounted } from 'vue';
 import { gsap } from "gsap";
+import { Observer } from 'gsap/Observer';
 
 export default defineComponent({
     name: 'Experience'
@@ -15,90 +16,85 @@ import JobItem from './job-item.vue';
 const props = defineProps<{
 }>();
 
-// onMounted(() => {
-//   const images = document.querySelectorAll('.carousel-image')
-//   const radius = 242
-//   const progress = {
-//     value: 0
-//   }
-//   const carousel = document.querySelector('.carousel')
+onMounted(() => {
+let sections = gsap.utils.toArray(".carousel-item");
+let dragRatio = 1;
+let scrollTo;
 
-//   Observer.create({
-//     target: carousel,
-//     type: "wheel,pointer",
-//     onPress: (self) => {
-//       carousel.style.cursor = 'grabbing'
-//     },
-//     onRelease: (self) => {
-//       carousel.style.cursor = 'grab'
-//     },
-//     onChange: (self) => {
-//       gsap.killTweensOf(progress)
-//       const p = self.event.type === 'wheel' ? self.deltaY * -.0005 : self.deltaX * .05
-//       gsap.to(progress, {
-//         duration: 2,
-//         ease: 'power4.out',
-//         value: `+=${p}`
-//       })
-//     }
-//   })
-
-  const animate = () => {
-    images.forEach((image, index) => {
-      const theta = index / images.length - progress.value
-      const x = -Math.sin(theta * Math.PI * 2) * radius
-      const y = Math.cos(theta * Math.PI * 2) * radius
-      image.style.transform = `translate3d(${x}px, 0px, ${y}px) rotateY(${360 * -theta }deg)`
-      const c = Math.floor(index/images.length * 360)
-      image.style.background = `hsla(${c}, 90%, 50%, .5)`
-    })
+let scrollTween = gsap.to(sections, {
+  xPercent: -100 * (sections.length - 1),
+  ease: "none", // <-- IMPORTANT!
+  scrollTrigger: {
+    start: window.innerHeight > 1000 ? 'top 25%' : 'top 2%',
+    trigger: ".carousel",
+    pin: true,
+    scrub: 0.1,
+    onRefresh: (self) => {
+      dragRatio =
+        (self.end - self.start) /
+        ((sections.length - 1) * sections[0].offsetWidth);
+    },
+    snap: directionalSnap(1 / (sections.length - 1)),
+    end: "+=3000"
   }
-  gsap.ticker.add(animate)
 });
 
-// onMounted(() => {
-//   let sections = gsap.utils.toArray(".carousel-item");
+Observer.create({
+  target: ".experience-heading",
+  type: "wheel,touch,pointer",
+  onPress: (self) => {
+    self.startScroll = scrollTween.scrollTrigger.scroll();
+    scrollTo = gsap.quickTo(scrollTween.scrollTrigger, "scroll", {
+      duration: 0.5,
+      ease: "power3"
+    });
+  },
+  onDrag: (self) => {
+    scrollTo(self.startScroll + (self.startX - self.x) * dragRatio);
+  }
+});
 
-//   gsap.to(sections, {
-//     xPercent: -100 * (sections.length - 1),
-//     ease: "none",
-//     scrollTrigger: {
-//       trigger: ".carousel",
-//       pin: true,
-//       scrub: 1,
-//       snap: 1 / (sections.length - 1),
-//       end: () => "+=" + document.querySelector(".carousel")?.offsetWidth
-//     }
-//   });
-// });
+// helper function for causing the sections to always snap in the direction of the scroll (next section) rather than whichever section is "closest" when scrolling stops.
+function directionalSnap(increment) {
+  let snapFunc = gsap.utils.snap(increment);
+  return (raw, self) => {
+    let n = snapFunc(raw);
+    return Math.abs(n - raw) < 1e-4 || (n < raw) === self.direction < 0 ? n : self.direction < 0 ? n - increment : n + increment;
+  };
+}
+
+});
 
 </script>
 
 <template>
     <div class="experience" data-speed="0.8">
-      <Heading>Experience</Heading>
+      <Heading class="experience-heading">Experience</Heading>
 
       <div class="carousel">
-        <JobItem
-          class="carousel-item"
-          employer='Ankorstore'
-          role='Senior Frontend Engineer'
-          startDate='2021-10-01'
-          isCurrent
-          href='https://www.ankorstore.com/'
-          imgSrc='images/employers/aks.png'
-          imgAlt='ankorstore-logo'
-          :keyPoints="[
-              `Joined Ankorstore during a period of rapid growth, scaling from 50 to 400 employees in one year. Attracted to their mission to support brick-and-mortar shops against large online competitors. `,
-              `Worked with Vue and Nuxt to develop features for marketplace, order-fulfillment, and backoffice platforms, focusing on shipping and logistics. Key projects included enabling users to compare and select carrier quotes, track shipments, and visualize stock movements. `,
-              `Participated in company-wide projects such as re-brandings, Vue to Nuxt migrations, offer-system implementations, and new business model changes.`,
-              `Collaborated closely with product and data engineers to deliver analytics tracking for all features, allowing a data-driven approach to product development.`,
-          ]"
-        />
+        <div class="carousel-item">
+          <JobItem
+            class="item1"
+            employer='Ankorstore'
+            role='Senior Frontend Engineer'
+            startDate='2021-10-01'
+            isCurrent
+            href='https://www.ankorstore.com/'
+            imgSrc='images/employers/aks.png'
+            imgAlt='ankorstore-logo'
+            :keyPoints="[
+                `Joined Ankorstore during a period of rapid growth, scaling from 50 to 400 employees in one year. Attracted to their mission to support brick-and-mortar shops against large online competitors. `,
+                `Worked with Vue and Nuxt to develop features for marketplace, order-fulfillment, and backoffice platforms, focusing on shipping and logistics. Key projects included enabling users to compare and select carrier quotes, track shipments, and visualize stock movements. `,
+                `Participated in company-wide projects such as re-brandings, Vue to Nuxt migrations, offer-system implementations, and new business model changes.`,
+                `Collaborated closely with product and data engineers to deliver analytics tracking for all features, allowing a data-driven approach to product development.`,
+            ]"
+          />
+        </div>
 
 
-        <JobItem
-            class="carousel-item"
+        <div class="carousel-item">
+          <JobItem
+            class="item2"
             employer='Locate a Locum'
             role='Software Developer'
             startDate='2019-10-01'
@@ -116,11 +112,13 @@ const props = defineProps<{
                 'Introduced TypeScript to UI repositories, enhancing code robustness and reducing bugs. Currently, 40% of the main codebase is in TS.',
                 'Alongside process improvement, I delivered new web and mobile modules for employee leave management, scheduling, clock-in, and payroll processing.'
             ]"
-        />
+          />
+        </div>
 
 
-        <JobItem
-            class="carousel-item"
+        <div class="carousel-item">
+          <JobItem
+            class="item3"
             employer='Flexera'
             role='UI Engineer & Associate UI Engineer'
             startDate='2018-09-01'
@@ -135,11 +133,13 @@ const props = defineProps<{
                 'Worked with various acquisition teams, gaining exposure to different UI development approaches and technology stacks.',
                 'Worked across many interesting and technically challenging products including a portal to visualise one of the worlds largest technology asset datasets, a dashboard to visualise and optimise Azure, AWS & GCP cloud resource costs, and a network-security monitoring system.'
             ]"
-        />
+          />
+        </div>
 
 
-        <JobItem
-            class="carousel-item"
+        <div class="carousel-item">
+          <JobItem
+            class="item4"
             employer='Nitec Solutions'
             role='Software Developer'
             startDate='2017-11-01'
@@ -152,11 +152,13 @@ const props = defineProps<{
                 'Delivered end-to-end sales, billing and production management systems for two large concrete factories. The systems integrated directly with production-line firmware and tracked vehicles in real-time, allowing coordinators to have a birds eye view of their operations.',
                 'Developed internal processes, including CI pipelines, private package registries, and a modular front-end component system using vanilla JavaScript and Handlebars.'
             ]"
-        />
+          />
+        </div>
 
 
-        <JobItem
-            class="carousel-item"
+        <div class="carousel-item">
+          <JobItem
+            class="item5"
             employer='Liberty Information Technology'
             role='Associate Software Engineer'
             startDate='2017-06-01'
@@ -169,11 +171,13 @@ const props = defineProps<{
                 'Gained exposure to many different languages (Kotlin, TypeScript & Scala) and AWS resources (Lambda, SQS & SNS) due to the sprawling micro-service architecture.',
                 'Had my first experience of Agile at scale, LIT had adopted the SAFe Agile methodology.',
             ]"
-        />
+          />
+        </div>
 
 
-        <JobItem
-            class="carousel-item"
+        <div class="carousel-item">
+          <JobItem
+            class="item6"
             employer='Nitec Solutions'
             role='Placement Developer'
             startDate='2015-06-01'
@@ -187,11 +191,12 @@ const props = defineProps<{
                 'Helped to build a custom document management solution for an occupational therapy clinic in Belfast.',
                 'Helped to build a production management system for Northern Irelands largest plastics manufacturer.',
             ]"
-        />
+          />
+        </div>
 
-
-        <JobItem
-            class="carousel-item"
+        <div class="carousel-item">
+          <JobItem
+            class="item7"
             employer='Nitec Solutions'
             role='Placement Student'
             startDate='2012-07-01'
@@ -199,8 +204,8 @@ const props = defineProps<{
             href='https://www.nitec.com/'
             imgSrc='images/employers/nitec.png'
             imgAlt='nitec-solutions-logo'
-        />
-
+          />
+        </div>
     </div>
 
     </div>
@@ -208,19 +213,11 @@ const props = defineProps<{
 
 <style scoped>
 .experience {
-  margin-bottom: 14.5rem;
+ /* @apply ml-5; */
 }
 
 h2 {
-  @apply text-3xl mb-6 text-white;
-}
-
-.left {
-  max-width: 600px;
-
-  p {
-    @apply text-white ml-4 text-lg;
-  }
+  @apply text-3xl text-white;
 }
 
 .right {
@@ -232,10 +229,11 @@ hr {
 }
 
 .carousel {
-  @apply flex overflow-x-auto gap-5 p-4;
+  @apply w-[700vw] md:w-[450vw] h-[100vh] flex flex-wrap gap-6;
+}
 
-  div {
-    min-width: 450px;
-  }
+.carousel-item {
+  @apply w-[100vw] md:w-[50vw] md:max-w-[670px];
+  height: fit-content;
 }
 </style>

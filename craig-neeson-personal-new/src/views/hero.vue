@@ -77,15 +77,15 @@ onMounted(() => {
 <template>
     <Transition>
         <section class="hero" v-show="isVisible" data-speed="0.5">
-            <div>
+            <div class="hero-content">
                 <Letters 
                     is="h1"
-                    class="text-slate-50 text-6xl pb-6 mx-7 font-extrabold" 
+                    class="text-slate-50 pb-6 mx-7 font-extrabold title" 
                     animate-key="title"
                     str="Craig Neeson"
                 />
                 <hr class="border-b border-solid border-slate-600 opacity-0 mx-auto" data-animate="title-break">
-                <h2 class="text-slate-300 text-5xl mt-5 flex gap-2 ">
+                <h2 class="text-slate-300 text-5xl mt-5 flex justify-center gap-2 subtitle">
                     <span class="opacity-0" data-animate="subtitle">Senior</span>
                     <span class="opacity-0" data-animate="subtitle">Frontend</span>
                     <span class="opacity-0" data-animate="subtitle">Developer</span>
@@ -97,12 +97,15 @@ onMounted(() => {
 
 <style scoped>
 .hero {
-    z-index: 1;
-    @apply text-center p-2 flex justify-center items-center;
-    position: absolute;
-    top: 40%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    @apply text-center p-2 flex justify-center items-center h-[100vh];
+}
+
+.title {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+}
+
+.subtitle {
+    @apply text-2xl md:text-3xl lg:text-4xl;
 }
 
 .letters {

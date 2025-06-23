@@ -18,7 +18,7 @@ defineProps<{
 
 <template>
     <div class="skill-item">
-      <img :src="icon" class="w-9 h-9">
+      <img :src="icon" class="w-6 lg:w-9 h-6 lg:h-9">
       <p class="text-white"><slot /></p>
     </div>
 </template>
@@ -28,7 +28,7 @@ defineProps<{
   @apply flex gap-4;
 
   p {
-    @apply text-xl;
+    @apply text-lg lg:text-xl;
   }
 }
 </style>

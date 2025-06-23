@@ -20,12 +20,21 @@ const props = defineProps<{
     <div class="contact" data-speed="0.8">
       <div class="left">
         <Heading>Contact</Heading>
-        <p>
+        <p class="mb-4">
           I am currently open to hybrid Senior Frontend Developer roles based in Dublin and Belfast. I'd love to hear from you.
         </p>
+        
+        <p class="mb-10">
+          Please feel free to take a copy of my CV with you.
+        </p>
+        <a href="docs/craig-neeson-cv.pdf" download>
+          <button class="btn ml-4">
+            <i class="animation"></i>Download my CV<i class="animation"></i>
+          </button>
+        </a>
       </div>
 
-      <Divider class="h-[215px]" />
+      <Divider class="h-[215px] hidden md:block" />
 
       <div class="right">
         <a href="https://www.linkedin.com/in/craig-neeson-b2808278" target="_blank">
@@ -43,7 +52,7 @@ const props = defineProps<{
 
 <style scoped>
 .contact {
-  @apply flex justify-around gap-12 items-center;
+  @apply flex justify-around gap-12 items-center flex-wrap;
 }
 
 h2 {
@@ -51,9 +60,10 @@ h2 {
 }
 
 .left {
-
+  flex: 1;
+  
   p {
-    @apply text-white ml-4 text-lg;
+    @apply text-white text-base lg:text-lg;
   }
 }
 
@@ -68,6 +78,47 @@ h2 {
     &.linkedin {
         @apply h-[62px] w-[62px];
     }
+  }
+}
+
+button {
+  outline: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #191752;
+  min-width: 200px;
+  border: 0;
+  border-radius: 1rem;
+  box-shadow: 0px 0px 22px 1px rgba(255,255,255,0.9);
+  box-sizing: border-box;
+  padding: 16px 20px;
+  color: #fff;
+  font-size: 1.25rem;
+  font-family: Funnel Display, Helvetica, Arial, sans-serif;
+  font-weight: 600;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: .95;
+}
+
+button .animation {
+  border-radius: 100%;
+  animation: ripple 0.6s linear infinite;
+}
+
+@keyframes ripple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.1), 0 0 0 20px rgba(255, 255, 255, 0.1), 0 0 0 40px rgba(255, 255, 255, 0.1), 0 0 0 60px rgba(255, 255, 255, 0.1);
+
+
+  }
+
+  100% {
+    box-shadow: 0 0 0 20px rgba(255, 255, 255, 0.1), 0 0 0 40px rgba(255, 255, 255, 0.1), 0 0 0 60px rgba(255, 255, 255, 0.1), 0 0 0 80px rgba(255, 255, 255, 0);
   }
 }
 </style>

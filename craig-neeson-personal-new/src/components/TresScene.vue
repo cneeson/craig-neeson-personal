@@ -45,22 +45,13 @@
     :size="0.05"
     :size-attenuation="true"
   />
-  
-  <Html
-      ref="nameHeroRef"
-      center
-      :position="[0, 1, 9]"
-      :scale="[1, 1, 1]"
-    >
-      <Hero :is-visible="isNameHeroVisible" />
-  </Html>
 
   <Suspense>
     <EffectComposerPmndrs>
       <BloomPmndrs
         :radius="0.01"
         :intensity="8.0"
-        :luminance-threshold="0.1"
+        :luminance-threshold="isLowBloom ? 0.3 : .9"
         :luminance-smoothing="0.3"
         :blend-function="BlendFunction.ADD"
         mipmap-blur
@@ -78,7 +69,7 @@
   </Suspense>
 
   <TresGroup ref="earthRef" :position="[0, -1.1, 9.5]">
-    <TresMesh :rotation-y="MathUtils.degToRad(310)" receive-shadow cast-shadow>
+    <TresMesh :rotation-y="MathUtils.degToRad(300)" receive-shadow cast-shadow>
       <TresSphereGeometry :args="[1, 100, 100]" />
       <TresMeshStandardMaterial
         :map="earthTexture.map"
@@ -99,49 +90,26 @@
         :opacity="0.2"
       />
     </TresMesh>
+    <CityMarker ref="niHighlightRef" :position="[0.23, .823, 0.54]" label="Northern Ireland" />
 
-    <TresPointLight
-      ref="niHighlightRef"
-      :position="[0.32, 0.81, 0.5]"
-      color="white"
-      cast-shadow
-      :intensity="0"
-      :decay="2"
-    />
-
-    <TresMesh ref="londonHighlightRef" :position="[0.4, 0.79, 0.49]" :visible="false"> 
-      <TresSphereGeometry :args="[0.005, 16, 16]" />
-      <TresMeshPhongMaterial color="purple"  />
-    </TresMesh>
-
-    <TresMesh ref="parisHighlightRef" :position="[0.48, 0.75, 0.49]" :visible="false"> 
-      <TresSphereGeometry :args="[0.005, 16, 16]" />
-      <TresMeshPhongMaterial color="purple"  />
-    </TresMesh>
-
-    <TresMesh ref="berlinHighlightRef" :position="[0.48, 0.8, 0.41]" :visible="false"> 
-      <TresSphereGeometry :args="[0.005, 16, 16]" />
-      <TresMeshPhongMaterial color="purple"  />
-    </TresMesh>
-
-    <TresMesh ref="madridHighlightRef" :position="[0.45, 0.65, 0.65]" :visible="false"> 
-      <TresSphereGeometry :args="[0.005, 16, 16]" />
-      <TresMeshPhongMaterial color="purple"  />
-    </TresMesh>
-
-     <TresMesh ref="romeHighlightRef" :position="[0.59, 0.68, 0.46]" :visible="false"> 
-      <TresSphereGeometry :args="[0.005, 16, 16]" />
-      <TresMeshPhongMaterial color="purple"  />
-    </TresMesh>
+    <TresGroup :position="[0.3, 0.8, 0.54]" >
+      <CityMarker ref="londonHighlightRef" :position="[0, 0, 0]" label="UK" />
+      <CityMarker ref="parisHighlightRef" :position="[0.04, -0.05, 0.04]" label="France" />
+      <CityMarker ref="berlinHighlightRef" :position="[0.13, -0.02, -0.06]" label="Germany" />
+      <CityMarker ref="madridHighlightRef" :position="[0.03, -0.16, 0.16]" label="Spain" />
+      <CityMarker ref="romeHighlightRef" :position="[0.21, -0.12, 0]" label="Italy" />
+    </TresGroup>
   </TresGroup>
 
-  <TresGroup ref="sunRef" :position="[-20, -11, -30]">
+  <TresGroup ref="sunRef" :position="[-18, -11, -30]">
     <TresMesh :rotation-y="MathUtils.degToRad(270)" ref="godRaysRef">
       <TresSphereGeometry :args="[.5, 16, 16]" />
       <TresMeshStandardMaterial
         :metalness="0"
         :roughness="1"
         color="orange"
+        :transparent="true"
+        :opacity="0.1"
       />
     </TresMesh>
     <TresPointLight
@@ -166,11 +134,11 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, nextTick } from 'vue';
+import { computed, defineComponent, nextTick, useTemplateRef } from 'vue';
 import { ref, shallowRef, onMounted, ShallowRef, watchEffect } from 'vue'
 import { TresInstance, useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
 import { Vector3, MathUtils, NormalBlending } from 'three'
-import { Stars, Html, Outline } from '@tresjs/cientos'
+import { Stars, Html, Outline, GLTFModel, Billboard, Text3D } from '@tresjs/cientos'
 import '@tresjs/leches/styles'
 import { gsap, Linear } from "gsap";
 import Hero from '../views/hero.vue'  
@@ -179,6 +147,7 @@ import { stages } from './stages';
 import { BloomPmndrs, EffectComposerPmndrs, BarrelBlurPmndrs, GodRaysPmndrs, SMAAPmndrs } from '@tresjs/post-processing'
 // @ts-ignore-next-line
 import { SMAAPreset, BlendFunction } from 'postprocessing'
+import CityMarker from './city-marker.vue'
 
 // Note: textures CANNOT be loaded in the setup script
 const earthTexture = await useTexture({
@@ -208,7 +177,6 @@ export default defineComponent({
 
 const { camera } = useTresContext()
 
-const nameHeroRef = ref()
 const earthGeometryRef = ref()
 const earthOceanGeometryRef = ref()
 const londonHighlightRef = ref<TresInstance | null>(null)
@@ -225,10 +193,11 @@ const earthRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const godRaysRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const earthCloudRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const earthOceanRef: ShallowRef<TresInstance | null> = shallowRef(null)
-const niHighlightRef: ShallowRef<TresInstance | null> = shallowRef(null)
+const niHighlightRef: ShallowRef<TresInstance | null> = useTemplateRef('niHighlightRef')
 const sunRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const starsRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const starsRef2: ShallowRef<TresInstance | null> = shallowRef(null)
+const isLowBloom: ShallowRef<boolean> = shallowRef(true)
 
 const scrollPercent = ref(0);
 const fadeFactor = ref(0);
@@ -253,7 +222,7 @@ watchEffect(() => {
       start: "top top",
       end: "bottom 100%",
       scrub: 2,
-      markers: {color: "white"}
+      markers: {color: "white"},
     }
   })
 
@@ -262,25 +231,34 @@ watchEffect(() => {
     ease: Linear.easeNone,
     duration: 10,
     onUpdate: function() {
-      console.log(tubePerc.percent)
-      scrollPercent.value = tubePerc.percent;
-    }
+      const speedFactor = 0.6;
+      scrollPercent.value = tubePerc.percent * speedFactor;
+    },
+    yoyo: true,
   });
 
-  timeline.add("fadeCanvas", 0.9)
-    .to('canvas', {duration: 1.5, y: '-100vh'}, "fadeCanvas")
+  timeline.add("fadeHero", 0.001)
+    .to('.hero-content', {duration: 0.05, filter: 'blur(40px)'}, "fadeHero")
+    .to('.hero-content', {duration: 0.05, opacity: 0}, "fadeHero");
+
+  const hideTween = { duration: 0.03, filter: 'blur(40px)', opacity: 0, display: 'none' };
+  const showTween = { duration: 0.03, filter: 'blur(0px)', opacity: 1, display: 'block' };
+
+  timeline.add("startNI", 0.245)
+    .fromTo('[data-floating-text="1"]', hideTween, showTween, "startNI")
+  timeline.add("endNi", 0.34)
+    .fromTo('[data-floating-text="1"]', showTween, hideTween, "endNi")
+
+  timeline.add("startProjects", 0.49)
+    .fromTo('[data-floating-text="2"]', hideTween, showTween, "startProjects")
+  timeline.add("endProjects", 0.7)
+    .fromTo('[data-floating-text="2"]', showTween, hideTween, "endProjects")
+
+  timeline.add("fadeCanvas", 1.1)
     .to('canvas', {duration: 1.5, filter: 'blur(40px)'}, "fadeCanvas");
 
-    timeline.to('text1', {
-    x: '100vh',
-    duration: 1,
-    ease: Linear.easeNone,
-  })
-})
-
-const isLowPoly = computed(() => {
-  console.log(scrollPercent.value > 0.086)
-  return scrollPercent.value > 0.86;
+  timeline.add("moveCanvas", 1.5)
+    .to('canvas', {duration: 4, y: '-50vh', }, "moveCanvas")
 })
 
 const { onLoop } = useRenderLoop();
@@ -304,20 +282,20 @@ onLoop((renderLoop) => {
   // Actions related to the current stage
   const currentStage = stages.find(stage => scrollPercent.value >= stage.condition.from && scrollPercent.value <= stage.condition.to);
 
-  if (earthRef.value && camera.value && nameHeroRef.value.instance && sunRef.value) {
+  if (earthRef.value && camera.value && sunRef.value) {
     currentStage?.actions({ 
       scrollPercent,
       renderLoop,
       camera,
       refs: { 
+        isLowBloom,
         text,
         fadeFactor,
         earth: earthRef, 
         sun: sunRef,
         earthCloud: earthCloudRef,
         stars: starsRef, 
-        niHighlight: niHighlightRef,
-        nameHero: nameHeroRef,
+        niMarker: niHighlightRef,
         cityRefs: {
           london: londonHighlightRef,
           paris: parisHighlightRef,

@@ -21,7 +21,7 @@ const props = defineProps<{
     <div class="skills" data-lag="0.8">
       <div class="left">
         <Heading>Skills</Heading>
-        <p>
+        <p class="mb-2">
           I'm passionate about UI development and have extensive experience designing and building web and mobile interfaces. With deep expertise in JavaScript/TypeScript, I'm comfortable working in both vanilla JS and modern frameworks.
         </p>
         <p>
@@ -29,7 +29,7 @@ const props = defineProps<{
         </p>
       </div>
 
-      <Divider class="h-[300px]" />
+      <Divider class="h-[300px] hidden md:block" />
 
       <div class="right">
         <SkillItem icon="images/skills/ts.svg">Typescript</SkillItem>
@@ -40,6 +40,7 @@ const props = defineProps<{
         <SkillItem icon="images/skills/css.svg">CSS</SkillItem>
         <SkillItem icon="images/skills/html.svg">HTML</SkillItem>
         <SkillItem icon="images/skills/tailwind.svg">Tailwind</SkillItem>
+        <SkillItem icon="images/skills/threejs.svg">ThreeJS</SkillItem>
         <SkillItem icon="images/skills/node.svg">Node</SkillItem>
       </div>
     </div>
@@ -47,7 +48,7 @@ const props = defineProps<{
 
 <style scoped>
 .skills {
-  @apply flex justify-around gap-12 items-center;
+  @apply flex justify-around gap-12 items-center flex-wrap;
   margin-bottom: 14.5rem;
 }
 
@@ -57,13 +58,16 @@ h2 {
 
 .left {
   max-width: 600px;
+  min-width: 300px;
+  flex: 1;
+  @apply pr-8 lg:pr-0;
 
   p {
-    @apply text-white ml-4 text-lg;
+    @apply text-white text-base lg:text-lg;
   }
 }
 
 .right {
-  @apply flex-1 flex flex-col gap-5 flex-wrap max-h-[300px];
+  @apply flex-1 flex flex-col gap-5 flex-wrap max-h-[300px] min-w-[420px] max-w-[600px];
 }
 </style>

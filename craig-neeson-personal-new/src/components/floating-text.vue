@@ -67,7 +67,7 @@ const lines = computed(() => {
 
 <style scoped>
 .floating-text {
-    @apply p-2 flex justify-start items-center;
+    @apply p-2 flex justify-center items-center;
 
     .letters{
         @apply text-slate-50 text-3xl mb-2;

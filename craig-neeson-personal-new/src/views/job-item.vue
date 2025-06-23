@@ -1,6 +1,6 @@
 <script lang="ts">
 import { computed, defineComponent } from 'vue';
-import { format, formatDistanceToNow } from 'date-fns'
+import { format, formatDistanceStrict } from 'date-fns'
 
 export default defineComponent({
     name: 'JobItem'
@@ -32,22 +32,22 @@ const endFormatted = computed(() => {
 });
 
 const timeSinceStart = computed(() => {
-  return formatDistanceToNow(new Date(props.startDate));
+  return formatDistanceStrict(new Date(props.startDate), props.endDate ? new Date(props.endDate) : new Date());
 });
 </script>
 
 <template>
     <div class="job-item">
-      <div class="flex items-center mb-4">
-          <div class="w-20 mr-4">
+      <div class="flex items-center mb-5">
+          <div class="w-[65px] mr-4">
               <img :src="imgSrc" :alt="imgAlt" class="w-full rounded-md" />
           </div>
           <div>
               <a :href="href" target='_blank' class="hover:underline text-white font-bold">
-                  <h4 class="mb-1 text-lg">{{employer}}</h4>
+                  <h4 class="text-lg">{{employer}}</h4>
               </a>
               <h5 class="mb-1">{{role}}</h5>
-              <p class="text-sm">
+              <p class="text-xs">
                 {{`${startFormatted} - ${isCurrent ? 'Present' : endFormatted} | ${timeSinceStart}`}}
               </p>
           </div>
@@ -55,7 +55,7 @@ const timeSinceStart = computed(() => {
 
       <ul>
         <li v-for="point in keyPoints" :key="point">
-          <p>{{ point }}</p>
+          <p class="text-sm lg:text-base">{{ point }}</p>
         </li>
       </ul>
     </div>
@@ -63,15 +63,22 @@ const timeSinceStart = computed(() => {
 
 <style scoped>
 .job-item {
-  @apply text-white;
+  background: rgba(169, 169, 169, 0.2);
+  border-radius: 5px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1px solid rgba(169, 169, 169, 0.3);
+
+  @apply text-white p-7;
 
   line-height: 1.61;
 
   ul {
-    @apply list-disc;
+    @apply list-disc ml-4;
     
     li {
-      @apply mb-2;
+      @apply mb-3;
     }
   }
 }

@@ -6,9 +6,16 @@ module.exports = defineConfig({
       .rule('vue')
       .use('vue-loader')
       .loader('vue-loader')
+
       .tap(options => {
         // Disable hot reload as it reloads all threeJS entities each time which is a huge performance hit
         options.hotReload = false
+        return options
+      })
+      .use('sass-loader')
+      .loader('sass-loader')
+      .tap(options => {
+        options.implementation = require('sass')
         return options
       })
   }
