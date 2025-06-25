@@ -1,10 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HelloWorld from '../components/HelloWorld.vue'
-import About from '../views/About.vue'
+import App from '@/App.vue'
 
 // Define routes
 const routes = [
-  { path: '/', component: HelloWorld },
+  { path: '/', component: App },
 ]
 
 // Create router instance

@@ -222,7 +222,6 @@ watchEffect(() => {
       start: "top top",
       end: "bottom 100%",
       scrub: 2,
-      markers: {color: "white"},
     }
   })
 

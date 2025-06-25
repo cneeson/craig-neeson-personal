@@ -48,7 +48,6 @@ onMounted(() => {
         trigger: section,
         start: 'top 90%',
         toggleActions: 'play reverse play reverse',
-        markers: true
       }
     });
   });

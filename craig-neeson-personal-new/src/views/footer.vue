@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 
 export default defineComponent({
     name: 'Footer'
@@ -8,20 +8,17 @@ export default defineComponent({
 export const totalTransitionDuration = 2000;
 </script>
 <script lang="ts" setup>
-import SkillItem from './skill-item.vue'
-import Divider from '../components/divider.vue';
-import Heading from './heading.vue';
+import AttributionsModal from '../components/attributions-modal.vue';
 
-const props = defineProps<{
-}>();
-
+const isAttributionsOpen = ref(false);
 </script>
 
 <template>
     <footer>
       <h1 class="text-2xl font-extrabold">Craig Neeson</h1>
-      <a href="#" class="underline">Attributions</a>
+      <a class="underline cursor-pointer" @click="isAttributionsOpen = true">Attributions</a>
     </footer>
+    <AttributionsModal :is-open="isAttributionsOpen" @on-close="isAttributionsOpen = false" />
 </template>
 
 <style scoped>
