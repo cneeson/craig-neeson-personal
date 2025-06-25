@@ -6,5 +6,8 @@ module.exports = defineConfig({
       .rule('vue')
       .use('vue-loader')
       .loader('vue-loader');
-  }
+  },
+  publicPath: process.env.NODE_ENV === 'production'
+    ? '/craig-neeson-personal/'
+    : '/'
 })
