@@ -62,8 +62,7 @@
     <TresMesh :rotation-y="MathUtils.degToRad(300)" receive-shadow cast-shadow>
       <TresSphereGeometry :args="[1, 100, 100]" />
       <TresMeshStandardMaterial
-        :map="earthTexture.map"
-        :bump-map="earthTexture.displacementMap"
+       
         :bump-scale="1"
       />
       <Outline :thickness="7" :opacity="0.01" color="#88b8f2" />
@@ -72,7 +71,7 @@
     <TresMesh ref="earthCloudRef">
       <TresSphereGeometry :args="[1.01, 100, 100]" />
       <TresMeshBasicMaterial
-        :alpha-map="earthCloudTexture.alphaMap"
+
         :transparent="true"
         :opacity="0.2"
       />
@@ -137,12 +136,12 @@ import CityMarker from './city-marker.vue'
 
 // Note: textures CANNOT be loaded in the setup script
 const earthTexture = await useTexture({
-  map: `${process.env.BASE_URL}textures/earth/diffuse.jpg`,
-  displacementMap: `${process.env.BASE_URL}textures/earth/spec-inverted.jpg`,
+  // map: `${process.env.BASE_URL}textures/earth/diffuse.jpg`,
+  // displacementMap: `${process.env.BASE_URL}textures/earth/spec-inverted.jpg`,
 });
 
 const earthCloudTexture = await useTexture({
-  alphaMap: `${process.env.BASE_URL}textures/earth/clouds.jpg`,
+  // alphaMap: `${process.env.BASE_URL}textures/earth/clouds.jpg`,
 });
 
 export default defineComponent({
