@@ -11,7 +11,7 @@
       <Suspense>
         <Text3D
           :text="label"
-          font="/fonts/Funnel_Display.json"
+          :font="fontPath"
           :size="0.006"
           :height="0.0025"
           :bevel-enabled="false"
@@ -21,7 +21,7 @@
         </Text3D>
       </Suspense>
     </Billboard>
-    <GLTFModel path="/models/map_pin/scene.gltf" :scale="0.003" :position="[0, .001, 0]" draco receive-shadow ref="modelRef" />
+    <GLTFModel :path="modelPath" :scale="0.003" :position="[0, .001, 0]" draco receive-shadow ref="modelRef" />
   </TresGroup>
 </template>
 
@@ -35,6 +35,9 @@ export default defineComponent({
 
 <script lang="ts" setup>
 import { GLTFModel, Billboard, Text3D } from '@tresjs/cientos'
+
+const modelPath = `${process.env.BASE_URL}models/map_pin/scene.gltf`
+const fontPath = `${process.env.BASE_URL}fonts/Funnel_Display.json`
 
 const props = defineProps<{
   position: [number, number, number];
