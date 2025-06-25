@@ -16,57 +16,47 @@ import JobItem from './job-item.vue';
 const props = defineProps<{
 }>();
 
-const isMobile = window.innerWidth < 768;
+const isMobile = "ontouchstart" in document.documentElement;
 
 onMounted(() => {
-if (!isMobile) {
-  let sections = gsap.utils.toArray(".carousel-item");
-  let dragRatio = 1;
-  let scrollTo;
+  if (!isMobile) {
+    let sections = gsap.utils.toArray(".carousel-item");
+    let dragRatio = 1;
+    let scrollTo;
 
-  let scrollTween = gsap.to(sections, {
-    xPercent: -100 * (sections.length - 1),
-    ease: "none", // <-- IMPORTANT!
-    scrollTrigger: {
-      start: window.innerHeight > 1000 ? 'top 25%' : 'top 2%',
-      trigger: ".carousel",
-      pin: true,
-      scrub: 0.1,
-      onRefresh: (self) => {
-        dragRatio =
-          (self.end - self.start) /
-          ((sections.length - 1) * sections[0].offsetWidth);
+    let scrollTween = gsap.to(sections, {
+      xPercent: -100 * (sections.length - 1),
+      ease: "none", // <-- IMPORTANT!
+      scrollTrigger: {
+        start: window.innerHeight > 1000 ? 'top 25%' : 'top 2%',
+        trigger: ".carousel",
+        pin: true,
+        scrub: 0.1,
+        onRefresh: (self) => {
+          dragRatio =
+            (self.end - self.start) /
+            ((sections.length - 1) * sections[0].offsetWidth);
+        },
+        // snap: directionalSnap(1 / (sections.length - 1)),
+        end: "+=3000"
+      }
+    });
+
+    Observer.create({
+      target: ".experience-heading",
+      type: "wheel,touch,pointer",
+      onPress: (self) => {
+        self.startScroll = scrollTween.scrollTrigger.scroll();
+        scrollTo = gsap.quickTo(scrollTween.scrollTrigger, "scroll", {
+          duration: 0.5,
+          ease: "power3"
+        });
       },
-      // snap: directionalSnap(1 / (sections.length - 1)),
-      end: "+=3000"
-    }
-  });
-
-  Observer.create({
-    target: ".experience-heading",
-    type: "wheel,touch,pointer",
-    onPress: (self) => {
-      self.startScroll = scrollTween.scrollTrigger.scroll();
-      scrollTo = gsap.quickTo(scrollTween.scrollTrigger, "scroll", {
-        duration: 0.5,
-        ease: "power3"
-      });
-    },
-    onDrag: (self) => {
-      scrollTo(self.startScroll + (self.startX - self.x) * dragRatio);
-    }
-  });
-}
-
-// helper function for causing the sections to always snap in the direction of the scroll (next section) rather than whichever section is "closest" when scrolling stops.
-// function directionalSnap(increment) {
-//   let snapFunc = gsap.utils.snap(increment);
-//   return (raw, self) => {
-//     let n = snapFunc(raw);
-//     return Math.abs(n - raw) < 1e-4 || (n < raw) === self.direction < 0 ? n : self.direction < 0 ? n - increment : n + increment;
-//   };
-// }
-
+      onDrag: (self) => {
+        scrollTo(self.startScroll + (self.startX - self.x) * dragRatio);
+      }
+    });
+  }
 });
 
 </script>

@@ -20,58 +20,57 @@ const {isVisible} = toRefs(props);
 
 const timeline = ref();
 
-// TODO uncomment
-// onMounted(() => {
-//     timeline.value = createTimeline({ autoplay: false })
-//         .set('[data-animate="container"]', {
-//             opacity: [
-//                 { from: 0, to: 1 }
-//             ],
-//             filter: [
-//                 { to: 'blur(0)' }
-//             ],
-//         })
-//         .add('[data-animate="title"]', {
-//             y: {
-//                 from: '1.8rem',
-//                 duration: 800,
-//                 to: 0
-//             },
-//             easing: 'easeIn',
-//             opacity: [
-//                 { from: 0, to: 1, duration: 400, delay: stagger(100) }
-//             ],
-//             filter: [
-//                 { from: 'blur(12px)', delay: stagger(100) }
-//             ],
-//         })
-//         .add('[data-animate="title-break"]', {
-//             easing: 'easeOutQuint',
-//             duration: 2500,
-//             opacity: [
-//                 { from: 0, to: 1, duration: 1000 }
-//             ],
-//             width: {
-//                 from: '0%',
-//                 to: '90%',
-//             },
-//         }, 600)
-//         .add('[data-animate="subtitle"]', {
-//             easing: 'easeIn',
-//             duration: 1000,
-//             delay: stagger(400),
-//             opacity: [
-//                 { from: 0, to: 1 }
-//             ],
-//             filter: [
-//                 { from: 'blur(20px)'}
-//             ]
-//         }, 900);
+onMounted(() => {
+    timeline.value = createTimeline({ autoplay: false })
+        .set('[data-animate="container"]', {
+            opacity: [
+                { from: 0, to: 1 }
+            ],
+            filter: [
+                { to: 'blur(0)' }
+            ],
+        })
+        .add('[data-animate="title"]', {
+            y: {
+                from: '1.8rem',
+                duration: 800,
+                to: 0
+            },
+            easing: 'easeIn',
+            opacity: [
+                { from: 0, to: 1, duration: 400, delay: stagger(100) }
+            ],
+            filter: [
+                { from: 'blur(12px)', delay: stagger(100) }
+            ],
+        })
+        .add('[data-animate="title-break"]', {
+            easing: 'easeOutQuint',
+            duration: 2500,
+            opacity: [
+                { from: 0, to: 1, duration: 1000 }
+            ],
+            width: {
+                from: '0%',
+                to: '90%',
+            },
+        }, 600)
+        .add('[data-animate="subtitle"]', {
+            easing: 'easeIn',
+            duration: 1000,
+            delay: stagger(400),
+            opacity: [
+                { from: 0, to: 1 }
+            ],
+            filter: [
+                { from: 'blur(20px)'}
+            ]
+        }, 900);
 
-//     setTimeout(() => {
-//         timeline.value.play()
-//     }, 1000)
-// });
+    setTimeout(() => {
+        timeline.value.play()
+    }, 1000)
+});
 
 </script>
 
