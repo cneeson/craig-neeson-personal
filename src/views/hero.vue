@@ -22,14 +22,6 @@ const timeline = ref();
 
 onMounted(() => {
     timeline.value = createTimeline({ autoplay: false })
-        .set('[data-animate="container"]', {
-            opacity: [
-                { from: 0, to: 1 }
-            ],
-            filter: [
-                { to: 'blur(0)' }
-            ],
-        })
         .add('[data-animate="title"]', {
             y: {
                 from: '1.8rem',

@@ -13,9 +13,6 @@ export const totalTransitionDuration = 2000;
 import Heading from './heading.vue';
 import JobItem from './job-item.vue';
 
-const props = defineProps<{
-}>();
-
 const isMobile = "ontouchstart" in document.documentElement;
 
 onMounted(() => {
@@ -37,7 +34,6 @@ onMounted(() => {
             (self.end - self.start) /
             ((sections.length - 1) * sections[0].offsetWidth);
         },
-        // snap: directionalSnap(1 / (sections.length - 1)),
         end: "+=3000"
       }
     });
