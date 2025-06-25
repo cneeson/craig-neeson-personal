@@ -16,52 +16,56 @@ import JobItem from './job-item.vue';
 const props = defineProps<{
 }>();
 
+const isMobile = window.innerWidth < 768;
+
 onMounted(() => {
-let sections = gsap.utils.toArray(".carousel-item");
-let dragRatio = 1;
-let scrollTo;
+if (!isMobile) {
+  let sections = gsap.utils.toArray(".carousel-item");
+  let dragRatio = 1;
+  let scrollTo;
 
-let scrollTween = gsap.to(sections, {
-  xPercent: -100 * (sections.length - 1),
-  ease: "none", // <-- IMPORTANT!
-  scrollTrigger: {
-    start: window.innerHeight > 1000 ? 'top 25%' : 'top 2%',
-    trigger: ".carousel",
-    pin: true,
-    scrub: 0.1,
-    onRefresh: (self) => {
-      dragRatio =
-        (self.end - self.start) /
-        ((sections.length - 1) * sections[0].offsetWidth);
+  let scrollTween = gsap.to(sections, {
+    xPercent: -100 * (sections.length - 1),
+    ease: "none", // <-- IMPORTANT!
+    scrollTrigger: {
+      start: window.innerHeight > 1000 ? 'top 25%' : 'top 2%',
+      trigger: ".carousel",
+      pin: true,
+      scrub: 0.1,
+      onRefresh: (self) => {
+        dragRatio =
+          (self.end - self.start) /
+          ((sections.length - 1) * sections[0].offsetWidth);
+      },
+      // snap: directionalSnap(1 / (sections.length - 1)),
+      end: "+=3000"
+    }
+  });
+
+  Observer.create({
+    target: ".experience-heading",
+    type: "wheel,touch,pointer",
+    onPress: (self) => {
+      self.startScroll = scrollTween.scrollTrigger.scroll();
+      scrollTo = gsap.quickTo(scrollTween.scrollTrigger, "scroll", {
+        duration: 0.5,
+        ease: "power3"
+      });
     },
-    snap: directionalSnap(1 / (sections.length - 1)),
-    end: "+=3000"
-  }
-});
-
-Observer.create({
-  target: ".experience-heading",
-  type: "wheel,touch,pointer",
-  onPress: (self) => {
-    self.startScroll = scrollTween.scrollTrigger.scroll();
-    scrollTo = gsap.quickTo(scrollTween.scrollTrigger, "scroll", {
-      duration: 0.5,
-      ease: "power3"
-    });
-  },
-  onDrag: (self) => {
-    scrollTo(self.startScroll + (self.startX - self.x) * dragRatio);
-  }
-});
+    onDrag: (self) => {
+      scrollTo(self.startScroll + (self.startX - self.x) * dragRatio);
+    }
+  });
+}
 
 // helper function for causing the sections to always snap in the direction of the scroll (next section) rather than whichever section is "closest" when scrolling stops.
-function directionalSnap(increment) {
-  let snapFunc = gsap.utils.snap(increment);
-  return (raw, self) => {
-    let n = snapFunc(raw);
-    return Math.abs(n - raw) < 1e-4 || (n < raw) === self.direction < 0 ? n : self.direction < 0 ? n - increment : n + increment;
-  };
-}
+// function directionalSnap(increment) {
+//   let snapFunc = gsap.utils.snap(increment);
+//   return (raw, self) => {
+//     let n = snapFunc(raw);
+//     return Math.abs(n - raw) < 1e-4 || (n < raw) === self.direction < 0 ? n : self.direction < 0 ? n - increment : n + increment;
+//   };
+// }
 
 });
 
@@ -71,7 +75,7 @@ function directionalSnap(increment) {
     <div class="experience" data-speed="0.8">
       <Heading class="experience-heading">Experience</Heading>
 
-      <div class="carousel">
+      <div :class="isMobile ? 'carousel-mobile' : 'carousel'">
         <div class="carousel-item">
           <JobItem
             class="item1"
@@ -84,13 +88,13 @@ function directionalSnap(increment) {
             imgAlt='ankorstore-logo'
             :keyPoints="[
                 `Joined Ankorstore during a period of rapid growth, scaling from 50 to 400 employees in one year. Attracted to their mission to support brick-and-mortar shops against large online competitors. `,
-                `Worked with Vue and Nuxt to develop features for marketplace, order-fulfillment, and backoffice platforms, focusing on shipping and logistics. Key projects included enabling users to compare and select carrier quotes, track shipments, and visualize stock movements. `,
-                `Participated in company-wide projects such as re-brandings, Vue to Nuxt migrations, offer-system implementations, and new business model changes.`,
+                `Worked with Vue and Nuxt to develop features for marketplace, order-fulfillment, and backoffice platforms, focusing on shipping and logistics. `,
+                `Key projects included developing tools to track shipments, visualize stock movements and visualise prospective shops in an interactive map view. `,
+                `Participated in company-wide projects such as re-brandings, Vue to Nuxt migrations, sale and event-related implementations, and new business model changes.`,
                 `Collaborated closely with product and data engineers to deliver analytics tracking for all features, allowing a data-driven approach to product development.`,
             ]"
           />
         </div>
-
 
         <div class="carousel-item">
           <JobItem
@@ -103,18 +107,17 @@ function directionalSnap(increment) {
             imgSrc='images/employers/lal.png'
             imgAlt='lal-logo'
             :keyPoints="[
-                `Led the modernization of UI for this healthcare start-up's web and mobile apps, setting ambitious yet achievable technical goals that transformed UI development.`,
-                'Worked with developers to set front-end standards and upskilled team members to enable faster feature development and tackle existing tech debt more effectively.',
-                'Drove key architecture changes to allow us to move the LAL platform from a legacy web-app stack to a partially serverside-rendered React stack.',
-                `Established LALs first fully documented React component library, working with a newly hired UX designer to refresh the Locate a Locum brand.`,
-                `Developed maintainable patterns for data retrieval and caching from our API, promoting better separation of server and client state and reducing boilerplate code.`,
-                'Identified opportunities to abstract duplicated data-fetching code into NPM packages which are now shared between React and React Native repos.',
-                'Introduced TypeScript to UI repositories, enhancing code robustness and reducing bugs. Currently, 40% of the main codebase is in TS.',
-                'Alongside process improvement, I delivered new web and mobile modules for employee leave management, scheduling, clock-in, and payroll processing.'
+                'Led the modernization of UI for this healthcare start-up’s web and mobile apps, setting ambitious technical goals that transformed development.',
+                'Set front-end standards and upskilled the team to accelerate delivery and reduce tech debt.',
+                'Drove architecture changes to shift the LAL platform from a legacy stack to a server-rendered React stack.',
+                'Built LAL’s first fully documented React component library with a new UX designer, refreshing the brand.',
+                'Created maintainable patterns for API data retrieval and caching, reducing boilerplate and improving state separation.',
+                'Abstracted repeated data-fetching logic into shared NPM packages for React and React Native.',
+                'Introduced TypeScript to UI repos, boosting code robustness; 40% of the codebase is now in TS.',
+                'Delivered new modules for leave management, scheduling, clock-in, and payroll across web and mobile.'
             ]"
           />
         </div>
-
 
         <div class="carousel-item">
           <JobItem
@@ -211,13 +214,9 @@ function directionalSnap(increment) {
     </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .experience {
  /* @apply ml-5; */
-}
-
-h2 {
-  @apply text-3xl text-white;
 }
 
 .right {
@@ -230,10 +229,18 @@ hr {
 
 .carousel {
   @apply w-[700vw] md:w-[450vw] h-[100vh] flex flex-wrap gap-6;
+
+  .carousel-item {
+    @apply w-[100vw] md:w-[50vw] md:max-w-[670px];
+    height: fit-content;
+  }
 }
 
-.carousel-item {
-  @apply w-[100vw] md:w-[50vw] md:max-w-[670px];
-  height: fit-content;
+.carousel-mobile {
+  @apply flex flex-col gap-4 mx-2 mb-10;
+}
+
+.experience-heading {
+  @apply ml-2;
 }
 </style>

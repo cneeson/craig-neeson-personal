@@ -4,6 +4,7 @@ import { Camera } from "three";
 import { ComputedRef } from "vue";
 import { ShallowRef } from "vue";
 
+// TODO eventually enable this
 const DEBUG_SKIP_FIRST_STAGE = true;
 
 export enum Stage {
