@@ -32,7 +32,6 @@ onMounted(() => {
     content: "#smooth-content",
     smooth: 1.5,
     effects: false,
-    normalizeScroll: true,
   });
   let sections = gsap.utils.toArray(".section1, .section3");
 
