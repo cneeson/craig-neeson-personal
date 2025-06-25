@@ -6,9 +6,6 @@ import router from './router'
 // Import Tailwind CSS
 import './assets/tailwind.css'
 
-// Required for Cesium to work
-(window as any).CESIUM_BASE_URL = '/cesium';
-
 // Create the app instance
 const app = createApp(App)
 

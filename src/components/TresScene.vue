@@ -151,13 +151,13 @@ import CityMarker from './city-marker.vue'
 
 // Note: textures CANNOT be loaded in the setup script
 const earthTexture = await useTexture({
-  map: '/textures/earth/diffuse.jpg',
-  displacementMap: '/textures/earth/spec-inverted.jpg',
-  metalnessMap: '/textures/earth/spec.jpg',
+  map: `${process.env.BASE_URL}textures/earth/diffuse.jpg`,
+  displacementMap: `${process.env.BASE_URL}textures/earth/spec-inverted.jpg`,
+  metalnessMap: `${process.env.BASE_URL}textures/earth/spec.jpg`,
 });
 
 const earthCloudTexture = await useTexture({
-  alphaMap: '/textures/earth/clouds.jpg',
+  alphaMap: `${process.env.BASE_URL}textures/earth/clouds.jpg`,
 });
 
 export default defineComponent({
