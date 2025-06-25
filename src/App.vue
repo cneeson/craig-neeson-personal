@@ -23,10 +23,7 @@ import { TresCanvas } from '@tresjs/core'
 
 const gl = {
   clearColor: '#090118',
-  alpha: true,
-  shadows: true,
   powerPreference: "high-performance",
-  stencil: true
 }
 
 onMounted(() => {

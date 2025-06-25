@@ -6,15 +6,6 @@
     :intensity=".8"
   />
 
-  <!-- <TresMesh :position="[0, 1, -1000]" > 
-    <TresPlaneGeometry :args="[1500, 1500]" />
-    <TresMeshBasicMaterial
-      :map="skyBoxTexture.map"
-      :transparent="true"
-      :opacity="0.05"
-    />
-  </TresMesh> -->
-
   <!-- Near -->
   <Stars
     ref="starsRef"
@@ -56,7 +47,6 @@
         :blend-function="BlendFunction.ADD"
         mipmap-blur
       />
-      <SMAAPmndrs v-bind="{  preset: SMAAPreset.MEDIUM}" />
       <GodRaysPmndrs
           v-bind="{
             opacity: 1,
@@ -75,15 +65,12 @@
         :map="earthTexture.map"
         :bump-map="earthTexture.displacementMap"
         :bump-scale="1"
-        :metalness-map="earthTexture.metalnessMap"
-        :roughness="1"
-        :metalness="0.5"
       />
       <Outline :thickness="7" :opacity="0.01" color="#88b8f2" />
     </TresMesh>
 
     <TresMesh ref="earthCloudRef">
-      <TresSphereGeometry :args="[1.01, 150, 150]" />
+      <TresSphereGeometry :args="[1.01, 100, 100]" />
       <TresMeshBasicMaterial
         :alpha-map="earthCloudTexture.alphaMap"
         :transparent="true"
@@ -134,26 +121,24 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, nextTick, useTemplateRef } from 'vue';
+import { defineComponent, nextTick, useTemplateRef } from 'vue';
 import { ref, shallowRef, onMounted, ShallowRef, watchEffect } from 'vue'
 import { TresInstance, useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
-import { Vector3, MathUtils, NormalBlending } from 'three'
-import { Stars, Html, Outline, GLTFModel, Billboard, Text3D } from '@tresjs/cientos'
+import { Vector3, MathUtils } from 'three'
+import { Stars, Outline } from '@tresjs/cientos'
 import '@tresjs/leches/styles'
 import { gsap, Linear } from "gsap";
-import Hero from '../views/hero.vue'  
 import { stages } from './stages';
 // @ts-ignore-next-line
-import { BloomPmndrs, EffectComposerPmndrs, BarrelBlurPmndrs, GodRaysPmndrs, SMAAPmndrs } from '@tresjs/post-processing'
+import { BloomPmndrs, EffectComposerPmndrs, GodRaysPmndrs } from '@tresjs/post-processing'
 // @ts-ignore-next-line
-import { SMAAPreset, BlendFunction } from 'postprocessing'
+import { BlendFunction } from 'postprocessing'
 import CityMarker from './city-marker.vue'
 
 // Note: textures CANNOT be loaded in the setup script
 const earthTexture = await useTexture({
   map: `${process.env.BASE_URL}textures/earth/diffuse.jpg`,
   displacementMap: `${process.env.BASE_URL}textures/earth/spec-inverted.jpg`,
-  metalnessMap: `${process.env.BASE_URL}textures/earth/spec.jpg`,
 });
 
 const earthCloudTexture = await useTexture({
@@ -169,8 +154,6 @@ export default defineComponent({
 
 const { camera } = useTresContext()
 
-const earthGeometryRef = ref()
-const earthOceanGeometryRef = ref()
 const londonHighlightRef = ref<TresInstance | null>(null)
 const parisHighlightRef = ref<TresInstance | null>(null)
 const berlinHighlightRef = ref<TresInstance | null>(null)
@@ -184,7 +167,6 @@ const isNameHeroVisible = ref(false);
 const earthRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const godRaysRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const earthCloudRef: ShallowRef<TresInstance | null> = shallowRef(null)
-const earthOceanRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const niHighlightRef: ShallowRef<TresInstance | null> = useTemplateRef('niHighlightRef')
 const sunRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const starsRef: ShallowRef<TresInstance | null> = shallowRef(null)
