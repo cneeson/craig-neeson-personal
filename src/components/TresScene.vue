@@ -161,8 +161,6 @@ const madridHighlightRef = ref<TresInstance | null>(null)
 const romeHighlightRef = ref<TresInstance | null>(null)
 const cameraPosition = ref<Vector3>(new Vector3(0, 1, 10))
 
-const text = defineModel<string>('text', { required: true });
-
 const isNameHeroVisible = ref(false);
 const earthRef: ShallowRef<TresInstance | null> = shallowRef(null)
 const godRaysRef: ShallowRef<TresInstance | null> = shallowRef(null)
@@ -262,7 +260,6 @@ onLoop((renderLoop) => {
       camera,
       refs: { 
         isLowBloom,
-        text,
         fadeFactor,
         earth: earthRef, 
         sun: sunRef,

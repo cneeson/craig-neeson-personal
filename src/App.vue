@@ -50,13 +50,10 @@ onMounted(() => {
   });
 });
 
-const text = ref(undefined);
 </script>
 
 <template>
   <div class="text-overlay">
-    <FloatingText v-if="text" :text="text" />
-
     <p class="floating-text lg:max-w-[600px]" data-floating-text="1">
         <span class="block mb-4">Hi, I'm <span class="font-bold">Craig.</span> 👋</span>
         I am a frontend developer based in <span class="font-bold">Northern Ireland.</span>
@@ -68,7 +65,7 @@ const text = ref(undefined);
   </div>
   <TresCanvas class="canvas" v-bind="gl">
     <Suspense>
-      <TresScene v-model:text="text" />
+      <TresScene />
     </Suspense>
   </TresCanvas>
   <div id="smooth-wrapper">

@@ -101,13 +101,10 @@ export const stages: StageConfiguration[] = [
             from: 0,
             to: 0.001
         },
-        actions: ({ renderLoop: { elapsed }, refs: { isLowBloom, isNameHeroVisible, nameHero, text, niMarker, cityRefs, fadeFactor, earth }, camera }) => {
+        actions: ({ renderLoop: { elapsed }, refs: { isLowBloom, niMarker, cityRefs, fadeFactor, earth }, camera }) => {
 
-            // isNameHeroVisible.value = true;
             if (DEBUG_SKIP_FIRST_STAGE) {
                 camera.value.position.y = 0;
-                // nameHero.value.instance.position.y = 0;
-
                 return;
             }
 
@@ -121,14 +118,9 @@ export const stages: StageConfiguration[] = [
                     current: camera.value.position.y,
                     ...options,
                 });
-                // nameHero.value.instance.position.y = easeToTarget({
-                //     current: nameHero.value.instance.position.y,
-                //     ...options,
-                // });
             }
 
             // Defaults
-            text.value = undefined;
             earth.value.position.y = -1.1;
             niMarker.value.lightRef.intensity = easeToTarget({
                 current: niMarker.value.lightRef.intensity,
@@ -147,7 +139,7 @@ export const stages: StageConfiguration[] = [
             from: 0.001,
             to: 0.015
         },
-        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { isLowBloom, isNameHeroVisible, earth, text, niMarker, cityRefs, fadeFactor } }) => {
+        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { isLowBloom, isNameHeroVisible, earth, niMarker, cityRefs, fadeFactor } }) => {
             camera.value.rotation.x = -scrollPercent.value * 25;
             camera.value.position.z = 10 + (scrollPercent.value * 50);
             earth.value.rotation.y = -scrollPercent.value * 22;
@@ -155,7 +147,6 @@ export const stages: StageConfiguration[] = [
             isNameHeroVisible.value = scrollPercent.value < 0.0001
 
             // Defaults
-            text.value = undefined;
             niMarker.value.lightRef.intensity = easeToTarget({
                 current: niMarker.value.lightRef.intensity,
                 target: 0,
@@ -212,7 +203,7 @@ export const stages: StageConfiguration[] = [
             from: 0.025,
             to: 0.028
         },
-        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, text, niMarker, cityRefs, fadeFactor, isLowBloom } }) => {
+        actions: ({ scrollPercent, renderLoop: { elapsed }, refs: { earth, niMarker, cityRefs, fadeFactor, isLowBloom } }) => {
             earth.value.rotation.y = -scrollPercent.value * 22;
 
             // Defaults
@@ -235,7 +226,7 @@ export const stages: StageConfiguration[] = [
             from: 0.028,
             to: 0.04
         },
-        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, text, niMarker, cityRefs, fadeFactor, isLowBloom } }) => {
+        actions: ({ scrollPercent, renderLoop: { elapsed }, refs: { earth, niMarker, cityRefs, fadeFactor, isLowBloom } }) => {
             earth.value.rotation.y = -scrollPercent.value * 22;
 
             Object.values(cityRefs).forEach(cityRef => showMarker(cityRef, elapsed, 0.015));
@@ -260,7 +251,7 @@ export const stages: StageConfiguration[] = [
             from: 0.04,
             to: 0.05
         },
-        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, text, niMarker, cityRefs, fadeFactor, isLowBloom } }) => {
+        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, niMarker, cityRefs, fadeFactor, isLowBloom } }) => {
             earth.value.rotation.y = -scrollPercent.value * 22;
 
             // Defaults
@@ -283,12 +274,11 @@ export const stages: StageConfiguration[] = [
             from: 0.05,
             to: 0.055
         },
-        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, text, niMarker, cityRefs, fadeFactor, isLowBloom } }) => {
+        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, niMarker, cityRefs, isLowBloom } }) => {
             earth.value.rotation.y = -scrollPercent.value * 22;
             camera.value.position.z = 10 - (0.025 * 50) + (scrollPercent.value * 50);
 
             // Defaults
-            text.value = undefined;
             earth.value.position.y = -1.1;
             niMarker.value.lightRef.intensity = easeToTarget({
                 current: niMarker.value.lightRef.intensity,
@@ -315,7 +305,7 @@ export const stages: StageConfiguration[] = [
             from: 0.055,
             to: 1
         },
-        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, text, niMarker, cityRefs, fadeFactor, isLowBloom } }) => {
+        actions: ({ camera, scrollPercent, renderLoop: { elapsed }, refs: { earth, niMarker, cityRefs, fadeFactor, isLowBloom } }) => {
             earth.value.rotation.y = -scrollPercent.value * 22;
             camera.value.position.z = 10 - (0.025 * 50) + (scrollPercent.value * 50);
             fadeFactor.value = scrollPercent.value;
@@ -335,7 +325,6 @@ export const stages: StageConfiguration[] = [
                 factor: 0.2,
             });
             Object.values(cityRefs).forEach(cityRef => hideMarker(cityRef, elapsed));
-            text.value = undefined;
             isLowBloom.value = true;
             hideMarker(niMarker, elapsed);
         }
