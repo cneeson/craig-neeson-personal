@@ -8,6 +8,7 @@ module.exports = defineConfig({
       .loader('vue-loader');
   },
   publicPath: process.env.NODE_ENV === 'production'
-    ? '/craig-neeson-personal/'
+    // ? '/craig-neeson-personal/'
+    ? '/' // Not needed while using a custom domain
     : '/'
 })
