@@ -21,7 +21,7 @@
   <Stars
     ref="starsRef2"
     :rotation="[1, 1, 1]"
-    :radius="100"
+    :radius="250"
     :depth="100"
     :count="3000"
     :size="0.25"
