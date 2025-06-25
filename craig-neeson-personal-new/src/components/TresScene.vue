@@ -156,14 +156,6 @@ const earthTexture = await useTexture({
   metalnessMap: '/textures/earth/spec.jpg',
 });
 
-const skyBoxTexture = await useTexture({
-  map: '/skybox/nebula.jpg',
-});
-
-const earthOceanTexture = await useTexture({
-  displacementMap: '/textures/earth/water-bump.jpg',
-});
-
 const earthCloudTexture = await useTexture({
   alphaMap: '/textures/earth/clouds.jpg',
 });

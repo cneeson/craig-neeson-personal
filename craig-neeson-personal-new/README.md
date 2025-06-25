@@ -20,12 +20,8 @@ npm run build
 npm run lint
 ```
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
-
-- Reminders
-    - These files need to be copied to the assets folder during build (done manually for now):
-        - node_modules/cesium/Build/Cesium/Workers
-        - node_modules/cesium/Build/Cesium/ThirdParty
-        - node_modules/cesium/Build/Cesium/Assets
-        - node_modules/cesium/Build/Cesium/Widgets
+# Deployment
+- Run `npm run build` to build website into the X directory
+- Copy CNAME file from root to the X directory
+- Commit and push changes to the master branch
+- GitHub Pages will re-deploy the website. :thumbsup
