@@ -57,7 +57,33 @@ onMounted(() => {
             filter: [
                 { from: 'blur(20px)'}
             ]
-        }, 900);
+        }, 900)
+        .add('[data-animate="scroll-indicator"]', {
+            y: {
+                from: '1.8rem',
+                duration: 800,
+                to: 0
+            },
+            easing: 'easeIn',
+            opacity: [
+                { from: 0, to: 1, duration: 400, delay: stagger(100) }
+            ],
+            filter: [
+                { from: 'blur(12px)', delay: stagger(100) }
+            ],
+        }, 2000)
+        .add('[data-animate="scroll-indicator"] p', {
+            keyframes: {
+                '0%'  : { rotate: 0, scale: 1 },
+                '25%'  : { rotate: 5, scale: 1.2 },
+                '50%' : { rotate: 0, scale: 1 },
+                '75%'  : { rotate: -5, scale: 1.2 },
+                '100%': { rotate: 0, scale: 1 },
+            },
+            duration: 750,
+            loop: true,
+            loopDelay: 2000
+        });
 
     setTimeout(() => {
         timeline.value.play()
@@ -83,13 +109,27 @@ onMounted(() => {
                     <span class="opacity-0" data-animate="subtitle">Developer</span>
                 </h2>
             </div>
+            <div class="scroll-indicator hero-content opacity-0" data-animate="scroll-indicator">
+                <p>
+                    Scroll
+                </p>
+                <img src="images/arrow-down.svg" alt="arrow-down" />
+            </div>
         </section>
     </Transition>
 </template>
 
 <style scoped>
 .hero {
-    @apply text-center p-2 flex justify-center items-center h-[100vh];
+    @apply text-center p-2 flex justify-center items-center h-[100vh] relative;
+}
+
+.scroll-indicator {
+    @apply absolute bottom-6 left-0 right-0 flex flex-col gap-3 justify-center items-center text-white font-bold text-2xl;
+}
+
+.scroll-indicator img {
+    @apply w-8 h-8;
 }
 
 .title {

@@ -1,7 +1,5 @@
 <script lang="ts">
-import { defineComponent, onMounted } from 'vue';
-import { gsap } from "gsap";
-import { Observer } from 'gsap/Observer';
+import { defineComponent } from 'vue';
 
 export default defineComponent({
     name: 'Experience'
@@ -10,49 +8,26 @@ export default defineComponent({
 export const totalTransitionDuration = 2000;
 </script>
 <script lang="ts" setup>
+import { onMounted } from 'vue';
 import Heading from './heading.vue';
 import JobItem from './job-item.vue';
-
-const isMobile = "ontouchstart" in document.documentElement;
+import { gsap } from "gsap";
 
 onMounted(() => {
-  if (!isMobile) {
-    let sections = gsap.utils.toArray(".carousel-item");
-    let dragRatio = 1;
-    let scrollTo;
+  let items = gsap.utils.toArray(".experience__item");
 
-    let scrollTween = gsap.to(sections, {
-      xPercent: -100 * (sections.length - 1),
-      ease: "none", // <-- IMPORTANT!
+  items.forEach(item => {
+    gsap.to(item, {
+      x: 0,
+      opacity: 1,
+      ease: "power2.inOut",
       scrollTrigger: {
-        start: window.innerHeight > 1000 ? 'top 25%' : 'top 2%',
-        trigger: ".carousel",
-        pin: true,
-        scrub: 0.1,
-        onRefresh: (self) => {
-          dragRatio =
-            (self.end - self.start) /
-            ((sections.length - 1) * sections[0].offsetWidth);
-        },
-        end: "+=3000"
+        trigger: item,
+        start: 'top 90%',
+        toggleActions: 'play reverse play reverse',
       }
     });
-
-    Observer.create({
-      target: ".experience-heading",
-      type: "wheel,touch,pointer",
-      onPress: (self) => {
-        self.startScroll = scrollTween.scrollTrigger.scroll();
-        scrollTo = gsap.quickTo(scrollTween.scrollTrigger, "scroll", {
-          duration: 0.5,
-          ease: "power3"
-        });
-      },
-      onDrag: (self) => {
-        scrollTo(self.startScroll + (self.startX - self.x) * dragRatio);
-      }
-    });
-  }
+  });
 });
 
 </script>
@@ -61,8 +36,8 @@ onMounted(() => {
     <div class="experience" data-speed="0.8">
       <Heading class="experience-heading">Experience</Heading>
 
-      <div :class="isMobile ? 'carousel-mobile' : 'carousel'">
-        <div class="carousel-item">
+      <div class="experience__items">
+        <div class="experience__item">
           <JobItem
             class="item1"
             employer='Ankorstore'
@@ -82,7 +57,7 @@ onMounted(() => {
           />
         </div>
 
-        <div class="carousel-item">
+        <div class="experience__item">
           <JobItem
             class="item2"
             employer='Locate a Locum'
@@ -105,7 +80,7 @@ onMounted(() => {
           />
         </div>
 
-        <div class="carousel-item">
+        <div class="experience__item">
           <JobItem
             class="item3"
             employer='Flexera'
@@ -126,7 +101,7 @@ onMounted(() => {
         </div>
 
 
-        <div class="carousel-item">
+        <div class="experience__item">
           <JobItem
             class="item4"
             employer='Nitec Solutions'
@@ -145,7 +120,7 @@ onMounted(() => {
         </div>
 
 
-        <div class="carousel-item">
+        <div class="experience__item">
           <JobItem
             class="item5"
             employer='Liberty Information Technology'
@@ -164,7 +139,7 @@ onMounted(() => {
         </div>
 
 
-        <div class="carousel-item">
+        <div class="experience__item">
           <JobItem
             class="item6"
             employer='Nitec Solutions'
@@ -183,7 +158,7 @@ onMounted(() => {
           />
         </div>
 
-        <div class="carousel-item">
+        <div class="experience__item">
           <JobItem
             class="item7"
             employer='Nitec Solutions'
@@ -202,28 +177,22 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .experience {
- /* @apply ml-5; */
-}
-
-.right {
-  @apply flex-1 flex flex-col gap-5 flex-wrap max-h-[300px];
+  margin-bottom: 14.5rem;
 }
 
 hr {
   @apply my-8;
 }
 
-.carousel {
-  @apply w-[700vw] md:w-[450vw] h-[100vh] flex flex-wrap gap-6;
+.experience__items {
+  @apply flex flex-col gap-4;
 
-  .carousel-item {
-    @apply w-[100vw] md:w-[50vw] md:max-w-[670px];
-    height: fit-content;
+  .experience__item {
+    @apply mx-4 mb-6;
+
+    opacity: 0;
+    transform: translateX(-40px);
   }
-}
-
-.carousel-mobile {
-  @apply flex flex-col gap-4 mx-2 mb-10;
 }
 
 .experience-heading {

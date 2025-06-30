@@ -18,7 +18,6 @@ gsap.registerPlugin(ScrollTrigger,ScrollSmoother,Observer);
 </script>
 <script lang="ts" setup>
 import TresScene from './components/TresScene.vue';
-import FloatingText from './components/floating-text.vue'  
 import { TresCanvas } from '@tresjs/core'
 
 const gl = {
@@ -30,7 +29,7 @@ onMounted(() => {
   ScrollSmoother.create({
     wrapper: "#smooth-wrapper",
     content: "#smooth-content",
-    smooth: 1.5,
+    smooth: 2,
     effects: false,
   });
   let sections = gsap.utils.toArray(".section1, .section3");
@@ -59,7 +58,7 @@ onMounted(() => {
     </p>
     <p class="floating-text max-w-[100vw] lg:max-w-[60vw]" data-floating-text="2">
       For <span class="font-bold">8 years</span> I have worked with
-      companies across <span class="font-bold">Ireland, Europe</span> and the <span class="font-bold">US</span> to deliver <span class="font-bold">awesome user-experiences.</span>
+      companies across <span class="font-bold">Ireland, Europe</span> and the <span class="font-bold">US</span> to deliver <span class="font-bold">delightful user-experiences.</span>
     </p>
   </div>
   <TresCanvas class="canvas" v-bind="gl">
