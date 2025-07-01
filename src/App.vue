@@ -1,7 +1,6 @@
 <script lang="ts">
-import { defineComponent, onMounted, ref, watchEffect } from 'vue';
+import { defineComponent, onMounted } from 'vue';
 import { gsap } from "gsap";
-import { Observer } from 'gsap/Observer';
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ScrollSmoother } from "gsap/ScrollSmoother";
 import Skills from './views/skills.vue';
@@ -13,7 +12,7 @@ import Hero from './views/hero.vue'
 export default defineComponent({
   name: 'App',
 });
-gsap.registerPlugin(ScrollTrigger,ScrollSmoother,Observer);
+gsap.registerPlugin(ScrollTrigger,ScrollSmoother);
 
 </script>
 <script lang="ts" setup>
@@ -32,7 +31,7 @@ onMounted(() => {
     smooth: 2,
     effects: false,
   });
-  let sections = gsap.utils.toArray(".section1, .section3");
+  let sections = gsap.utils.toArray("[data-animate='slide-in']");
 
   sections.forEach(section => {
     gsap.to(section, {
@@ -72,9 +71,9 @@ onMounted(() => {
       
       <div class="flat-plane">
         <div class="gutter">
-          <Skills class="mb-8 section1" />
-          <Experience />
-          <Contact class="section3" /> 
+            <Skills data-animate="slide-in" class="mb-8" />
+          <Experience data-animate="slide-in" />
+          <Contact data-animate="slide-in" /> 
         </div>
         <Footer />
       </div>
@@ -93,6 +92,7 @@ html, body {
 
 #app {
   font-family: Funnel Display, Helvetica, Arial, sans-serif;
+  font-display: swap;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   height: 100vh;
@@ -168,4 +168,9 @@ html, body {
   opacity: 0;
   filter: blur(40px);
 }
+
+[data-animate="slide-in"] {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
 </style>

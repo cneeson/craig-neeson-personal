@@ -5,39 +5,19 @@ export default defineComponent({
     name: 'Experience'
 });
 
-export const totalTransitionDuration = 2000;
 </script>
 <script lang="ts" setup>
-import { onMounted } from 'vue';
 import Heading from './heading.vue';
 import JobItem from './job-item.vue';
-import { gsap } from "gsap";
-
-onMounted(() => {
-  let items = gsap.utils.toArray(".experience__item");
-
-  items.forEach(item => {
-    gsap.to(item, {
-      x: 0,
-      opacity: 1,
-      ease: "power2.inOut",
-      scrollTrigger: {
-        trigger: item,
-        start: 'top 90%',
-        toggleActions: 'play reverse play reverse',
-      }
-    });
-  });
-});
 
 </script>
 
 <template>
-    <div class="experience" data-speed="0.8">
+    <div class="experience">
       <Heading class="experience-heading">Experience</Heading>
 
       <div class="experience__items">
-        <div class="experience__item">
+        <div class="experience__item" data-animate="slide-in">
           <JobItem
             class="item1"
             employer='Ankorstore'
@@ -57,7 +37,7 @@ onMounted(() => {
           />
         </div>
 
-        <div class="experience__item">
+        <div class="experience__item" data-animate="slide-in">
           <JobItem
             class="item2"
             employer='Locate a Locum'
@@ -80,7 +60,7 @@ onMounted(() => {
           />
         </div>
 
-        <div class="experience__item">
+        <div class="experience__item" data-animate="slide-in">
           <JobItem
             class="item3"
             employer='Flexera'
@@ -101,7 +81,7 @@ onMounted(() => {
         </div>
 
 
-        <div class="experience__item">
+        <div class="experience__item" data-animate="slide-in">
           <JobItem
             class="item4"
             employer='Nitec Solutions'
@@ -120,7 +100,7 @@ onMounted(() => {
         </div>
 
 
-        <div class="experience__item">
+        <div class="experience__item" data-animate="slide-in">
           <JobItem
             class="item5"
             employer='Liberty Information Technology'
@@ -139,7 +119,7 @@ onMounted(() => {
         </div>
 
 
-        <div class="experience__item">
+        <div class="experience__item" data-animate="slide-in">
           <JobItem
             class="item6"
             employer='Nitec Solutions'
@@ -158,7 +138,7 @@ onMounted(() => {
           />
         </div>
 
-        <div class="experience__item">
+        <div class="experience__item" data-animate="slide-in">
           <JobItem
             class="item7"
             employer='Nitec Solutions'
@@ -189,9 +169,6 @@ hr {
 
   .experience__item {
     @apply mx-4 mb-6;
-
-    opacity: 0;
-    transform: translateX(-40px);
   }
 }
 

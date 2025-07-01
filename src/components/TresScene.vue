@@ -1,5 +1,5 @@
 <template>
-  <TresPerspectiveCamera :position="cameraPosition" :near="0.01" :aspect="2" :fov="35" />
+  <TresPerspectiveCamera :position="new Vector3(0, 0, 10)" :near="0.01" :aspect="2" :fov="35" />
   <TresDirectionalLight
     cast-shadow
     :position="[100, 100, -30]"
@@ -163,7 +163,6 @@ const parisHighlightRef = ref<TresInstance | null>(null)
 const berlinHighlightRef = ref<TresInstance | null>(null)
 const madridHighlightRef = ref<TresInstance | null>(null)
 const romeHighlightRef = ref<TresInstance | null>(null)
-const cameraPosition = ref<Vector3>(new Vector3(0, 1, 10))
 
 const isNameHeroVisible = ref(false);
 const earthRef: ShallowRef<TresInstance | null> = shallowRef(null)
@@ -182,12 +181,13 @@ onMounted(() => {
   nextTick(() => {
     // Always reset scroll position
     window.scrollTo(0,0);
-  })
+  });
 
   isNameHeroVisible.value = true;
 });
 
 watchEffect(() => {
+  console.log('watch changed')
   var tubePerc = {
     percent: 0
   }
@@ -209,7 +209,6 @@ watchEffect(() => {
       const speedFactor = 0.6;
       scrollPercent.value = tubePerc.percent * speedFactor;
     },
-    yoyo: true,
   });
 
   timeline.add("fadeHero", 0.001)

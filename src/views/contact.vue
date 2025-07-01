@@ -17,7 +17,7 @@ const props = defineProps<{
 </script>
 
 <template>
-    <div class="contact" data-speed="0.8">
+    <div class="contact">
       <div class="left">
         <Heading>Contact</Heading>
         <p class="mb-4">

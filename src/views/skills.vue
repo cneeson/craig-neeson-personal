@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, onMounted } from 'vue';
 
 export default defineComponent({
     name: 'Skills'
@@ -14,11 +14,10 @@ import Heading from './heading.vue';
 
 const props = defineProps<{
 }>();
-
 </script>
 
 <template>
-    <div class="skills" data-lag="0.8">
+    <div class="skills">
       <div class="left">
         <Heading>Skills</Heading>
         <p class="mb-2">
@@ -70,4 +69,5 @@ h2 {
 .right {
   @apply flex-1 flex flex-col gap-5 flex-wrap max-h-[300px] min-w-[420px] max-w-[600px];
 }
+
 </style>
