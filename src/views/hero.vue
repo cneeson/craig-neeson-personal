@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted } from 'vue';
 import { gsap } from 'gsap';
 
 const name = 'Craig Neeson';
-const subtitle = ['Senior', 'Frontend', 'Developer'];
+const subtitle = ['Senior', 'Frontend', 'Engineer'];
 
 let context: gsap.Context | undefined;
 
@@ -39,7 +39,7 @@ onBeforeUnmount(() => context?.revert());
       </p>
 
       <div class="scroll-indicator" data-intro="scroll" aria-hidden="true">
-        <span>Scroll</span>
+        <span>Let's go</span>
         <img src="images/arrow-down.svg" alt="" />
       </div>
     </div>

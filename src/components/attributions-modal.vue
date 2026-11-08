@@ -18,7 +18,7 @@
           SVG icons downloaded with thanks from <a href="https://www.svgrepo.com" target="_blank" rel="noopener">SVG Repo.</a>
         </li>
         <li>
-          Map pin 3D model downloaded with thanks from author iteacher, hosted on <a href="https://sketchfab.com/3d-models/map-pin-912de523d2284fb38253dbb0fb565a96" target="_blank" rel="noopener">Sketchfab.</a>
+          Northern Ireland's outline from <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth.</a>
         </li>
         <li>
           3D scene implemented with thanks to <a href="https://threejs.org/" target="_blank" rel="noopener">ThreeJS</a> and the Vue-ported version <a href="https://tresjs.org/" target="_blank" rel="noopener">TresJS.</a>

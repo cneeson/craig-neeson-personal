@@ -8,6 +8,7 @@ import { differenceInYears } from 'date-fns';
 import PlanetScene from './components/PlanetScene.vue';
 import CityAttribution from './components/city-attribution.vue';
 import JourneyNav from './components/journey-nav.vue';
+import PlanetHud from './components/planet-hud.vue';
 import Hero from './views/hero.vue'
 import Skills from './views/skills.vue';
 import Experience from './views/experience.vue';
@@ -77,10 +78,11 @@ onMounted(() => {
     const scrub = prefersReducedMotion ? true : isMobile ? 0.8 : 0.6;
 
     // Captions are shown while their beat is mostly in view, in step with the markers
-    const captions = [
-      { window: windows.belfastIntro, ...createCaption(document.querySelector('[data-caption="belfast"]') as HTMLElement) },
-      { window: windows.europe, ...createCaption(document.querySelector('[data-caption="europe"]') as HTMLElement) },
-    ];
+    // (each is named after its beat in `windows`)
+    const captions = gsap.utils.toArray<HTMLElement>('[data-caption]').map(element => ({
+      window: windows[element.dataset.caption as keyof typeof windows],
+      ...createCaption(element),
+    }));
     // Captions over the (bright, busy) city get a shade behind them
     const captionsElement = document.querySelector('.captions') as HTMLElement;
     const syncToJourney = (progress: number) => {
@@ -156,19 +158,30 @@ onBeforeUnmount(() => {
     </TresCanvas>
   </div>
 
+  <PlanetHud />
   <CityAttribution />
   <JourneyNav :active="activeChapter" :ready="isSceneReady" @navigate="navigate" />
 
   <!-- v-once: the captions are split into words for their entrance, so Vue mustn't re-render them -->
   <div v-once class="captions" aria-live="polite">
-    <p class="caption" data-caption="belfast">
+    <p class="caption is-long" data-caption="belfastIntro">
       <span class="block mb-3">Hi, I'm <strong>Craig.</strong> 👋</span>
-      I'm a frontend developer based in <strong>Belfast.</strong>
+      For <strong>{{ yearsExperience }} years</strong> I've been building the interfaces that bring ideas to life,
+      and help people get the most out of the products they use.
     </p>
-    <p class="caption" data-caption="europe">
-      For <strong>{{ yearsExperience }} years</strong> I've worked with companies across
-      <strong>Ireland, Europe</strong> and the <strong>US</strong> to deliver
-      <strong>delightful user experiences.</strong>
+    <p class="caption is-long" data-caption="craft">
+      My craft is <strong>UI:</strong> scalable component systems, accessible interactions, and motion that
+      gives a product its character.
+    </p>
+    <p class="caption" data-caption="rewind">
+      <span aria-hidden="true">⏪</span> <strong>Rewind.</strong> Let me walk you through how I got here.
+    </p>
+    <p class="caption" data-caption="reach">
+      Built in <strong>Belfast,</strong> shipped with teams across <strong>Ireland, Europe</strong> and the
+      <strong>US.</strong>
+    </p>
+    <p class="caption" data-caption="reveal">
+      Let's build <strong>something together.</strong>
     </p>
   </div>
 
@@ -259,6 +272,10 @@ html, body {
   .word {
     display: inline-block;
   }
+
+  &.is-long {
+    @apply text-lg md:text-2xl lg:text-3xl max-w-[40ch];
+  }
 }
 
 #smooth-wrapper {
@@ -266,10 +283,10 @@ html, body {
   z-index: 20;
 }
 
-// Each beat gets roughly a screen of scrolling, so captions stay up long enough to read, and
-// the flight over Belfast gets about three
+// Each beat gets roughly a screen of scrolling (0.05 of the journey), so captions stay up long
+// enough to read, and the walk through Belfast gets most of it
 .scene-track {
-  height: 1200vh;
+  height: 2100vh;
 }
 
 .content {

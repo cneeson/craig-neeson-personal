@@ -11,9 +11,19 @@ export interface Job {
 
 export const jobs: Job[] = [
     {
+        employer: "Ocula Technologies",
+        role: "Senior Frontend Engineer",
+        startDate: "2026-01-01",
+        href: "https://www.ocula.tech/",
+        // Placeholder logo and key points, to be filled in
+        imgSrc: "images/employers/ocula.svg",
+        keyPoints: [],
+    },
+    {
         employer: "Ankorstore",
         role: "Senior Frontend Engineer",
         startDate: "2021-10-01",
+        endDate: "2025-12-31",
         href: "https://www.ankorstore.com/",
         imgSrc: "images/employers/aks.png",
         keyPoints: [

@@ -57,10 +57,17 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   off screen to warm up the GPU. Sets `sceneState.cityReady`.
 - `src/components/cloud-veil.vue`: full-screen cloud layer hiding the planet ↔ city switch (`veilAt`). It holds,
   then fades, if the city hasn't loaded by the time the reader gets there.
-- `src/components/city-marker.vue`: pin, label and glow. Driven entirely by `setOpacity(0..1)`.
+- `src/components/planet-hud.vue`: DOM overlays pinned to the planet (the forecast, the lock-on to Belfast, the
+  labels where the reach arcs land). Positioned every frame through `onOverlayFrame` (`src/scene/overlay.ts`), which
+  the render loop calls with the camera; shown and hidden in time by class.
+- `src/scene/planet/`: the effects on the planet. `clouds.ts` patches the cloud layer to gather over Northern Ireland
+  and part over it (the centre must be turned into the cloud mesh's spinning space); `highlight.ts` traces the
+  outline (`northern-ireland.ts`, from Natural Earth) and scans the land; `arcs.ts` draws the arcs to the HQs.
+  `geo.ts` converts lat/lon to the earth group's space (`onEarth`) and holds `EARTH_POSITION`.
 - `src/scene/choreography.ts`: **the whole journey is a pure function of scroll progress (0..1)**.
   It holds:
-  - the beat `windows` (where each caption is fully readable);
+  - the beat `windows` (where each caption is fully readable; captions in App.vue are named after them with
+    `data-caption`, and neighbouring text beats need a gap of at least 0.012 so they don't overlap);
   - camera/earth keyframes, with optional portrait overrides, joined by monotone cubic splines so the
     camera never stops dead or reverses between keyframes;
   - `settleAt` (easing onto a nearby caption when scrolling stops);

@@ -22,8 +22,8 @@
     <Stars ref="midStarsRef" :rotation="[1, 1, 1]" :radius="250" :depth="100" :count="quality.starCounts[1]" :size="0.25" />
     <Stars :radius="450" :depth="400" :count="quality.starCounts[2]" :size="0.12" />
 
-    <TresGroup ref="earthRef" :position="[0, -1.1, 9.5]">
-      <TresMesh :rotation-y="MathUtils.degToRad(300)">
+    <TresGroup ref="earthRef" :position="EARTH_POSITION">
+      <TresMesh :rotation-y="EARTH_MESH_ROTATION">
         <TresSphereGeometry :args="[1, quality.sphereSegments, quality.sphereSegments]" />
         <TresMeshStandardMaterial
           :map="earthTextures.map"
@@ -43,17 +43,9 @@
         />
       </TresMesh>
 
-      <CityMarker ref="homeMarkerRef" :position="[0.23, 0.823, 0.54]" label="Belfast" />
-
-      <TresGroup :position="[0.3, 0.8, 0.54]">
-        <CityMarker
-          v-for="city in europeMarkers"
-          :key="city.label"
-          ref="europeMarkerRefs"
-          :position="city.position"
-          :label="city.label"
-        />
-      </TresGroup>
+      <!-- Northern Ireland picked out from orbit, and the arcs out from Belfast after the city -->
+      <primitive :object="highlight.object" />
+      <primitive :object="arcs.object" />
     </TresGroup>
 
     <TresGroup :position="[-18, -11, -30]">
@@ -73,41 +65,36 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, onBeforeUnmount, ref, shallowRef, useTemplateRef } from 'vue';
-import { Group, MathUtils, Matrix4, Mesh, PerspectiveCamera, Quaternion, SRGBColorSpace, Vector2, Vector3 } from 'three'
+import { defineComponent, onBeforeUnmount, ref, shallowRef } from 'vue';
+import {
+  Group, MathUtils, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, Quaternion, SRGBColorSpace, Vector2, Vector3,
+} from 'three'
 import { useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
 import { Stars, Outline } from '@tresjs/cientos'
 // @ts-ignore-next-line
 import { BloomPmndrs, EffectComposerPmndrs } from '@tresjs/post-processing'
 // @ts-ignore-next-line
 import { BlendFunction } from 'postprocessing'
-import CityMarker from './city-marker.vue'
 import BelfastCity from './belfast-city.vue'
 import BelfastPhoto from './belfast-photo.vue'
 import CloudVeil from './cloud-veil.vue'
 import { isMobile, prefersReducedMotion, quality } from '@/services/device';
 import {
-  approachAt, bloomThresholdAt, diveAt, flightProgressAt, frameAt, isInBelfast, veilAt, windowOpacity, windows,
+  approachAt, bloomThresholdAt, diveAt, flightProgressAt, frameAt, highlightAt, isInBelfast, reachAt, veilAt, windows,
 } from '@/scene/choreography';
 import { sceneState } from '@/scene/state';
+import { updateOverlays } from '@/scene/overlay';
+import { createHighlight } from '@/scene/planet/highlight';
+import { createArcs } from '@/scene/planet/arcs';
+import { EARTH_MESH_ROTATION, EARTH_POSITION, onEarth, PLACES } from '@/scene/planet/geo';
+import { patchClouds } from '@/scene/planet/clouds';
 import { cityFovFor, FLIGHT_ENDS, flightAt } from '@/scene/belfast/flight';
 import { city } from '@/scene/belfast/mode';
 import { clamp01, damp, lerp, smoothstep } from '@/services/three';
 
 
-const europeMarkers: { label: string, position: [number, number, number] }[] = [
-  { label: 'UK', position: [0, 0, 0] },
-  { label: 'France', position: [0.04, -0.05, 0.04] },
-  { label: 'Germany', position: [0.13, -0.02, -0.06] },
-  { label: 'Spain', position: [0.03, -0.16, 0.16] },
-  { label: 'Italy', position: [0.21, -0.12, 0] },
-];
-
-type MarkerInstance = InstanceType<typeof CityMarker>;
-
-// Where the Northern Ireland marker sits on the (unrotated) earth, which the camera dives towards
-const EARTH_POSITION = new Vector3(0, -1.1, 9.5)
-const HOME_MARKER = new Vector3(0.23, 0.823, 0.54)
+// Where Belfast sits on the (unrotated) earth, which the camera dives towards
+const HOME_MARKER = onEarth(PLACES.belfast.lat, PLACES.belfast.lon).multiplyScalar(1.01)
 const UP = new Vector3(0, 1, 0)
 
 // The glide from orbit follows a great circle through the marker, heading this far east of north (radians)
@@ -160,12 +147,21 @@ const earthRef = shallowRef<Group>()
 const cloudsRef = shallowRef<Mesh>()
 const nearStarsRef = shallowRef<{ instance: Group }>()
 const midStarsRef = shallowRef<{ instance: Group }>()
-const bloomRef = shallowRef<{ effect: { luminanceMaterial: { threshold: number } } }>()
+const bloomRef = shallowRef<{ effect?: { luminanceMaterial: { threshold: number } } }>()
 const outlineRef = shallowRef<{ instance: Group }>()
 const planetRef = shallowRef<Group>()
 const veilRef = shallowRef<{ update(amount: number, travel: number, aspect: number): void }>()
-const homeMarkerRef = useTemplateRef<MarkerInstance>('homeMarkerRef')
-const europeMarkerRefs = useTemplateRef<MarkerInstance[]>('europeMarkerRefs')
+
+const highlight = createHighlight()
+const arcs = createArcs()
+// Where the clouds part, over the middle of Northern Ireland
+const NORTHERN_IRELAND = onEarth(PLACES.northernIreland.lat, PLACES.northernIreland.lon)
+const clouds = patchClouds()
+const cloudCentre = new Vector3()
+onBeforeUnmount(() => {
+  highlight.dispose()
+  arcs.dispose()
+})
 
 // The scene is fully hidden behind the content once the exit transition completes, so
 // rendering stops there. One extra frame is drawn on the way out so the final blurred
@@ -302,23 +298,32 @@ onLoop(({ delta, elapsed }) => {
     }
     setLens(cam, PLANET_LENS.fov, PLANET_LENS.near)
     if (earthRef.value) earthRef.value.rotation.y = frame.earthRotationY
+    sceneState.earthRotationY = frame.earthRotationY
 
     // Ambient motion
     if (nearStarsRef.value) nearStarsRef.value.instance.rotation.set(elapsed * 0.005, elapsed * 0.005, 0)
     if (midStarsRef.value) midStarsRef.value.instance.rotation.set(1 + elapsed * 0.003, 1 + elapsed * 0.003, 1)
-    if (cloudsRef.value) cloudsRef.value.rotation.y = -elapsed * 0.006
+    const cloudSpin = -elapsed * 0.006
+    if (cloudsRef.value) {
+      cloudsRef.value.rotation.y = cloudSpin
+      clouds.attach(cloudsRef.value.material as MeshBasicMaterial)
+    }
 
-    // Faded out as the camera closes in on it, before it fills the view
-    const homeFade = smoothstep(clamp01((approachAt(progress).height - 0.08) / 0.15))
-    homeMarkerRef.value?.setOpacity(windowOpacity(progress, windows.northernIreland) * homeFade, 1, elapsed)
-    const europeOpacity = windowOpacity(progress, windows.europe)
-    europeMarkerRefs.value?.forEach(europeMarker => europeMarker.setOpacity(europeOpacity, 0.6, elapsed))
+    // Northern Ireland: thick cloud over it, parting, then its outline traced and scanned
+    const { cover, hole, draw, fill, scan, opacity } = highlightAt(progress)
+    // The clouds turn on their own, so where they part is found in their own frame
+    cloudCentre.copy(NORTHERN_IRELAND).applyAxisAngle(UP, -cloudSpin)
+    clouds.update(cloudCentre, cover, hole)
+    highlight.update(draw, fill, scan, opacity)
+    const reach = reachAt(progress)
+    arcs.update(reach.amount, reach.opacity)
     if (!isOutlineSized) isOutlineSized = sizeOutline()
   }
 
   // Scrolling streams the clouds past, and they drift a little on their own
   veilRef.value?.update(veil, progress * 24 + elapsed * 0.03, cam.aspect)
-  if (bloomRef.value) bloomRef.value.effect.luminanceMaterial.threshold = bloomThresholdAt(progress, city.mode === 'photo')
+  if (bloomRef.value?.effect) bloomRef.value.effect.luminanceMaterial.threshold = bloomThresholdAt(progress, city.mode === 'photo')
+  updateOverlays(cam, progress, elapsed)
 
   invalidate()
 })

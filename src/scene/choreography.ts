@@ -17,27 +17,55 @@ type Track = keyof SceneFrame;
 const tracks: Track[] = ['earthRotationY', 'cameraZ', 'cameraRotationX', 'cameraRotationY'];
 
 /**
- * The beats of the journey as [start, end] progress ranges. For the captioned beats this is
- * the stretch where the caption is fully readable: it fades in just before and out just after.
+ * The beats of the journey as [start, end] progress ranges: where each one's words are fully readable (they
+ * fade in just before and out just after). One screen of scrolling is 0.05 (see the track's height in App.vue).
  */
 export const windows = {
-    hero: [0, 0.04],
-    northernIreland: [0.13, 0.23],
+    hero: [0, 0.03],
+    // Backing away over the Arctic, with Northern Ireland under thick cloud
+    forecast: [0.05, 0.08],
+    // The clouds part over Northern Ireland, its outline is traced and the display locks on to Belfast
+    northernIreland: [0.1, 0.16],
     // The flight over Belfast, between diving into the clouds and climbing back out of them
-    belfast: [0.3, 0.6],
-    // The introduction, as the flight heads in towards the cranes
-    belfastIntro: [0.355, 0.44],
-    europe: [0.68, 0.78],
-    reveal: [0.78, 0.94],
+    belfast: [0.21, 0.86],
+    // Out of the clouds under the H&W cranes: the introduction
+    belfastIntro: [0.232, 0.28],
+    // Backing away down the dock: what I do
+    craft: [0.295, 0.335],
+    // Over the SSE Arena: the skills, billed like a gig
+    skills: [0.345, 0.4],
+    // Rising over City Hall to look back up the coast
+    rewind: [0.415, 0.44],
+    // Through the telescope: Ulster University in Coleraine, then Nitec in Antrim
+    coleraine: [0.455, 0.495],
+    antrim: [0.505, 0.54],
+    // Down Adelaide Street, past Liberty IT then Flexera
+    liberty: [0.565, 0.6],
+    flexera: [0.615, 0.65],
+    // Locate a Locum at the Gasworks, then Ankorstore, off towards Paris
+    locum: [0.67, 0.7],
+    ankorstore: [0.715, 0.745],
+    // Ocula, at Lanyon Place, as the train pulls out
+    ocula: [0.765, 0.82],
+    // Climbed back out over the planet, with arcs out to where the work has reached
+    reach: [0.88, 0.915],
+    reveal: [0.935, 0.975],
 } as const;
 
-/** Beats with markers on the planet, which pull the bloom back so the map stays crisp. */
-const marked = [windows.northernIreland, windows.europe];
-/** Beats that scrolling settles onto: the markers, and the introduction over Belfast. */
-const settled = [windows.northernIreland, windows.belfastIntro, windows.europe];
+/** The employers, by the beat that shows each one. */
+export const employerBeats = ['coleraine', 'antrim', 'liberty', 'flexera', 'locum', 'ankorstore', 'ocula'] as const;
+export type EmployerBeat = typeof employerBeats[number];
+
+/** Beats with markers or overlays on the planet, which pull the bloom back so the map stays crisp. */
+const marked = [windows.northernIreland, windows.reach];
+/** Beats that scrolling settles onto: everything with words to read, apart from the hero. */
+const settled = [
+    windows.forecast, windows.northernIreland, windows.belfastIntro, windows.craft, windows.skills, windows.rewind,
+    ...employerBeats.map(beat => windows[beat]), windows.reach, windows.reveal,
+];
 
 /** How far either side of a readable window its caption and markers fade over. */
-export const FADE = 0.04;
+export const FADE = 0.012;
 
 type Keyframe = Partial<SceneFrame> & {
     at: number;
@@ -54,21 +82,22 @@ const keyframes: Keyframe[] = [
     // title, then spun into position under it
     { at: 0, earthRotationY: -0.6, cameraZ: 10, cameraRotationX: 0, cameraRotationY: 0 },
     // Over Northern Ireland. From there the camera dives into the clouds, and climbs back out of them
-    // (see diveAt) to pull back across Europe.
+    // (see diveAt) to pull back over the North Atlantic.
     { at: windows.northernIreland[0], earthRotationY: -0.36, cameraZ: 10.75, cameraRotationX: -0.375 },
     { at: windows.northernIreland[1], earthRotationY: -0.44, cameraZ: 10.95 },
-    // Drift east to take in Europe. Portrait pulls back and aims up/left to fit all five markers.
+    // Over Ireland and Britain as the arcs set off, then pulling back and turning west, out over the Atlantic
+    // to America as they land
     {
-        at: windows.europe[0], earthRotationY: -0.68, cameraZ: 11.2,
-        portrait: { cameraZ: 11.6, cameraRotationX: -0.305, cameraRotationY: 0.05 },
+        at: windows.reach[0], earthRotationY: -0.5, cameraZ: 11.4, cameraRotationX: -0.36,
+        portrait: { cameraZ: 11.9, cameraRotationX: -0.31 },
     },
     {
-        at: windows.europe[1], earthRotationY: -0.8, cameraZ: 11.3, cameraRotationX: -0.37,
-        portrait: { cameraZ: 11.7, cameraRotationX: -0.3, cameraRotationY: 0.05 },
+        at: windows.reach[1], earthRotationY: 0.5, cameraZ: 14.2, cameraRotationX: -0.33,
+        portrait: { cameraZ: 15.6, cameraRotationX: -0.3 },
     },
-    // Pull right out to reveal the whole planet and the sun, then keep drifting as the content arrives
-    { at: windows.reveal[1], earthRotationY: -2.1, cameraZ: 17, cameraRotationX: -0.25, cameraRotationY: 0 },
-    { at: 1, earthRotationY: -2.18, cameraZ: 17.4 },
+    // Right out to the whole planet and the sun, then drifting on as the content arrives
+    { at: windows.reveal[1], earthRotationY: 0.7, cameraZ: 17, cameraRotationX: -0.25, cameraRotationY: 0, portrait: {} },
+    { at: 1, earthRotationY: 0.74, cameraZ: 17.4 },
 ];
 
 /**
@@ -142,9 +171,9 @@ export const windowOpacity = (progress: number, [start, end]: readonly [number, 
         smoothstep(clamp01((end + fade - progress) / fade)),
     );
 
-// The descent starts halfway through the Northern Ireland caption, so it glides in gradually
+// The descent starts as the clouds close back over Northern Ireland
 const [diveFrom, cityFrom, cityTo, climbTo] = [
-    (windows.northernIreland[0] + windows.northernIreland[1]) / 2, windows.belfast[0], windows.belfast[1], windows.europe[0],
+    windows.northernIreland[1], windows.belfast[0], windows.belfast[1], windows.reach[0],
 ];
 
 export const isInBelfast = (progress: number) => progress >= cityFrom && progress < cityTo;
@@ -159,7 +188,7 @@ export const diveAt = (progress: number) => {
 };
 
 // The glide in from orbit, which ends in the clouds and carries on just past them so it's still moving there
-const approachKnots = [0, windows.northernIreland[0], diveFrom, cityFrom, cityFrom + 0.03];
+const approachKnots = [0, windows.northernIreland[0], diveFrom, cityFrom, cityFrom + 0.015];
 const approachSplines = {
     arc: createSpline(approachKnots, [30, -11, -12, -2, -1.5]),
     // Eased in proportion, like a steady descent: the surface keeps coming up at the same rate however close
@@ -197,9 +226,40 @@ const bump = (progress: number, at: number, before: number, after: number, hold 
  * gradually and staying solid for a moment either side of it, so flying through them doesn't feel abrupt.
  */
 export const veilAt = (progress: number) => Math.max(
-    bump(progress, cityFrom, 0.055, 0.04, 0.01),
-    bump(progress, cityTo, 0.04, 0.05, 0.01),
+    // Gathering as the clouds close back over Northern Ireland, and clearing quickly onto the cranes
+    bump(progress, cityFrom, 0.04, 0.016, 0.006),
+    bump(progress, cityTo, 0.03, 0.025, 0.006),
 );
+
+/** 0 → 1 across [from, to], eased. */
+const ramp = (progress: number, from: number, to: number) => smoothstep(clamp01((progress - from) / (to - from)));
+
+/**
+ * Northern Ireland picked out from orbit. It's under thick cloud as the camera backs away (`cover`), then the
+ * clouds part over it (`hole`), its outline is traced (`draw`), the land is tinted (`fill`) and scanned (`scan`),
+ * and it all fades (`opacity`) as the clouds roll back in for the dive.
+ */
+export const highlightAt = (progress: number) => {
+    const [start, end] = windows.northernIreland;
+    const closing = ramp(progress, end, end + 0.02);
+    return {
+        cover: progress < cityTo ? ramp(progress, windows.forecast[0] - 0.02, windows.forecast[0] + 0.01) : 0,
+        hole: ramp(progress, start - 0.015, start + 0.004) * (1 - closing),
+        draw: ramp(progress, start - 0.002, start + 0.02),
+        fill: ramp(progress, start + 0.012, start + 0.025),
+        scan: clamp01((progress - start - 0.015) / 0.025),
+        opacity: 1 - ramp(progress, end, end + 0.012),
+    };
+};
+
+/** The arcs out to where the work has reached: how far through drawing them (`amount`), and their `opacity`. */
+export const reachAt = (progress: number) => {
+    const [start, end] = windows.reach;
+    return {
+        amount: clamp01((progress - start + 0.01) / (end - start)),
+        opacity: windowOpacity(progress, [start, windows.reveal[1]], FADE * 2),
+    };
+};
 
 /**
  * Bloom is strong for the atmospheric shots, pulled back while markers are shown so the map stays
@@ -243,12 +303,13 @@ const middle = ([start, end]: readonly [number, number]) => (start + end) / 2;
  */
 export const chapters = [
     { label: 'Hello', from: 0, at: 0 },
-    { label: 'Home', from: windows.northernIreland[0] - FADE, at: middle(windows.northernIreland) },
-    // Lands as the introduction plays, heading for the cranes
-    { label: 'Belfast', from: cityFrom - 0.055, at: windows.belfastIntro[0] + 0.01 },
-    { label: 'Europe', from: windows.europe[0] - FADE, at: middle(windows.europe) },
+    { label: 'Home', from: windows.forecast[0] - FADE, at: middle(windows.northernIreland) },
+    { label: 'Belfast', from: cityFrom - 0.03, at: windows.belfastIntro[0] + 0.005 },
+    { label: 'Skills', from: windows.craft[0] - FADE, at: windows.skills[0] + 0.005 },
+    { label: 'Experience', from: windows.rewind[0] - FADE, at: windows.rewind[0] + 0.005 },
+    { label: 'Now', from: windows.ocula[0] - FADE, at: windows.ocula[0] + 0.01 },
     // Lands as the reveal completes, just before the content starts to arrive
-    { label: 'The world', from: windows.europe[1] + FADE, at: windows.reveal[1] },
+    { label: 'The world', from: windows.reach[0] - FADE, at: windows.reveal[1] },
 ] as const;
 
 export const chapterAt = (progress: number) =>
