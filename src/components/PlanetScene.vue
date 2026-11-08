@@ -67,7 +67,8 @@
     <TresPointLight :position="[25, -5, -30]" color="#5198ed" :intensity="1000" :distance="80" :decay="1" />
   </TresGroup>
 
-  <BelfastCity v-if="isCityMounted" />
+  <BelfastPhoto v-if="isCityMounted && cityMode === 'photo'" @failed="useNightCity" />
+  <BelfastCity v-if="isCityMounted && cityMode === 'night'" />
   <CloudVeil ref="veilRef" />
 </template>
 
@@ -82,13 +83,15 @@ import { BloomPmndrs, EffectComposerPmndrs } from '@tresjs/post-processing'
 import { BlendFunction } from 'postprocessing'
 import CityMarker from './city-marker.vue'
 import BelfastCity from './belfast-city.vue'
+import BelfastPhoto from './belfast-photo.vue'
 import CloudVeil from './cloud-veil.vue'
 import { isMobile, prefersReducedMotion, quality } from '@/services/device';
 import {
   bloomThresholdAt, diveAt, flightProgressAt, frameAt, isInBelfast, veilAt, windowOpacity, windows,
 } from '@/scene/choreography';
 import { sceneState } from '@/scene/state';
-import { flightAt } from '@/scene/belfast/flight';
+import { cityFovFor, flightAt, HEADING } from '@/scene/belfast/flight';
+import { city } from '@/scene/belfast/mode';
 import { clamp01, damp, lerp, smoothstep } from '@/services/three';
 
 
@@ -109,7 +112,7 @@ const UP = new Vector3(0, 1, 0)
 
 // Field of view and near plane: narrow over the planet, wider (more so on portrait screens) over the city
 const PLANET_LENS = { fov: 35, near: 0.01 }
-const CITY_LENS = { fov: 50, portraitFov: 64, near: 0.3 }
+const CITY_NEAR = 0.3
 
 export default defineComponent({
   name: 'PlanetScene',
@@ -166,9 +169,14 @@ const sizeOutline = () => {
   return true
 }
 
-// Belfast loads in the background once the planet is up (see belfast-city.vue)
+// Belfast loads in the background once the planet is up: by day from Google's tiles, or the night city
 const isCityMounted = ref(false)
 setTimeout(() => (isCityMounted.value = true), 1500)
+const cityMode = ref(city.mode)
+const useNightCity = () => {
+  city.mode = 'night'
+  cityMode.value = 'night'
+}
 
 const setLens = (cam: PerspectiveCamera, fov: number, near: number) => {
   if (cam.fov === fov && cam.near === near) return
@@ -181,18 +189,31 @@ const setLens = (cam: PerspectiveCamera, fov: number, near: number) => {
 let cityReveal = 0
 const cityTarget = new Vector3()
 const marker = new Vector3()
+const surfaceUp = new Vector3()
+const north = new Vector3()
+const east = new Vector3()
+const heading = new Vector3()
 const approach = new Vector3()
 const lookMatrix = new Matrix4()
 const lookQuaternion = new Quaternion()
 
-/** Leans the camera towards the Northern Ireland marker and flies it in, by `dive` (0 → 1). */
+/**
+ * Flies the camera down towards the Northern Ireland marker by `dive` (0 → 1), banking round to come in
+ * from the south-west. It ends up looking down at the marker along the flight's heading, with the horizon
+ * level, just as the camera over the city starts (and, climbing out, just as it finishes).
+ */
 const diveTowardsHome = (cam: PerspectiveCamera, earthRotationY: number, dive: number) => {
   marker.copy(HOME_MARKER).applyAxisAngle(UP, earthRotationY).add(EARTH_POSITION)
-  lookMatrix.lookAt(cam.position, marker, UP)
+  surfaceUp.copy(marker).sub(EARTH_POSITION).normalize()
+  north.copy(UP).addScaledVector(surfaceUp, -surfaceUp.y).normalize()
+  east.crossVectors(north, surfaceUp)
+  heading.copy(north).multiplyScalar(Math.cos(HEADING)).addScaledVector(east, Math.sin(HEADING))
+  // Behind and above the marker, so it's seen at the same angle as the start of the flight (38.7° down)
+  approach.copy(marker).addScaledVector(surfaceUp, 0.02).addScaledVector(heading, -0.025)
+  cam.position.lerp(approach, dive)
+  lookMatrix.lookAt(cam.position, marker, surfaceUp)
   lookQuaternion.setFromRotationMatrix(lookMatrix)
   cam.quaternion.slerp(lookQuaternion, smoothstep(clamp01(dive * 2.5)))
-  approach.copy(cam.position).sub(marker).setLength(0.03).add(marker)
-  cam.position.lerp(approach, dive)
 }
 
 const { onLoop } = useRenderLoop()
@@ -222,7 +243,7 @@ onLoop(({ delta, elapsed }) => {
     cam.lookAt(cityTarget)
     cam.rotateY(-parallax.x * 0.04)
     cam.rotateX(-parallax.y * 0.025)
-    setLens(cam, lerp(CITY_LENS.fov, CITY_LENS.portraitFov, portrait), CITY_LENS.near)
+    setLens(cam, cityFovFor(cam.aspect), CITY_NEAR)
   } else {
     const frame = frameAt(progress, portrait)
     cam.position.set(parallax.x * 0.025, -parallax.y * 0.015, frame.cameraZ)
@@ -245,7 +266,7 @@ onLoop(({ delta, elapsed }) => {
 
   // Scrolling streams the clouds past, and they drift a little on their own
   veilRef.value?.update(veil, progress * 24 + elapsed * 0.03, cam.aspect)
-  if (bloomRef.value) bloomRef.value.effect.luminanceMaterial.threshold = bloomThresholdAt(progress)
+  if (bloomRef.value) bloomRef.value.effect.luminanceMaterial.threshold = bloomThresholdAt(progress, city.mode === 'photo')
 
   invalidate()
 })

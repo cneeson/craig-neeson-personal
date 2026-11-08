@@ -170,11 +170,12 @@ export const veilAt = (progress: number) => Math.max(
 
 /**
  * Bloom is strong for the atmospheric shots, pulled back while markers are shown so the map stays
- * crisp, moderate over the city so its lights glow, and off in the clouds.
+ * crisp, and off in the clouds. Over the city it's moderate at night, so the lights glow, and off by day.
  */
-export const bloomThresholdAt = (progress: number) => {
+export const bloomThresholdAt = (progress: number, isDaytimeCity: boolean) => {
     const focus = Math.max(...marked.map(window => windowOpacity(progress, window, FADE * 2)));
-    const base = isInBelfast(progress) ? 0.55 : lerp(0.3, 0.9, focus);
+    const cityThreshold = isDaytimeCity ? 1.2 : 0.55;
+    const base = isInBelfast(progress) ? cityThreshold : lerp(0.3, 0.9, focus);
     return lerp(base, 1.2, veilAt(progress));
 };
 

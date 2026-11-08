@@ -19,6 +19,24 @@
     "paths": {
       "@/*": [
         "src/*"
+      ],
+      "3d-tiles-renderer": [
+        "node_modules/3d-tiles-renderer/src/index.d.ts"
+      ],
+      "3d-tiles-renderer/plugins": [
+        "node_modules/3d-tiles-renderer/src/plugins.d.ts"
+      ],
+      "3d-tiles-renderer/core": [
+        "node_modules/3d-tiles-renderer/src/core/renderer/index.d.ts"
+      ],
+      "3d-tiles-renderer/core/plugins": [
+        "node_modules/3d-tiles-renderer/src/core/plugins/index.d.ts"
+      ],
+      "3d-tiles-renderer/three": [
+        "node_modules/3d-tiles-renderer/src/three/renderer/index.d.ts"
+      ],
+      "3d-tiles-renderer/three/plugins": [
+        "node_modules/3d-tiles-renderer/src/three/plugins/index.d.ts"
       ]
     },
     "lib": [

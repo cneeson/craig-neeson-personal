@@ -9,7 +9,10 @@
           High resolution earth textures downloaded with thanks from <a href="https://planetpixelemporium.com/earth8081.html" target="_blank" rel="noopener">Planet Pixel Emporium.</a>
         </li>
         <li>
-          Belfast's buildings, streets and waterways from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>, available under the Open Database License.
+          Belfast in 3D from <a href="https://developers.google.com/maps/documentation/tile/3d-tiles" target="_blank" rel="noopener">Google Photorealistic 3D Tiles</a>, with imagery and map data © Google and its data providers.
+        </li>
+        <li>
+          The night-time Belfast (shown when the 3D tiles can't load) uses buildings, streets and waterways from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>, available under the Open Database License.
         </li>
         <li>
           SVG icons downloaded with thanks from <a href="https://www.svgrepo.com" target="_blank" rel="noopener">SVG Repo.</a>

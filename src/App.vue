@@ -6,6 +6,7 @@ import { ScrollSmoother } from 'gsap/ScrollSmoother';
 import { TresCanvas } from '@tresjs/core'
 import { differenceInYears } from 'date-fns';
 import PlanetScene from './components/PlanetScene.vue';
+import CityAttribution from './components/city-attribution.vue';
 import JourneyNav from './components/journey-nav.vue';
 import Hero from './views/hero.vue'
 import Skills from './views/skills.vue';
@@ -13,7 +14,7 @@ import Experience from './views/experience.vue';
 import Contact from './views/contact.vue';
 import Footer from './views/footer.vue';
 import { isMobile, prefersReducedMotion, quality } from './services/device';
-import { chapterAt, chapters, settleAt, windowOpacity, windows } from './scene/choreography';
+import { chapterAt, chapters, isInBelfast, settleAt, windowOpacity, windows } from './scene/choreography';
 import { createCaption } from './scene/captions';
 import { sceneState } from './scene/state';
 import { camera } from './scene/camera';
@@ -80,7 +81,10 @@ onMounted(() => {
       { window: windows.belfastIntro, ...createCaption(document.querySelector('[data-caption="belfast"]') as HTMLElement) },
       { window: windows.europe, ...createCaption(document.querySelector('[data-caption="europe"]') as HTMLElement) },
     ];
+    // Captions over the (bright, busy) city get a shade behind them
+    const captionsElement = document.querySelector('.captions') as HTMLElement;
     const syncToJourney = (progress: number) => {
+      captionsElement.classList.toggle('is-over-city', isInBelfast(progress));
       captions.forEach(caption => (windowOpacity(progress, caption.window) > 0.5 ? caption.show() : caption.hide()));
       activeChapter.value = chapterAt(progress);
     };
@@ -152,6 +156,7 @@ onBeforeUnmount(() => {
     </TresCanvas>
   </div>
 
+  <CityAttribution />
   <JourneyNav :active="activeChapter" :ready="isSceneReady" @navigate="navigate" />
 
   <!-- v-once: the captions are split into words for their entrance, so Vue mustn't re-render them -->
@@ -221,6 +226,20 @@ html, body {
 
 .captions {
   @apply fixed inset-x-0 bottom-0 z-10 px-6 pb-12 lg:pb-20 pointer-events-none grid justify-items-center;
+}
+
+.captions::before {
+  content: '';
+  position: absolute;
+  inset: -10rem 0 0;
+  z-index: -1;
+  background: linear-gradient(to top, rgba(9, 1, 24, 0.6), rgba(9, 1, 24, 0.25) 55%, transparent);
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+.captions.is-over-city::before {
+  opacity: 1;
 }
 
 .caption {

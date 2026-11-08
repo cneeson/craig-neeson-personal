@@ -22,6 +22,12 @@ npm run belfast    # rebuild public/belfast/ from OpenStreetMap (Overpass); add 
 
 There are no tests. Verify changes by running the site and looking at it (see Verifying).
 
+## Google 3D Tiles key
+
+The day city needs `VUE_APP_GOOGLE_MAPS_API_KEY` (Map Tiles API). Locally it goes in `.env.local`
+(gitignored, never commit it); CI reads the `GOOGLE_MAPS_API_KEY` repo secret. Without it the night city is used.
+Each visit that reaches the city starts a billable root-tileset session.
+
 ## Deployment
 
 Pushing to `main` runs `.github/workflows/deploy.yml`, which lints, builds and publishes `dist/` to
@@ -35,9 +41,17 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   blur as `.content` arrives, and section reveals).
 - `src/components/PlanetScene.vue`: the Tres scene (earth, clouds, stars, markers, bloom) and the
   render loop. Must stay inside `<Suspense>` because it awaits textures.
-- `src/components/belfast-city.vue`: the Belfast flythrough (buildings, ground, lamps, traffic, sky, landmarks).
-  Mounted 1.5s after the planet so it loads in the background; decoded in `src/scene/belfast/city.worker.ts`,
-  then drawn once off screen to warm up the GPU. Sets `sceneState.cityReady`.
+- `src/components/belfast-photo.vue`: the Belfast flythrough by day, from Google Photorealistic 3D Tiles
+  (`src/scene/belfast/photo-city.ts`, via `3d-tiles-renderer`). Mounted 1.5s after the planet. Extra cameras
+  along the flight (`setCamera`) load it ahead of the reader: the start of the flight first (then it's drawn
+  off screen to warm the GPU and `sceneState.cityReady` is set), then a prefetch camera walks the rest. The
+  whole flight doesn't fit in the tile cache, so evicted tiles come back from the browser's HTTP cache. Google's
+  terms forbid hosting or bundling the tiles: only load them in the browser, in the same visit. Their
+  attribution (logo + data providers) must stay visible while they're on screen (`city-attribution.vue`).
+- `src/components/belfast-city.vue`: the night-time Belfast from OpenStreetMap, the fallback when the tiles
+  can't be used (no key, Save-Data, the root tileset fails, or nothing loads in time; `?city=night` forces it).
+  `src/scene/belfast/mode.ts` holds the choice. Decoded in `src/scene/belfast/city.worker.ts`, then drawn once
+  off screen to warm up the GPU. Sets `sceneState.cityReady`.
 - `src/components/cloud-veil.vue`: full-screen cloud layer hiding the planet ↔ city switch (`veilAt`). It holds,
   then fades, if the city hasn't loaded by the time the reader gets there.
 - `src/components/city-marker.vue`: pin, label and glow. Driven entirely by `setOpacity(0..1)`.
@@ -60,8 +74,9 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - `src/services/device.ts`: mobile detection (`pointer: coarse`) and the quality tiers (DPR cap,
   textures, star counts, blur).
 - `src/scene/belfast/`: the city. `geo.ts` (origin and bounds; must match the build script),
-  `flight.ts` (the camera's path and where it looks, timed separately; the path runs down the dock under both
-  cranes, and the view only turns one way), `materials.ts` (night shaders), `landmarks.ts` (hand-built cranes,
+  `flight.ts` (one straight sweep north-east past City Hall and the Lagan, down and back up, never turning;
+  the dive from Northern Ireland banks round to its heading under the clouds, see `diveTowardsHome` in
+  `PlanetScene`), `photo-materials.ts` (tile shader with haze, day sky), `materials.ts` (night shaders), `landmarks.ts` (hand-built cranes,
   Titanic Belfast, City Hall), `roads.ts` (road texture, drawn in the worker via OffscreenCanvas when possible).
 - `scripts/belfast/build.mjs` → `public/belfast/city.bin` (buildings + roads, binary layout in the script header)
   and `ground.png` (water/park mask). Landmarks that are hand-built are excluded by OSM id. The data is

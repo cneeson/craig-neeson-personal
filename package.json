@@ -12,6 +12,7 @@
     "@tresjs/cientos": "^4.3.1",
     "@tresjs/core": "^4.3.6",
     "@tresjs/post-processing": "^2.4.0",
+    "3d-tiles-renderer": "^0.5.4",
     "core-js": "^3.8.3",
     "date-fns": "^4.1.0",
     "gsap": "^3.13.0",
