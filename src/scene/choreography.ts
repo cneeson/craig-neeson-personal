@@ -138,8 +138,9 @@ export const windowOpacity = (progress: number, [start, end]: readonly [number, 
         smoothstep(clamp01((end + fade - progress) / fade)),
     );
 
+// The approach starts halfway through the Northern Ireland caption, so it glides in gradually
 const [diveFrom, cityFrom, cityTo, climbTo] = [
-    windows.northernIreland[1], windows.belfast[0], windows.belfast[1], windows.europe[0],
+    (windows.northernIreland[0] + windows.northernIreland[1]) / 2, windows.belfast[0], windows.belfast[1], windows.europe[0],
 ];
 
 export const isInBelfast = (progress: number) => progress >= cityFrom && progress < cityTo;
@@ -148,13 +149,13 @@ export const isInBelfast = (progress: number) => progress >= cityFrom && progres
 export const flightProgressAt = (progress: number) => clamp01((progress - cityFrom) / (cityTo - cityFrom));
 
 /**
- * 0 → 1 as the camera dives from Northern Ireland down into the clouds (accelerating), and
- * 1 → 0 as it climbs back out of them after Belfast (decelerating).
+ * 0 → 1 (steadily) as the camera glides down from orbit towards Northern Ireland and into the clouds,
+ * and 1 → 0 as it climbs back out of them after Belfast. PlanetScene eases the motion.
  */
 export const diveAt = (progress: number) => {
-    if (progress < cityFrom) return clamp01((progress - diveFrom) / (cityFrom - diveFrom)) ** 2;
+    if (progress < cityFrom) return clamp01((progress - diveFrom) / (cityFrom - diveFrom));
     if (progress < cityTo) return 1;
-    return (1 - clamp01((progress - cityTo) / (climbTo - cityTo))) ** 2;
+    return 1 - clamp01((progress - cityTo) / (climbTo - cityTo));
 };
 
 /** 0 → 1 → 0 around a point, rising over `before`, staying at 1 for `hold` either side, and falling over `after`. */

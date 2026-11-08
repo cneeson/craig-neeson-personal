@@ -90,7 +90,7 @@ import {
   bloomThresholdAt, diveAt, flightProgressAt, frameAt, isInBelfast, veilAt, windowOpacity, windows,
 } from '@/scene/choreography';
 import { sceneState } from '@/scene/state';
-import { cityFovFor, FLIGHT_PITCH, flightAt, HEADING } from '@/scene/belfast/flight';
+import { cityFovFor, FLIGHT_ENDS, flightAt } from '@/scene/belfast/flight';
 import { city } from '@/scene/belfast/mode';
 import { clamp01, damp, lerp, smoothstep } from '@/services/three';
 
@@ -113,6 +113,11 @@ const UP = new Vector3(0, 1, 0)
 // Field of view and near plane: narrow over the planet, wider (more so on portrait screens) over the city
 const PLANET_LENS = { fov: 35, near: 0.01 }
 const CITY_NEAR = 0.3
+
+// Where the glide down from orbit ends: just above the planet's clouds (the marker sits on them), a little
+// behind the marker. `ratio` sets the easing: about √ratio of the distance is left halfway through. Climbing
+// out eases less, so it's well clear of the surface by the time the clouds part.
+const APPROACH = { height: 0.008, behind: 0.012, ratio: { in: 0.03, out: 0.12 } }
 
 export default defineComponent({
   name: 'PlanetScene',
@@ -199,27 +204,31 @@ const lookMatrix = new Matrix4()
 const lookQuaternion = new Quaternion()
 
 /**
- * Drops the camera down towards the Northern Ireland marker by `dive` (0 → 1), tilting up off the planet
- * as it goes so it falls into the city backwards, facing the way the camera over the city faces. It ends
- * up where the flight starts: looking out along the heading, just above the horizon. Climbing out, it
- * starts from where the flight finishes, behind the marker and looking down, so nothing is retraced.
+ * Glides the camera from orbit down towards the Northern Ireland marker by `dive` (0 → 1), tilting up
+ * over the horizon as it gets closer, so the surface stays in view right up until the clouds. It ends
+ * just above them, south-west of the marker, looking the way the flight over the city starts out looking.
+ * Climbing out it reverses from where the flight finishes, so it carries on backwards and upwards, the
+ * way the flight was going, out to the view of Europe.
  */
 const diveTowardsHome = (cam: PerspectiveCamera, earthRotationY: number, dive: number, isLeaving: boolean) => {
   marker.copy(HOME_MARKER).applyAxisAngle(UP, earthRotationY).add(EARTH_POSITION)
   surfaceUp.copy(marker).sub(EARTH_POSITION).normalize()
   north.copy(UP).addScaledVector(surfaceUp, -surfaceUp.y).normalize()
   east.crossVectors(north, surfaceUp)
-  heading.copy(north).multiplyScalar(Math.cos(HEADING)).addScaledVector(east, Math.sin(HEADING))
-  // The flight starts north-east of the marker (past the cranes) and finishes south-west of it
-  approach.copy(marker).addScaledVector(surfaceUp, isLeaving ? 0.03 : 0.012).addScaledVector(heading, isLeaving ? -0.02 : 0.01)
-  cam.position.lerp(approach, dive)
-  const pitch = isLeaving ? FLIGHT_PITCH.end : FLIGHT_PITCH.start
-  lookTarget.copy(cam.position).addScaledVector(heading, Math.cos(pitch)).addScaledVector(surfaceUp, Math.sin(pitch))
+  const look = isLeaving ? FLIGHT_ENDS.end : FLIGHT_ENDS.start
+  heading.copy(north).multiplyScalar(Math.cos(look.heading)).addScaledVector(east, Math.sin(look.heading))
+  approach.copy(marker).addScaledVector(surfaceUp, APPROACH.height).addScaledVector(heading, -APPROACH.behind)
+  // Closing a constant fraction of the remaining distance with each step, like a steady descent, so the
+  // surface keeps coming up at the same rate however close it is
+  const ratio = isLeaving ? APPROACH.ratio.out : APPROACH.ratio.in
+  cam.position.lerp(approach, (1 - ratio ** dive) / (1 - ratio))
+  lookTarget.copy(cam.position)
+    .addScaledVector(heading, Math.cos(look.pitch))
+    .addScaledVector(surfaceUp, Math.sin(look.pitch))
   lookMatrix.lookAt(cam.position, lookTarget, surfaceUp)
   lookQuaternion.setFromRotationMatrix(lookMatrix)
-  // The tilt leads the fall (dive eases in, its square root doesn't), so the planet drops out of view
-  // while it's still clear of the clouds
-  cam.quaternion.slerp(lookQuaternion, smoothstep(clamp01(Math.sqrt(dive) * 1.4)))
+  // Fully tilted over the horizon a while before the clouds, and held there
+  cam.quaternion.slerp(lookQuaternion, smoothstep(clamp01(dive / 0.75)))
 }
 
 const { onLoop } = useRenderLoop()

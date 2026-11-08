@@ -39,6 +39,8 @@ export const createTileMaterial = (map: Texture | null) => new ShaderMaterial({
             vec3 color = texture2D(map, vUv).rgb;
             float haze = 1.0 - exp(-pow(vDistance * uFogDensity, 2.0));
             gl_FragColor = vec4(mix(color, uFogColor, haze), 1.0);
+            // Where TilesFadePlugin adds its dithered fade between levels of detail
+            #include <dithering_fragment>
         }
     `,
 });

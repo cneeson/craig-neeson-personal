@@ -45,7 +45,10 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   (`src/scene/belfast/photo-city.ts`, via `3d-tiles-renderer`). Mounted 1.5s after the planet. Extra cameras
   along the flight (`setCamera`) load it ahead of the reader: the start of the flight first (then it's drawn
   off screen to warm the GPU and `sceneState.cityReady` is set), then a prefetch camera walks the rest. The
-  whole flight doesn't fit in the tile cache, so evicted tiles come back from the browser's HTTP cache. Google's
+  whole flight doesn't fit in the tile cache, so evicted tiles come back from the browser's HTTP cache. Keep the
+  views few and the cache well above what they need: once it's full, tiles the reader's view needs are refused
+  and the city flickers between levels of detail. The tile shader is swapped in by a plugin (`processTileModel`)
+  so `TilesFadePlugin` can cross-fade levels; it needs `#include <dithering_fragment>` in that shader. Google's
   terms forbid hosting or bundling the tiles: only load them in the browser, in the same visit. Their
   attribution (logo + data providers) must stay visible while they're on screen (`city-attribution.vue`).
 - `src/components/belfast-city.vue`: the night-time Belfast from OpenStreetMap, the fallback when the tiles
@@ -74,10 +77,11 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - `src/services/device.ts`: mobile detection (`pointer: coarse`) and the quality tiers (DPR cap,
   textures, star counts, blur).
 - `src/scene/belfast/`: the city. `geo.ts` (origin and bounds; must match the build script),
-  `flight.ts` (flown backwards: always facing north-east while travelling south-west through waypoints, under
-  the H&W cranes, past Titanic Belfast, over the Lagan and City Hall; the dive from the planet tilts up to that
-  heading so it falls into the city backwards, see `diveTowardsHome` in `PlanetScene`. Place waypoints from the
-  tiles, not OSM: the cranes move along their dock), `photo-materials.ts` (tile shader with haze, day sky), `materials.ts` (night shaders), `landmarks.ts` (hand-built cranes,
+  `flight.ts` (flown backwards, looking back along the path as it turns: down the dry dock and under the H&W
+  cranes, over the SSE Arena, across the Lagan by the M3 and Dargan (rail) bridges, over the weir and the city
+  centre. The orbit approach glides in low over the planet, tilted at the horizon along the flight's starting
+  heading, and the climb out carries on along its end heading; see `diveTowardsHome` and `FLIGHT_ENDS`. Place
+  waypoints from the tiles, not OSM: the cranes move along their dock), `photo-materials.ts` (tile shader with haze, day sky), `materials.ts` (night shaders), `landmarks.ts` (hand-built cranes,
   Titanic Belfast, City Hall), `roads.ts` (road texture, drawn in the worker via OffscreenCanvas when possible).
 - `scripts/belfast/build.mjs` → `public/belfast/city.bin` (buildings + roads, binary layout in the script header)
   and `ground.png` (water/park mask). Landmarks that are hand-built are excluded by OSM id. The data is

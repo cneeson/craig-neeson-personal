@@ -3,36 +3,29 @@ import { clamp01, lerp } from '@/services/three';
 import { createSpline } from '@/scene/choreography';
 
 /**
- * The flight over Belfast, flown backwards: the camera always faces north-east, out towards the lough,
- * while it travels south-west. It drops out of the clouds over the dry dock and backs down it, under
- * Samson and Goliath between their legs, then winds low past Titanic Belfast, over the Lagan at the Big Fish
- * and over City Hall, before rising back up into the clouds (0 → 1 across the flight).
+ * The flight over Belfast, flown backwards: the camera looks back the way it came, turning naturally as
+ * the path bends. It drops out of the clouds over the dry dock and backs down it, under Samson and Goliath
+ * between their legs, then low over the SSE Arena, across the Lagan by the Dargan (rail) Bridge, over the
+ * weir and on over the city centre, rising back up into the clouds (0 → 1 across the flight).
  */
 
-/**
- * The compass bearing the camera faces. The cranes line up along it exactly, at right angles to their
- * girders. The dive from the planet turns to it as it tilts up (see `diveTowardsHome` in PlanetScene).
- */
-export const HEADING = MathUtils.degToRad(40);
-const forward = { x: Math.sin(HEADING), z: -Math.cos(HEADING) };
-
-// Scene units (10 m): x east, z south, y the height above the ground, pitch in degrees above the horizon
+// Scene units (10 m): x east, z south, y the height above the ground, pitch in degrees above the horizon.
+// Placed from the tiles, not OSM: the cranes move along their dock.
 const waypoints: { x: number, z: number, y: number, pitch: number }[] = [
-    // In the clouds, out along the dry dock
-    { x: 126, z: -81, y: 30, pitch: -8 },
+    // In the clouds, out along the dry dock, tilted down to match the glide in from orbit
+    { x: 126, z: -81, y: 30, pitch: -22 },
     // Backing down the dock over the ship in it
     { x: 85, z: -33, y: 9, pitch: -2 },
-    // Under the cranes, parked side by side at the end of the dock (in the tiles; OSM has Samson further
-    // up), looking up a little to see their girders go overhead
+    // Under the cranes, parked side by side at the end of the dock, looking up a little at their girders
     { x: 69, z: -13, y: 5, pitch: 4 },
     { x: 65, z: -8.5, y: 5, pitch: 4 },
-    { x: 55, z: 4, y: 5.5, pitch: 0 },
-    // Sideways round the dock beside Titanic Belfast
-    { x: 22, z: -28, y: 7, pitch: -4 },
-    // Low over the Lagan at the Big Fish
-    { x: -38, z: 37, y: 3.5, pitch: -6 },
-    // Over City Hall, then climbing away into the clouds
-    { x: -97, z: 84, y: 10, pitch: -18 },
+    // Over the SSE Arena
+    { x: 5, z: 2, y: 7, pitch: -6 },
+    // Across the Lagan beside the M3 and Dargan bridges, then over the weir
+    { x: -35, z: 13, y: 4, pitch: -4 },
+    { x: -42, z: 40, y: 4.5, pitch: -6 },
+    // Over the city centre, then climbing away into the clouds
+    { x: -97, z: 84, y: 14, pitch: -20 },
     { x: -150, z: 140, y: 75, pitch: -38 },
 ];
 
@@ -46,17 +39,29 @@ const knots = distances.map(distance => (travelled += distance) / total);
 const [xAt, yAt, zAt, pitchAt] = (['x', 'y', 'z', 'pitch'] as const)
     .map(key => createSpline(knots, waypoints.map(point => point[key])));
 
-/** Where the camera looks at the start and end of the flight, in radians above the horizon. */
-export const FLIGHT_PITCH = {
-    start: MathUtils.degToRad(waypoints[0].pitch),
-    end: MathUtils.degToRad(waypoints[waypoints.length - 1].pitch),
+/** How far either side along the flight the facing is taken from, which smooths out the turns. */
+const TURN_SPAN = 0.08;
+
+/**
+ * The compass bearing the camera faces at `t`: back along the path, from a little way ahead of it
+ * to a little way behind.
+ */
+const headingAt = (t: number) => {
+    const [ahead, behind] = [clamp01(t + TURN_SPAN), clamp01(t - TURN_SPAN)];
+    return Math.atan2(xAt(behind) - xAt(ahead), zAt(ahead) - zAt(behind));
+};
+
+/** Where the camera looks at the start and end of the flight (radians), which the dive and climb match. */
+export const FLIGHT_ENDS = {
+    start: { heading: headingAt(0), pitch: MathUtils.degToRad(waypoints[0].pitch) },
+    end: { heading: headingAt(1), pitch: MathUtils.degToRad(waypoints[waypoints.length - 1].pitch) },
 };
 
 export const flightAt = (t: number, position: Vector3, target: Vector3) => {
     const time = clamp01(t);
     position.set(xAt(time), yAt(time), zAt(time));
-    const pitch = MathUtils.degToRad(pitchAt(time));
-    target.set(forward.x * Math.cos(pitch), Math.sin(pitch), forward.z * Math.cos(pitch))
+    const [heading, pitch] = [headingAt(time), MathUtils.degToRad(pitchAt(time))];
+    target.set(Math.sin(heading) * Math.cos(pitch), Math.sin(pitch), -Math.cos(heading) * Math.cos(pitch))
         .multiplyScalar(50)
         .add(position);
 };

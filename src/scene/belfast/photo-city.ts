@@ -5,7 +5,7 @@ import {
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { TilesRenderer } from '3d-tiles-renderer';
 import { GoogleCloudAuthPlugin } from '3d-tiles-renderer/core/plugins';
-import { GLTFExtensionsPlugin, ReorientationPlugin } from '3d-tiles-renderer/plugins';
+import { GLTFExtensionsPlugin, ReorientationPlugin, TilesFadePlugin } from '3d-tiles-renderer/plugins';
 import { isMobile } from '@/services/device';
 import { clamp01 } from '@/services/three';
 import { ORIGIN, UNIT } from './geo';
@@ -17,10 +17,12 @@ const GROUND_HEIGHT = 58;
 
 const MEGABYTE = 2 ** 20;
 
-// Phones load coarser tiles, look less far ahead, and keep less in memory (iOS kills tabs that use too much)
+// Phones load coarser tiles and keep less in memory (iOS kills tabs that use too much). Low over the city the
+// reader's view plus one lookahead view take most of the cache; more views than that and the cache fills, the
+// reader's view gets refused the detail it needs, and the city flickers between levels of detail.
 const settings = isMobile
-    ? { errorTarget: 32, lookahead: [0, 0.08], minBytes: 150 * MEGABYTE, maxBytes: 220 * MEGABYTE }
-    : { errorTarget: 20, lookahead: [0, 0.06, 0.12], minBytes: 300 * MEGABYTE, maxBytes: 450 * MEGABYTE };
+    ? { errorTarget: 32, lookahead: [0, 0.06], minBytes: 150 * MEGABYTE, maxBytes: 240 * MEGABYTE }
+    : { errorTarget: 20, lookahead: [0, 0.05], minBytes: 450 * MEGABYTE, maxBytes: 700 * MEGABYTE };
 
 /** How many points along the flight are visited to fetch its tiles in the background. */
 const PREFETCH_STEPS = 16;
@@ -47,6 +49,21 @@ const MAX_WAIT = { partial: 6, nothing: 12 };
  */
 export const createPhotoCity = (renderer: WebGLRenderer, apiKey: string, onFail: (error: unknown) => void) => {
     const tiles = new TilesRenderer();
+    // Swaps in the tile shader as each tile is parsed, before the fade plugin (below) prepares its materials
+    tiles.registerPlugin({
+        name: 'TILE_MATERIAL_PLUGIN',
+        processTileModel(scene: Group) {
+            scene.traverse(object => {
+                const mesh = object as Mesh;
+                if (!mesh.isMesh) return;
+                const original = mesh.material as MeshBasicMaterial;
+                mesh.material = createTileMaterial(original.map);
+                original.dispose();
+                // Uploaded now, while loading in the background, rather than on the frame it first appears
+                if (original.map) renderer.initTexture(original.map);
+            });
+        },
+    });
     tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: apiKey, autoRefreshToken: true }));
     tiles.registerPlugin(new GLTFExtensionsPlugin({
         dracoLoader: new DRACOLoader().setDecoderPath(`${process.env.BASE_URL}draco/`),
@@ -56,6 +73,8 @@ export const createPhotoCity = (renderer: WebGLRenderer, apiKey: string, onFail:
         lon: MathUtils.degToRad(ORIGIN.lon),
         height: GROUND_HEIGHT,
     }));
+    // Cross-fades between levels of detail rather than popping
+    tiles.registerPlugin(new TilesFadePlugin({ fadeDuration: 400 }));
     // Set after registering, as the auth plugin applies its own defaults
     tiles.errorTarget = settings.errorTarget;
     tiles.lruCache.minBytesSize = settings.minBytes;
@@ -68,26 +87,11 @@ export const createPhotoCity = (renderer: WebGLRenderer, apiKey: string, onFail:
     group.scale.setScalar(1 / UNIT);
     group.add(tiles.group);
 
-    tiles.addEventListener('load-model', ({ scene }) => {
-        scene.traverse(object => {
-            const mesh = object as Mesh;
-            if (!mesh.isMesh) return;
-            const original = mesh.material as MeshBasicMaterial;
-            mesh.material = createTileMaterial(original.map);
-            original.dispose();
-            // Uploaded now, while loading in the background, rather than on the frame it first appears
-            if (original.map) renderer.initTexture(original.map);
-        });
-    });
+    // The renderer disposes of the tile shaders, but doesn't know about the photos in their uniforms
     tiles.addEventListener('dispose-model', ({ scene }) => {
         scene.traverse(object => {
             const mesh = object as Mesh;
-            if (!mesh.isMesh) return;
-            // Usually the tile shader, but a tile can be dropped before its materials were swapped
-            const material = mesh.material as ShaderMaterial | MeshBasicMaterial;
-            const map = 'uniforms' in material ? material.uniforms.map?.value : material.map;
-            map?.dispose();
-            material.dispose();
+            if (mesh.isMesh) (mesh.material as ShaderMaterial).uniforms.map?.value.dispose();
         });
     });
 
@@ -156,7 +160,12 @@ export const createPhotoCity = (renderer: WebGLRenderer, apiKey: string, onFail:
             // Detail is chosen for the screen's size in CSS pixels, however sharp the display
             renderer.getSize(resolution);
 
-            lookaheadViews.forEach((view, i) => useView(view, clamp01(flight + settings.lookahead[i] * direction), camera.aspect));
+            lookaheadViews.forEach((view, i) => {
+                const offset = settings.lookahead[i];
+                // While flying, the reader's own view covers where they are
+                if (isFlying && offset === 0) tiles.deleteCamera(view);
+                else useView(view, clamp01(flight + offset * direction), camera.aspect);
+            });
             if (isFlying) {
                 camera.updateMatrixWorld();
                 tiles.setCamera(camera);
