@@ -194,24 +194,27 @@ const north = new Vector3()
 const east = new Vector3()
 const heading = new Vector3()
 const approach = new Vector3()
+const lookTarget = new Vector3()
 const lookMatrix = new Matrix4()
 const lookQuaternion = new Quaternion()
 
 /**
- * Flies the camera down towards the Northern Ireland marker by `dive` (0 → 1), banking round to come in
- * from the south-west. It ends up looking down at the marker along the flight's heading, with the horizon
- * level, just as the camera over the city starts (and, climbing out, just as it finishes).
+ * Flies the camera down towards the Northern Ireland marker by `dive` (0 → 1), heading the way the flight
+ * over the city goes. It ends up looking down along that heading with the horizon level, just as the
+ * camera over the city starts: behind the marker on the way in, and ahead of it on the way out (where the
+ * flight finished), so the climb back out never retraces the way in.
  */
-const diveTowardsHome = (cam: PerspectiveCamera, earthRotationY: number, dive: number) => {
+const diveTowardsHome = (cam: PerspectiveCamera, earthRotationY: number, dive: number, isLeaving: boolean) => {
   marker.copy(HOME_MARKER).applyAxisAngle(UP, earthRotationY).add(EARTH_POSITION)
   surfaceUp.copy(marker).sub(EARTH_POSITION).normalize()
   north.copy(UP).addScaledVector(surfaceUp, -surfaceUp.y).normalize()
   east.crossVectors(north, surfaceUp)
   heading.copy(north).multiplyScalar(Math.cos(HEADING)).addScaledVector(east, Math.sin(HEADING))
-  // Behind and above the marker, so it's seen at the same angle as the start of the flight (38.7° down)
-  approach.copy(marker).addScaledVector(surfaceUp, 0.02).addScaledVector(heading, -0.025)
+  // Above the marker, looking down along the heading at the same angle as the ends of the flight (38.7°)
+  approach.copy(marker).addScaledVector(surfaceUp, 0.02).addScaledVector(heading, isLeaving ? 0.025 : -0.025)
   cam.position.lerp(approach, dive)
-  lookMatrix.lookAt(cam.position, marker, surfaceUp)
+  lookTarget.copy(approach).addScaledVector(surfaceUp, -0.02).addScaledVector(heading, 0.025)
+  lookMatrix.lookAt(cam.position, lookTarget, surfaceUp)
   lookQuaternion.setFromRotationMatrix(lookMatrix)
   cam.quaternion.slerp(lookQuaternion, smoothstep(clamp01(dive * 2.5)))
 }
@@ -249,7 +252,7 @@ onLoop(({ delta, elapsed }) => {
     cam.position.set(parallax.x * 0.025, -parallax.y * 0.015, frame.cameraZ)
     cam.rotation.set(frame.cameraRotationX, frame.cameraRotationY, 0)
     const dive = diveAt(progress)
-    if (dive > 0) diveTowardsHome(cam, frame.earthRotationY, dive)
+    if (dive > 0) diveTowardsHome(cam, frame.earthRotationY, dive, progress > windows.belfast[1])
     setLens(cam, PLANET_LENS.fov, PLANET_LENS.near)
     if (earthRef.value) earthRef.value.rotation.y = frame.earthRotationY
 

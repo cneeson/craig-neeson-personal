@@ -3,19 +3,23 @@ import { clamp01, lerp } from '@/services/three';
 import { createSpline } from '@/scene/choreography';
 
 /**
- * The flight over Belfast: one straight sweep north-east, never turning. Out of the clouds over the
- * south of the city, down past City Hall to skim the Lagan at the Big Fish, past Titanic Belfast with
- * the cranes off to the right, then up and out over the lough. Only the height and the tilt of the
- * view change (0 → 1 across the flight).
+ * The flight over Belfast: one straight sweep north, never turning, the same way the camera faces over
+ * the planet. Out of the clouds over the south of the city, down along the Lagan with City Hall off to the
+ * left, skimming the river past the Big Fish, then up past Titanic Belfast and the cranes on the right and
+ * out towards the lough. Only the height and the tilt of the view change (0 → 1 across the flight).
  */
 
-/** The compass bearing of the flight. The dive into the clouds banks round to it (see PlanetScene). */
-export const HEADING = MathUtils.degToRad(45);
+/**
+ * The compass bearing of the flight: north, as the camera dives in from the planet (within a few degrees),
+ * so it never turns between the planet and the city. See `diveTowardsHome` in PlanetScene.
+ */
+export const HEADING = 0;
 const forward = { x: Math.sin(HEADING), z: -Math.cos(HEADING) };
 
-// City Hall, the Big Fish and Titanic Belfast all sit within 20 m of this line; this point is midway
-// between City Hall and Titanic Belfast
-const CENTRE = { x: -32, z: 19.25 };
+// Over the Lagan, which runs north from Ormeau Bridge to the Big Fish; this point is just past the Big Fish,
+// where the flight is lowest. City Hall is 600 m to the left, Titanic Belfast 700 m to the right. The ends
+// are hidden in the clouds, so the flight runs well beyond what's seen of it.
+const CENTRE = { x: -35, z: 25 };
 const [START, END] = [-260, 260];
 
 // A sweep down and back up again, symmetrical about the river

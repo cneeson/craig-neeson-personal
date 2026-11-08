@@ -26,7 +26,7 @@ export const windows = {
     // The flight over Belfast, between diving into the clouds and climbing back out of them
     belfast: [0.3, 0.6],
     // The introduction, as the flight heads in towards the cranes
-    belfastIntro: [0.345, 0.43],
+    belfastIntro: [0.355, 0.44],
     europe: [0.68, 0.78],
     reveal: [0.78, 0.94],
 } as const;
@@ -152,20 +152,23 @@ export const flightProgressAt = (progress: number) => clamp01((progress - cityFr
  * 1 → 0 as it climbs back out of them after Belfast (decelerating).
  */
 export const diveAt = (progress: number) => {
-    if (progress < cityFrom) return clamp01((progress - diveFrom) / (cityFrom - diveFrom)) ** 3;
+    if (progress < cityFrom) return clamp01((progress - diveFrom) / (cityFrom - diveFrom)) ** 2;
     if (progress < cityTo) return 1;
-    return (1 - clamp01((progress - cityTo) / (climbTo - cityTo))) ** 3;
+    return (1 - clamp01((progress - cityTo) / (climbTo - cityTo))) ** 2;
 };
 
-/** 0 → 1 → 0 around a point, rising over `before` and falling over `after`. */
-const bump = (progress: number, at: number, before: number, after: number) => smoothstep(progress < at
-    ? clamp01((progress - at + before) / before)
-    : clamp01((at + after - progress) / after));
+/** 0 → 1 → 0 around a point, rising over `before`, staying at 1 for `hold` either side, and falling over `after`. */
+const bump = (progress: number, at: number, before: number, after: number, hold = 0) => smoothstep(progress < at
+    ? clamp01((progress - at + hold + before) / before)
+    : clamp01((at + hold + after - progress) / after));
 
-/** How much the clouds cover the screen. They hide the switch between the planet and the city. */
+/**
+ * How much the clouds cover the screen. They hide the switch between the planet and the city, gathering
+ * gradually and staying solid for a moment either side of it, so flying through them doesn't feel abrupt.
+ */
 export const veilAt = (progress: number) => Math.max(
-    bump(progress, cityFrom, 0.035, 0.022),
-    bump(progress, cityTo, 0.022, 0.03),
+    bump(progress, cityFrom, 0.055, 0.04, 0.01),
+    bump(progress, cityTo, 0.04, 0.05, 0.01),
 );
 
 /**
@@ -212,7 +215,7 @@ export const chapters = [
     { label: 'Hello', from: 0, at: 0 },
     { label: 'Home', from: windows.northernIreland[0] - FADE, at: middle(windows.northernIreland) },
     // Lands as the introduction plays, heading for the cranes
-    { label: 'Belfast', from: cityFrom - 0.035, at: windows.belfastIntro[0] + 0.01 },
+    { label: 'Belfast', from: cityFrom - 0.055, at: windows.belfastIntro[0] + 0.01 },
     { label: 'Europe', from: windows.europe[0] - FADE, at: middle(windows.europe) },
     // Lands as the reveal completes, just before the content starts to arrive
     { label: 'The world', from: windows.europe[1] + FADE, at: windows.reveal[1] },

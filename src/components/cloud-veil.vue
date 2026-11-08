@@ -63,7 +63,11 @@ const material = new ShaderMaterial({
         density += fbm(p * scale + float(i) * 31.7) * weight;
       }
 
-      float cover = density - 1.0 + uVeil * 1.7 + (r - 0.45) * 0.6 * (1.0 - uVeil);
+      // The thickest cloud shows first and the gaps between fill in last, spread across the whole of uVeil
+      // so the clouds build up gradually rather than all at once. The edges get a head start.
+      float threshold = mix(0.75, -0.2, uVeil);
+      float edges = (r - 0.45) * 0.6 * smoothstep(0.0, 0.3, uVeil) * (1.0 - uVeil);
+      float cover = density - threshold + edges;
       float alpha = clamp(cover * 3.0, 0.0, 1.0);
       // Moonlit over the night city, sunlit over the day one
       vec3 shadow = pow(mix(vec3(0.16, 0.15, 0.26), vec3(0.58, 0.63, 0.72), uDay), vec3(2.2));

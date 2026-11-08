@@ -74,9 +74,9 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - `src/services/device.ts`: mobile detection (`pointer: coarse`) and the quality tiers (DPR cap,
   textures, star counts, blur).
 - `src/scene/belfast/`: the city. `geo.ts` (origin and bounds; must match the build script),
-  `flight.ts` (one straight sweep north-east past City Hall and the Lagan, down and back up, never turning;
-  the dive from Northern Ireland banks round to its heading under the clouds, see `diveTowardsHome` in
-  `PlanetScene`), `photo-materials.ts` (tile shader with haze, day sky), `materials.ts` (night shaders), `landmarks.ts` (hand-built cranes,
+  `flight.ts` (one straight sweep north along the Lagan, down and back up, never turning; north is the way
+  the camera already faces diving in from the planet, and the climb out starts ahead of where it dived in, so
+  nothing retraces, see `diveTowardsHome` in `PlanetScene`), `photo-materials.ts` (tile shader with haze, day sky), `materials.ts` (night shaders), `landmarks.ts` (hand-built cranes,
   Titanic Belfast, City Hall), `roads.ts` (road texture, drawn in the worker via OffscreenCanvas when possible).
 - `scripts/belfast/build.mjs` → `public/belfast/city.bin` (buildings + roads, binary layout in the script header)
   and `ground.png` (water/park mask). Landmarks that are hand-built are excluded by OSM id. The data is
