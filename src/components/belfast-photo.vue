@@ -11,6 +11,7 @@ import { createDaySkyMaterial } from '@/scene/belfast/photo-materials';
 import { createWater, SkyUniforms } from '@/scene/belfast/water';
 import { createStarlings } from '@/scene/belfast/starlings';
 import { createTrain } from '@/scene/belfast/train';
+import { createTelescope } from '@/scene/belfast/telescope';
 import { attribution } from '@/scene/belfast/attribution';
 import { GOOGLE_MAPS_API_KEY } from '@/scene/belfast/mode';
 import { sceneState } from '@/scene/state';
@@ -37,15 +38,16 @@ const sky = new Mesh(new SphereGeometry(800, 32, 16), skyMaterial);
 sky.renderOrder = -1;
 sky.frustumCulled = false;
 
+const telescope = createTelescope(renderer.value);
 const photoCity = createPhotoCity(renderer.value, GOOGLE_MAPS_API_KEY, error => {
   console.warn('Belfast tiles failed to load; showing the night city instead', error);
   emit('failed');
-});
+}, telescope);
 // Shares the sky's uniforms, so its reflections match the sky
 const water = createWater(skyMaterial.uniforms as SkyUniforms, renderer.value.capabilities.getMaxAnisotropy());
 const starlings = createStarlings();
 const train = createTrain(skyMaterial.uniforms.uSun);
-root.add(sky, photoCity.group, water.mesh, starlings.object, train.object);
+root.add(sky, photoCity.group, water.mesh, starlings.object, train.object, telescope.overlay);
 
 let frame = 0;
 const showAttribution = (isShown: boolean) => {
@@ -60,6 +62,7 @@ onBeforeUnmount(() => {
   water.dispose();
   starlings.dispose();
   train.dispose();
+  telescope.dispose();
   sky.geometry.dispose();
   skyMaterial.dispose();
   showAttribution(false);
@@ -72,7 +75,10 @@ onLoop(({ delta, elapsed }) => {
   const isFlying = isInBelfast(progress);
   // Past the flight, the reader would come back into it from the end
   const direction = progress >= windows.belfast[1] ? -1 : 1;
-  photoCity.update(camera as PerspectiveCamera, isFlying, flightProgressAt(progress), direction, delta);
+  photoCity.update(
+    camera as PerspectiveCamera, isFlying, flightProgressAt(progress), direction, delta,
+    telescope.camerasAt(progress),
+  );
   sceneState.cityReady = photoCity.isReady;
 
   const isActive = isFlying && photoCity.isReady;
@@ -83,5 +89,6 @@ onLoop(({ delta, elapsed }) => {
   water.update(elapsed);
   starlings.update(elapsed, camera as PerspectiveCamera, renderer.value);
   train.update(progress);
+  telescope.update(progress, elapsed, (camera as PerspectiveCamera).aspect, sky, photoCity.group);
 });
 </script>

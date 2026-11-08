@@ -24,6 +24,12 @@ const POSTER = { position: new Vector3(-1, 6.5, 5.5), scale: 0.017 };
 const callouts = (Object.keys(officeAnchors) as EmployerBeat[]).map(beat => ({ beat, anchor: officeAnchors[beat] as Vector3 }));
 /** The remote years at Ankorstore have the arc to Paris instead, and their card up in the sky. */
 const SKY_CARDS: EmployerBeat[] = ['ankorstore'];
+/** Seen through the telescope (telescope.ts): under the eyepieces, with how far it's looking. */
+const SCOPE_CARDS: Partial<Record<EmployerBeat, string>> = {
+  coleraine: '78 km north-west, as the crow flies',
+  antrim: '21 km north-west',
+};
+const scopeBeats = Object.keys(SCOPE_CARDS) as EmployerBeat[];
 
 const root = ref<HTMLElement>();
 const poster = ref<HTMLElement>();
@@ -105,7 +111,7 @@ onMounted(() => {
       element.classList.toggle('is-in-the-sky', isUp && !isPointing);
       toggle(element, isUp);
     });
-    SKY_CARDS.forEach(beat => {
+    [...SKY_CARDS, ...scopeBeats].forEach(beat => {
       const element = calloutElements.get(beat);
       if (element) toggle(element, windowOpacity(progress, windows[beat]) > 0.5);
     });
@@ -139,15 +145,16 @@ onBeforeUnmount(() => {
     </div>
 
     <div
-      v-for="beat in [...callouts.map(callout => callout.beat), ...SKY_CARDS]"
+      v-for="beat in [...callouts.map(callout => callout.beat), ...SKY_CARDS, ...scopeBeats]"
       :key="beat"
       :ref="element => element && calloutElements.set(beat, element as HTMLElement)"
       class="callout sign"
-      :class="{ 'is-in-the-sky': SKY_CARDS.includes(beat) }"
+      :class="{ 'is-in-the-sky': SKY_CARDS.includes(beat), 'is-in-the-scope': scopeBeats.includes(beat) }"
     >
       <span class="dot" />
       <span class="leader" />
       <article class="card">
+        <p v-if="SCOPE_CARDS[beat]" class="readout">◎ {{ SCOPE_CARDS[beat] }}</p>
         <p class="eyebrow">{{ stops[beat].place }} · {{ stops[beat].dates }}</p>
         <h3><CompanyLogo :stop="stops[beat]" :size="30" /></h3>
         <p class="role">{{ stops[beat].role }}</p>
@@ -308,6 +315,31 @@ $blue: #88b8f2;
     .card {
       transform: translateX(-50%);
     }
+  }
+
+  // Under the telescope's eyepieces
+  &.is-in-the-scope {
+    left: 50%;
+    top: auto;
+    bottom: max(3vh, 1rem);
+
+    .dot,
+    .leader {
+      display: none;
+    }
+
+    .card {
+      top: auto;
+      bottom: 0;
+      transform: translateX(-50%);
+    }
+  }
+
+  .readout {
+    margin-bottom: 6px;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 11px;
+    color: #ffd27a;
   }
 
   .eyebrow {

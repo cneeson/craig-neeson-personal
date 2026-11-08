@@ -68,6 +68,12 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - `src/scene/belfast/offices.ts`: the employers' buildings (OSM footprints, rough heights), outlined in light while
   their beat is up, and the callouts' anchors. Frame each beat's camera on its building in `flight.ts`.
   `paris-arc.ts` draws the arc from Ormeau Business Park in the Gasworks towards Paris for Ankorstore.
+- `src/scene/belfast/telescope.ts`: the coin-op telescope over City Hall (day city only). A camera of its own about a
+  kilometre short of each place (Coleraine, then Antrim) renders into a texture, shown through the eyepieces by a
+  screen-space lens shader (distortion, fringes, wobble, iris, a whip across between them, a reticle on the target).
+  Its cameras are extra views for the tiles (`photo-city.ts` `extraViews`): prefetched after the flight, then loaded
+  only near their beats, mostly one at a time. Coleraine is outside the photorealistic coverage (terrain and aerial
+  photos only), so it's seen from further off. The ground there is ~45 units down, with the earth's curve.
 - `src/scene/planet/`: the effects on the planet. `clouds.ts` patches the cloud layer to gather over Northern Ireland
   and part over it (the centre must be turned into the cloud mesh's spinning space); `highlight.ts` traces the
   outline (`northern-ireland.ts`, from Natural Earth) and scans the land; `arcs.ts` draws the arcs to the HQs.

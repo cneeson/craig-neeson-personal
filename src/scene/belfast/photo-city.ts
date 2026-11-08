@@ -24,7 +24,7 @@ const settings = isMobile
     ? { errorTarget: 32, lookahead: [0, 0.06], minBytes: 150 * MEGABYTE, maxBytes: 240 * MEGABYTE }
     : { errorTarget: 20, lookahead: [0, 0.05], minBytes: 450 * MEGABYTE, maxBytes: 700 * MEGABYTE };
 
-/** How many points along the flight are visited to fetch its tiles in the background. */
+/** How many points along the flight are visited to fetch its tiles in the background (then the extra views). */
 const PREFETCH_STEPS = 16;
 
 /** Frames with nothing left to load before the views count as loaded. */
@@ -46,8 +46,15 @@ const MAX_WAIT = { partial: 6, nothing: 12 };
  * - Then a prefetch view walks the rest of the flight, one point at a time. The whole flight decoded
  *   is far more than fits in memory, so older tiles are dropped as it goes, but their downloads stay in
  *   the browser's cache (Google allows four hours), so the lookahead decodes them again quickly.
+ * - `extraViews` (the telescope's, looking out of the city) are visited last by the prefetch, then load
+ *   again while the reader is near them (`update`'s `activeViews`).
  */
-export const createPhotoCity = (renderer: WebGLRenderer, apiKey: string, onFail: (error: unknown) => void) => {
+export const createPhotoCity = (
+    renderer: WebGLRenderer,
+    apiKey: string,
+    onFail: (error: unknown) => void,
+    extraViews: { cameras: PerspectiveCamera[], resolution: Vector2 } = { cameras: [], resolution: new Vector2() },
+) => {
     const tiles = new TilesRenderer();
     // Swaps in the tile shader as each tile is parsed, before the fade plugin (below) prepares its materials
     tiles.registerPlugin({
@@ -151,10 +158,10 @@ export const createPhotoCity = (renderer: WebGLRenderer, apiKey: string, onFail:
         },
 
         /**
-         * Every frame. `flight` is how far along the flight the reader is (0 before it, 1 after it), and
-         * `direction` which way they're heading through it.
+         * Every frame. `flight` is how far along the flight the reader is (0 before it, 1 after it),
+         * `direction` which way they're heading through it, and `activeViews` the extra views to load for.
          */
-        update(camera: PerspectiveCamera, isFlying: boolean, flight: number, direction: number, delta: number) {
+        update(camera: PerspectiveCamera, isFlying: boolean, flight: number, direction: number, delta: number, activeViews: PerspectiveCamera[] = []) {
             if (hasFailed) return;
             group.updateMatrixWorld();
             // Detail is chosen for the screen's size in CSS pixels, however sharp the display
@@ -174,9 +181,22 @@ export const createPhotoCity = (renderer: WebGLRenderer, apiKey: string, onFail:
                 tiles.deleteCamera(camera);
             }
             // Fetching the rest of the flight waits until the start is ready, and gives way to the reader flying
-            const isPrefetching = isReady && !isFlying && prefetchStep < PREFETCH_STEPS;
-            if (isPrefetching) useView(prefetchView, prefetchStep / (PREFETCH_STEPS - 1), camera.aspect);
+            const isPrefetching = isReady && !isFlying && prefetchStep < PREFETCH_STEPS + extraViews.cameras.length;
+            if (isPrefetching && prefetchStep < PREFETCH_STEPS) useView(prefetchView, prefetchStep / (PREFETCH_STEPS - 1), camera.aspect);
             else tiles.deleteCamera(prefetchView);
+            const prefetchingView = isPrefetching ? extraViews.cameras[prefetchStep - PREFETCH_STEPS] : undefined;
+            extraViews.cameras.forEach(view => {
+                if (view !== prefetchingView && !activeViews.includes(view)) {
+                    tiles.deleteCamera(view);
+                    return;
+                }
+                if (prefetchingView === view && view.aspect !== camera.aspect) {
+                    view.aspect = camera.aspect;
+                    view.updateProjectionMatrix();
+                }
+                tiles.setCamera(view);
+                tiles.setResolution(view, extraViews.resolution.lengthSq() ? extraViews.resolution : resolution);
+            });
 
             tiles.update();
 
