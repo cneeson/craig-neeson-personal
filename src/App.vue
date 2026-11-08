@@ -15,7 +15,7 @@ import Experience from './views/experience.vue';
 import Contact from './views/contact.vue';
 import Footer from './views/footer.vue';
 import { isMobile, prefersReducedMotion, quality } from './services/device';
-import { chapterAt, chapters, isInBelfast, settleAt, windowOpacity, windows } from './scene/choreography';
+import { chapterAt, chapters, isInBelfast, letterboxAt, settleAt, windowOpacity, windows } from './scene/choreography';
 import { createCaption } from './scene/captions';
 import { sceneState } from './scene/state';
 import { camera } from './scene/camera';
@@ -85,8 +85,10 @@ onMounted(() => {
     }));
     // Captions over the (bright, busy) city get a shade behind them
     const captionsElement = document.querySelector('.captions') as HTMLElement;
+    const letterbox = document.querySelector('.letterbox') as HTMLElement;
     const syncToJourney = (progress: number) => {
       captionsElement.classList.toggle('is-over-city', isInBelfast(progress));
+      letterbox.style.setProperty('--amount', String(letterboxAt(progress)));
       captions.forEach(caption => (windowOpacity(progress, caption.window) > 0.5 ? caption.show() : caption.hide()));
       activeChapter.value = chapterAt(progress);
     };
@@ -158,6 +160,7 @@ onBeforeUnmount(() => {
     </TresCanvas>
   </div>
 
+  <div class="letterbox" aria-hidden="true" />
   <PlanetHud />
   <CityAttribution />
   <JourneyNav :active="activeChapter" :ready="isSceneReady" @navigate="navigate" />
@@ -234,6 +237,36 @@ html, body {
 
   &.is-ready {
     opacity: 1;
+  }
+}
+
+.letterbox {
+  --amount: 0;
+  // Bars cropping the view to 2.39:1, less on narrow (portrait) screens
+  --bar: min(calc((100vh - 100vw / 2.39) / 2), 11vh);
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    height: max(var(--bar), 7vh);
+    background: #04010b;
+    transform: scaleY(var(--amount));
+  }
+
+  &::before {
+    top: 0;
+    transform-origin: top;
+  }
+
+  &::after {
+    bottom: 0;
+    transform-origin: bottom;
   }
 }
 

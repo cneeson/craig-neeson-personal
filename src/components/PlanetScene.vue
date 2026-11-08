@@ -88,7 +88,7 @@ import { createHighlight } from '@/scene/planet/highlight';
 import { createArcs } from '@/scene/planet/arcs';
 import { EARTH_MESH_ROTATION, EARTH_POSITION, onEarth, PLACES } from '@/scene/planet/geo';
 import { patchClouds } from '@/scene/planet/clouds';
-import { cityFovFor, FLIGHT_ENDS, flightAt } from '@/scene/belfast/flight';
+import { cityFovAt, FLIGHT_ENDS, flightAt } from '@/scene/belfast/flight';
 import { city } from '@/scene/belfast/mode';
 import { clamp01, damp, lerp, smoothstep } from '@/services/three';
 
@@ -279,11 +279,12 @@ onLoop(({ delta, elapsed }) => {
   if (planetRef.value) planetRef.value.visible = !isInCity
 
   if (isInCity) {
-    flightAt(flightProgressAt(progress), cam.position, cityTarget)
+    const flight = flightProgressAt(progress)
+    flightAt(flight, cam.position, cityTarget)
     cam.lookAt(cityTarget)
     cam.rotateY(-parallax.x * 0.04)
     cam.rotateX(-parallax.y * 0.025)
-    setLens(cam, cityFovFor(cam.aspect), CITY_NEAR)
+    setLens(cam, cityFovAt(flight, cam.aspect), CITY_NEAR)
   } else {
     const frame = frameAt(progress, portrait)
     if (progress < windows.belfast[1]) {

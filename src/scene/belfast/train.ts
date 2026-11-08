@@ -2,20 +2,22 @@ import {
     BoxGeometry, BufferAttribute, BufferGeometry, Color, Group, IUniform, Mesh, Quaternion, ShaderMaterial, Vector3,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { flightAt } from './flight';
+import { windows } from '@/scene/choreography';
 import { photoUniforms } from './photo-materials';
 
 /**
- * The railway over the Dargan Bridge, from Lanyon Place north over the Lagan and on towards Yorkgate: x, the
- * height of the deck (measured from the tiles), z, in scene units (10 m). The line is from OpenStreetMap.
+ * The railway from Lanyon Place station, north over the Lagan Railway Bridge and east along the Bangor line: x,
+ * the height of the deck, z, in scene units (10 m). The line is from OpenStreetMap.
  */
 const TRACK: [number, number, number][] = [
-    [-13.59, 0.53, 64.5], [-10.76, 0.73, 50.2], [-10.11, 0.81, 44.45], [-10.27, 0.85, 41.64], [-11.13, 0.92, 37.39],
-    [-12.23, 0.96, 34.36], [-13.63, 0.98, 31.76], [-15.49, 1, 29.14], [-17.15, 1.01, 27.29], [-20.15, 1.02, 24.59],
-    [-45.61, 1, 9.35], [-49.5, 0.94, 6.03], [-53.91, 0.92, 0.75], [-57.22, 0.95, -4.18], [-59.71, 1.01, -9.43],
-    [-62.53, 1.03, -18.64], [-62.84, 1.04, -23.72], [-62.73, 0.94, -36.22], [-61.79, 0.81, -41.88],
-    [-60.3, 0.75, -46.21], [-58.68, 0.64, -49.36], [-55.88, 0.6, -53.92], [-49.25, 0.74, -63.42],
-    [-46.33, 0.73, -69.66], [-44.1, 0.67, -78.04], [-43.66, 0.53, -81.29], [-43.61, 0.21, -88.85],
+    [-15, 0.45, 99.9], [-16.2, 0.45, 91.3], [-16.8, 0.47, 88.1], [-17.1, 0.5, 85.5], [-17, 0.55, 82.2],
+    [-16.1, 0.62, 77.8], [-13.2, 0.62, 64.6], [-12.5, 0.6, 61.4], [-11.7, 0.6, 59], [-10.6, 0.62, 56.4],
+    [-8.9, 0.65, 53.8], [-6.7, 0.7, 51.4], [-4.7, 0.75, 49.7], [-0.5, 0.8, 46.6], [2.2, 0.8, 44.7],
+    [7.7, 0.8, 40.9], [10.8, 0.8, 38.7], [17.1, 0.75, 34.5], [20.4, 0.7, 32.7], [23.5, 0.65, 31.4],
+    [26, 0.6, 30.7], [37.1, 0.55, 28.2], [43, 0.5, 26.9], [54.1, 0.5, 23.7], [60.8, 0.5, 21.8], [67.4, 0.5, 20.5],
+    [74.5, 0.5, 19.7], [86.3, 0.5, 18.9], [98.9, 0.5, 17.6], [109.5, 0.5, 16.1], [120.9, 0.5, 13.6],
+    [132.1, 0.5, 10.5], [142.3, 0.5, 7.2], [150, 0.5, 4.3], [159.6, 0.5, 0.2], [171.4, 0.5, -5.3],
+    [181.1, 0.5, -10.7], [192.3, 0.5, -18.5], [204.3, 0.5, -28.1], [218, 0.5, -38.9],
 ];
 
 /** The heights are the top of the bridge's parapets, which hide the wheels. */
@@ -35,8 +37,15 @@ const trackAt = (arc: number, target: Vector3) => {
     return target.lerpVectors(points[i - 1], points[i], Math.min(1, Math.max(0, t)));
 };
 
-/** How far along the track the middle of the river is: where the train should be when the reader sees it. */
-const OVER_THE_RIVER = 58;
+/** Where the middle of the train waits at Lanyon Place, along the track. */
+const AT_THE_STATION = 4;
+
+/**
+ * It sets off as the Ocula beat starts, pulling away (along the track, scene units, as the square of how far
+ * through the rest of the flight the reader is), and is over the middle of the river as the beat is read.
+ */
+const DEPARTS = windows.ocula[0];
+const PULLS_AWAY = 250;
 
 // A three-car NIR Class 4000 (CAF), in scene units: cars about 23 m long, 2.8 m wide and 3.8 m tall
 const CAR_LENGTH = 2.3;
@@ -45,27 +54,6 @@ const HALF_WIDTH = 0.14;
 /** Between a car's bogies, where it meets the track. */
 const BOGIE_SPACING = 1.6;
 const CARS = 3;
-
-/**
- * How far along the flight (0..1) the reader passes over the river crossing. Facing back the way they came,
- * they see the bridge from then on.
- */
-const PASSES_THE_BRIDGE = (() => {
-    const [river, camera, target] = [trackAt(OVER_THE_RIVER, new Vector3()), new Vector3(), new Vector3()];
-    let [nearest, closest] = [0, Infinity];
-    for (let t = 0; t <= 1; t += 0.001) {
-        flightAt(t, camera, target);
-        const distance = Math.hypot(camera.x - river.x, camera.z - river.z);
-        if (distance < closest) [nearest, closest] = [t, distance];
-    }
-    return nearest;
-})();
-
-/** How long after passing the bridge the train is over the middle of the river, in the middle of the view. */
-const SEEN_AFTER = 0.02;
-
-/** Track (scene units) covered per unit of flight: it crosses the river in about a sixth of the flight. */
-const TRACK_PER_FLIGHT = 180;
 
 const SILVER = '#d4d8de';
 const BLUE = '#1d4f9c';
@@ -135,9 +123,9 @@ const createCar = (hasCab: boolean) => {
 };
 
 /**
- * A Northern Ireland Railways train over the Dargan Bridge: a hand-built three-car Class 4000 in blue and silver.
+ * A Northern Ireland Railways train leaving Lanyon Place: a hand-built three-car Class 4000 in blue and silver.
  * Moved by the scroll like the camera, so however fast the reader goes it crosses the Lagan in front of them
- * just after they pass over the bridge, and carries on along the line. Each car follows the track between its own bogies, so the train
+ * during the Ocula beat, and carries on along the Bangor line. Each car follows the track between its own bogies, so the train
  * bends round the curves. Unlit apart from a little shading from the sun, like the tiles.
  */
 export const createTrain = (sun: IUniform<Vector3>) => {
@@ -206,11 +194,12 @@ export const createTrain = (sun: IUniform<Vector3>) => {
     return {
         object: group,
 
-        /** Every frame while the city is shown, with how far along the flight the reader is (0..1). */
-        update(flight: number) {
-            const arc = OVER_THE_RIVER + (flight - PASSES_THE_BRIDGE - SEEN_AFTER) * TRACK_PER_FLIGHT;
-            // Only on the line, between its ends
-            group.visible = arc > halfTrain && arc < TRACK_LENGTH - halfTrain;
+        /** Every frame while the city is shown, with the journey's progress. */
+        update(progress: number) {
+            const away = Math.max(0, (progress - DEPARTS) / (windows.belfast[1] - DEPARTS));
+            const arc = AT_THE_STATION + away * away * PULLS_AWAY;
+            // Only on the line, before its end
+            group.visible = arc < TRACK_LENGTH - halfTrain;
             if (group.visible) place(arc);
         },
 

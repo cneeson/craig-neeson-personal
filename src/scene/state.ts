@@ -12,6 +12,4 @@ export const sceneState = {
     cityReady: false,
     /** The planet's spin (radians), written by the render loop for the overlays pinned to it. */
     earthRotationY: 0,
-    /** How far the letterbox bars are in (0 → 1), for the cinematic moments over the city. */
-    letterbox: 0,
 };

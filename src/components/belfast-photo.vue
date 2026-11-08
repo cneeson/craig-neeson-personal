@@ -82,6 +82,6 @@ onLoop(({ delta, elapsed }) => {
   sky.position.copy(camera.position);
   water.update(elapsed);
   starlings.update(elapsed, camera as PerspectiveCamera, renderer.value);
-  train.update(flightProgressAt(progress));
+  train.update(progress);
 });
 </script>

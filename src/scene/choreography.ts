@@ -252,6 +252,10 @@ export const highlightAt = (progress: number) => {
     };
 };
 
+/** The letterbox bars (0 → 1) for the dolly zoom under the cranes, in as the clouds clear and out after it. */
+export const letterboxAt = (progress: number) =>
+    ramp(progress, cityFrom, windows.belfastIntro[0]) * (1 - ramp(progress, windows.belfastIntro[1], windows.craft[0]));
+
 /** The arcs out to where the work has reached: how far through drawing them (`amount`), and their `opacity`. */
 export const reachAt = (progress: number) => {
     const [start, end] = windows.reach;

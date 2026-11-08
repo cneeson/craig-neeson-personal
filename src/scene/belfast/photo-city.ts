@@ -9,7 +9,7 @@ import { GLTFExtensionsPlugin, ReorientationPlugin, TilesFadePlugin } from '3d-t
 import { isMobile } from '@/services/device';
 import { clamp01 } from '@/services/three';
 import { ORIGIN, UNIT } from './geo';
-import { cityFovFor, flightAt } from './flight';
+import { cityFovAt, flightAt } from './flight';
 import { createTileMaterial } from './photo-materials';
 
 /** Height of the ground at ORIGIN above the ellipsoid (the tiles' datum), so street level sits at y = 0. */
@@ -114,7 +114,7 @@ export const createPhotoCity = (renderer: WebGLRenderer, apiKey: string, onFail:
     const createView = () => new PerspectiveCamera(50, 1, 0.3, 1000);
     /** Points a view along the flight at `t`, with the real camera's lens, and has the tiles load for it. */
     const useView = (view: PerspectiveCamera, t: number, aspect: number) => {
-        const fov = cityFovFor(aspect);
+        const fov = cityFovAt(t, aspect);
         if (view.aspect !== aspect || view.fov !== fov) {
             [view.aspect, view.fov] = [aspect, fov];
             view.updateProjectionMatrix();
