@@ -1,5 +1,4 @@
 <template>
-  <TresPerspectiveCamera :position="[0, 0, 10]" :near="0.01" :far="1000" :fov="35" />
   <TresDirectionalLight :position="[100, 100, -30]" :intensity="0.8" />
 
   <!-- Three parallax layers of stars: near, medium, far -->
@@ -17,14 +16,6 @@
         :luminance-smoothing="0.5"
         :blend-function="BlendFunction.ADD"
         mipmap-blur
-      />
-      <GodRaysPmndrs
-        v-if="quality.godRays"
-        :light-source="sunRef"
-        :opacity="1"
-        :exposure="0.6"
-        :resolution-scale="0.5"
-        :samples="40"
       />
     </EffectComposerPmndrs>
   </Suspense>
@@ -64,7 +55,7 @@
   </TresGroup>
 
   <TresGroup :position="[-18, -11, -30]">
-    <TresMesh ref="sunRef">
+    <TresMesh>
       <TresSphereGeometry :args="[0.5, 16, 16]" />
       <TresMeshBasicMaterial color="orange" :transparent="true" :opacity="0.1" />
     </TresMesh>
@@ -80,7 +71,7 @@ import { Group, MathUtils, Mesh, PerspectiveCamera, SRGBColorSpace } from 'three
 import { useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
 import { Stars, Outline } from '@tresjs/cientos'
 // @ts-ignore-next-line
-import { BloomPmndrs, EffectComposerPmndrs, GodRaysPmndrs } from '@tresjs/post-processing'
+import { BloomPmndrs, EffectComposerPmndrs } from '@tresjs/post-processing'
 // @ts-ignore-next-line
 import { BlendFunction } from 'postprocessing'
 import CityMarker from './city-marker.vue'
@@ -119,7 +110,6 @@ earthTextures.map.colorSpace = SRGBColorSpace;
 
 const earthRef = shallowRef<Group>()
 const cloudsRef = shallowRef<Mesh>()
-const sunRef = shallowRef<Mesh>()
 const nearStarsRef = shallowRef<{ instance: Group }>()
 const midStarsRef = shallowRef<{ instance: Group }>()
 const bloomRef = shallowRef<{ effect: { luminanceMaterial: { threshold: number } } }>()

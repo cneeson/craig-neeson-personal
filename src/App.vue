@@ -14,6 +14,7 @@ import Footer from './views/footer.vue';
 import { isMobile, prefersReducedMotion, quality } from './services/device';
 import { windows } from './scene/choreography';
 import { sceneState } from './scene/state';
+import { camera } from './scene/camera';
 
 gsap.registerPlugin(ScrollTrigger, ScrollSmoother);
 // Mobile browsers resize the viewport as the address bar shows/hides; recalculating
@@ -93,7 +94,7 @@ onBeforeUnmount(() => context?.revert());
 
 <template>
   <div class="scene" :class="{ 'is-ready': isSceneReady }">
-    <TresCanvas v-bind="gl" :dpr="quality.dpr" render-mode="on-demand">
+    <TresCanvas v-bind="gl" :camera="camera" :dpr="quality.dpr" render-mode="on-demand">
       <Suspense @resolve="isSceneReady = true">
         <PlanetScene />
       </Suspense>

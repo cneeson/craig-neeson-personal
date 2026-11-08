@@ -12,7 +12,6 @@ export const quality = isMobile
       textureDir: 'textures/earth/low-res/',
       sphereSegments: 64,
       starCounts: [300, 1500, 4000],
-      godRays: false,
       canvasBlur: 16,
     }
   : {
@@ -20,6 +19,5 @@ export const quality = isMobile
       textureDir: 'textures/earth/',
       sphereSegments: 96,
       starCounts: [500, 3000, 12000],
-      godRays: true,
       canvasBlur: 32,
     }
