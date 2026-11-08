@@ -28,7 +28,7 @@
         :bump-map="earthTextures.displacementMap"
         :bump-scale="0.3"
       />
-      <Outline :thickness="7" :opacity="0.01" color="#88b8f2" />
+      <Outline ref="outlineRef" :thickness="7" :opacity="0.01" color="#88b8f2" />
     </TresMesh>
 
     <TresMesh ref="cloudsRef">
@@ -67,7 +67,7 @@
 
 <script lang="ts">
 import { defineComponent, shallowRef, useTemplateRef } from 'vue';
-import { Group, MathUtils, Mesh, PerspectiveCamera, SRGBColorSpace } from 'three'
+import { Group, MathUtils, Mesh, PerspectiveCamera, SRGBColorSpace, Vector2 } from 'three'
 import { useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
 import { Stars, Outline } from '@tresjs/cientos'
 // @ts-ignore-next-line
@@ -97,7 +97,7 @@ export default defineComponent({
 </script>
 
 <script lang="ts" setup>
-const { camera, invalidate } = useTresContext()
+const { camera, invalidate, sizes } = useTresContext()
 
 const textureDir = `${process.env.BASE_URL}${quality.textureDir}`
 // useTexture only accepts its own fixed keys, hence the bump map travelling as `displacementMap`
@@ -113,6 +113,7 @@ const cloudsRef = shallowRef<Mesh>()
 const nearStarsRef = shallowRef<{ instance: Group }>()
 const midStarsRef = shallowRef<{ instance: Group }>()
 const bloomRef = shallowRef<{ effect: { luminanceMaterial: { threshold: number } } }>()
+const outlineRef = shallowRef<{ instance: Group }>()
 const homeMarkerRef = useTemplateRef<MarkerInstance>('homeMarkerRef')
 const europeMarkerRefs = useTemplateRef<MarkerInstance[]>('europeMarkerRefs')
 
@@ -120,6 +121,17 @@ const europeMarkerRefs = useTemplateRef<MarkerInstance[]>('europeMarkerRefs')
 // rendering stops there. One extra frame is drawn on the way out so the final blurred
 // backdrop matches where the camera ended up.
 let renderedFinalFrame = false
+
+// cientos' Outline sizes its rim in pixels but only learns the canvas size from later resizes,
+// starting at 1×1. When the scene mounts after the canvas has settled (slower connections) the
+// rim balloons to cover the whole screen, hiding the stars, so seed it with the real size once.
+let isOutlineSized = false
+const sizeOutline = () => {
+  const rim = outlineRef.value?.instance.children[0] as (Mesh & { material: { size: Vector2 } }) | undefined
+  if (!rim) return false
+  rim.material.size.set(sizes.width.value, sizes.height.value)
+  return true
+}
 
 const { onLoop } = useRenderLoop()
 
@@ -151,6 +163,7 @@ onLoop(({ elapsed }) => {
   const europeOpacity = windowOpacity(progress, windows.europe)
   europeMarkerRefs.value?.forEach(marker => marker.setOpacity(europeOpacity, 0.6))
 
+  if (!isOutlineSized) isOutlineSized = sizeOutline()
   if (bloomRef.value) bloomRef.value.effect.luminanceMaterial.threshold = bloomThresholdAt(progress)
 
   invalidate()
