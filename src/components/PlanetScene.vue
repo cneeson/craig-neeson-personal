@@ -66,7 +66,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, shallowRef, useTemplateRef } from 'vue';
+import { defineComponent, onBeforeUnmount, shallowRef, useTemplateRef } from 'vue';
 import { Group, MathUtils, Mesh, PerspectiveCamera, SRGBColorSpace, Vector2 } from 'three'
 import { useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
 import { Stars, Outline } from '@tresjs/cientos'
@@ -75,10 +75,10 @@ import { BloomPmndrs, EffectComposerPmndrs } from '@tresjs/post-processing'
 // @ts-ignore-next-line
 import { BlendFunction } from 'postprocessing'
 import CityMarker from './city-marker.vue'
-import { quality } from '@/services/device';
+import { isMobile, prefersReducedMotion, quality } from '@/services/device';
 import { bloomThresholdAt, frameAt, windowOpacity, windows } from '@/scene/choreography';
 import { sceneState } from '@/scene/state';
-import { clamp01 } from '@/services/three';
+import { clamp01, damp } from '@/services/three';
 
 
 const europeMarkers: { label: string, position: [number, number, number] }[] = [
@@ -98,6 +98,17 @@ export default defineComponent({
 
 <script lang="ts" setup>
 const { camera, invalidate, sizes } = useTresContext()
+
+// A touch of parallax from the pointer on desktop, so the scene stays alive while at rest.
+// Registered before the await below, while the component instance is still active for the cleanup.
+const pointer = { x: 0, y: 0 }
+const parallax = { x: 0, y: 0 }
+const trackPointer = (event: PointerEvent) => {
+  pointer.x = (event.clientX / window.innerWidth) * 2 - 1
+  pointer.y = (event.clientY / window.innerHeight) * 2 - 1
+}
+if (!isMobile && !prefersReducedMotion) window.addEventListener('pointermove', trackPointer, { passive: true })
+onBeforeUnmount(() => window.removeEventListener('pointermove', trackPointer))
 
 const textureDir = `${process.env.BASE_URL}${quality.textureDir}`
 // useTexture only accepts its own fixed keys, hence the bump map travelling as `displacementMap`
@@ -135,22 +146,24 @@ const sizeOutline = () => {
 
 const { onLoop } = useRenderLoop()
 
-onLoop(({ elapsed }) => {
+onLoop(({ delta, elapsed }) => {
   const isHidden = sceneState.exit >= 1
   if (isHidden && renderedFinalFrame) return
   renderedFinalFrame = isHidden
 
   const progress = sceneState.progress
-  const frame = frameAt(progress)
   const cam = camera.value as PerspectiveCamera | undefined
+  // Fully portrait framing on phones, partly on squarer screens such as portrait tablets
+  const frame = frameAt(progress, cam ? clamp01((1 - cam.aspect) / 0.55) : 0)
 
   if (cam) {
-    // Portrait screens have a much narrower horizontal view, so pull back a little and aim
-    // up/left over Europe to keep all of its markers in frame
-    const portraitEurope = clamp01((1 - cam.aspect) / 0.55) * windowOpacity(progress, [0.42, 0.82], 0.1)
-    cam.position.z = frame.cameraZ + portraitEurope * 0.4
-    cam.rotation.x = frame.cameraRotationX + portraitEurope * 0.07
-    cam.rotation.y = portraitEurope * 0.05
+    parallax.x = damp(parallax.x, pointer.x, 2, delta)
+    parallax.y = damp(parallax.y, pointer.y, 2, delta)
+    cam.position.x = parallax.x * 0.025
+    cam.position.y = -parallax.y * 0.015
+    cam.position.z = frame.cameraZ
+    cam.rotation.x = frame.cameraRotationX
+    cam.rotation.y = frame.cameraRotationY
   }
   if (earthRef.value) earthRef.value.rotation.y = frame.earthRotationY
 
@@ -159,9 +172,9 @@ onLoop(({ elapsed }) => {
   if (midStarsRef.value) midStarsRef.value.instance.rotation.set(1 + elapsed * 0.003, 1 + elapsed * 0.003, 1)
   if (cloudsRef.value) cloudsRef.value.rotation.y = -elapsed * 0.006
 
-  homeMarkerRef.value?.setOpacity(windowOpacity(progress, windows.northernIreland))
+  homeMarkerRef.value?.setOpacity(windowOpacity(progress, windows.northernIreland), 1, elapsed)
   const europeOpacity = windowOpacity(progress, windows.europe)
-  europeMarkerRefs.value?.forEach(marker => marker.setOpacity(europeOpacity, 0.6))
+  europeMarkerRefs.value?.forEach(marker => marker.setOpacity(europeOpacity, 0.6, elapsed))
 
   if (!isOutlineSized) isOutlineSized = sizeOutline()
   if (bloomRef.value) bloomRef.value.effect.luminanceMaterial.threshold = bloomThresholdAt(progress)

@@ -6,13 +6,15 @@ import { ScrollSmoother } from 'gsap/ScrollSmoother';
 import { TresCanvas } from '@tresjs/core'
 import { differenceInYears } from 'date-fns';
 import PlanetScene from './components/PlanetScene.vue';
+import JourneyNav from './components/journey-nav.vue';
 import Hero from './views/hero.vue'
 import Skills from './views/skills.vue';
 import Experience from './views/experience.vue';
 import Contact from './views/contact.vue';
 import Footer from './views/footer.vue';
 import { isMobile, prefersReducedMotion, quality } from './services/device';
-import { windows } from './scene/choreography';
+import { chapterAt, chapters, settleAt, windowOpacity, windows } from './scene/choreography';
+import { createCaption } from './scene/captions';
 import { sceneState } from './scene/state';
 import { camera } from './scene/camera';
 
@@ -31,9 +33,34 @@ const gl = {
 }
 
 const isSceneReady = ref(false);
+const activeChapter = ref(0);
+
+const scrollToY = (y: number) => {
+  const smoother = ScrollSmoother.get();
+  if (smoother) smoother.scrollTo(y, true);
+  else window.scrollTo({ top: y, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+};
+
+/** Scrolls to a chapter of the journey (see choreography), or on to the content. */
+const navigate = (target: number | 'content') => {
+  const track = document.querySelector('.scene-track') as HTMLElement;
+  const content = document.querySelector('.content') as HTMLElement;
+  scrollToY(target === 'content'
+    ? content.offsetTop - innerHeight * 0.1
+    : chapters[target].at * (track.offsetHeight - innerHeight));
+};
+
+let isTouching = false;
+const onTouchStart = () => (isTouching = true);
+const onTouchEnd = () => (isTouching = false);
+
 let context: gsap.Context | undefined;
 
 onMounted(() => {
+  window.addEventListener('touchstart', onTouchStart, { passive: true });
+  window.addEventListener('touchend', onTouchEnd, { passive: true });
+  window.addEventListener('touchcancel', onTouchEnd, { passive: true });
+
   context = gsap.context(() => {
     // Native scrolling is smoother than any JS smoothing on touch devices
     if (!isMobile && !prefersReducedMotion) {
@@ -44,12 +71,42 @@ onMounted(() => {
       });
     }
 
-    const scrub = prefersReducedMotion ? true : 1;
+    // Catch-up smoothing between the scroll position and the scene. ScrollSmoother already
+    // smooths desktop scrolling, so it needs less on top; native touch scrolling needs a little more.
+    const scrub = prefersReducedMotion ? true : isMobile ? 0.8 : 0.6;
+
+    // Captions are shown while their beat is mostly in view, in step with the markers
+    const captions = [
+      { window: windows.northernIreland, ...createCaption(document.querySelector('[data-caption="home"]') as HTMLElement) },
+      { window: windows.europe, ...createCaption(document.querySelector('[data-caption="europe"]') as HTMLElement) },
+    ];
+    const syncToJourney = (progress: number) => {
+      captions.forEach(caption => (windowOpacity(progress, caption.window) > 0.5 ? caption.show() : caption.hide()));
+      activeChapter.value = chapterAt(progress);
+    };
+
+    // Coming to rest while a caption is fading in eases it fully into view (see settleAt). Not
+    // ScrollTrigger's own `snap`: alongside ScrollSmoother that stops the page following jumps
+    // upwards. Nor its `scrollEnd` event, which doesn't always fire once smoothing finishes.
+    const settle = gsap.delayedCall(0.25, () => {
+      const trigger = journey.scrollTrigger;
+      if (isTouching || !trigger?.isActive) return;
+      const target = settleAt(trigger.progress, trigger.direction);
+      if (target !== trigger.progress) scrollToY(trigger.start + target * (trigger.end - trigger.start));
+    }).pause();
 
     // --- The 3D journey: one timeline, 0 → 1 across the scene track ---
     const journey = gsap.timeline({
       defaults: { ease: 'none' },
-      scrollTrigger: { trigger: '.scene-track', start: 'top top', end: 'bottom bottom', scrub },
+      onUpdate: () => syncToJourney(journey.progress()),
+      scrollTrigger: {
+        trigger: '.scene-track',
+        start: 'top top',
+        end: 'bottom bottom',
+        scrub,
+        // Restarted on every scroll, so it only runs once scrolling (and smoothing) has stopped
+        onUpdate: () => prefersReducedMotion || settle.restart(true),
+      },
     });
 
     journey.to(sceneState, { progress: 1, duration: 1 }, 0);
@@ -57,25 +114,14 @@ onMounted(() => {
     const [, heroEnd] = windows.hero;
     journey.to('.hero-content', { autoAlpha: 0, filter: 'blur(16px)', y: -40, duration: heroEnd }, 0);
 
-    const caption = (selector: string, [start, end]: readonly [number, number]) => {
-      const fade = 0.04;
-      journey
-        .fromTo(selector,
-          { autoAlpha: 0, y: 24, filter: 'blur(12px)' },
-          { autoAlpha: 1, y: 0, filter: 'blur(0px)', duration: fade, ease: 'power1.out' }, start)
-        .to(selector,
-          { autoAlpha: 0, y: -24, filter: 'blur(12px)', duration: fade, ease: 'power1.in' }, end - fade);
-    };
-    caption('[data-caption="home"]', windows.northernIreland);
-    caption('[data-caption="europe"]', windows.europe);
-
     // --- Hand-off: the planet blurs into a backdrop as the content arrives ---
     gsap.timeline({
       defaults: { ease: 'none' },
       scrollTrigger: { trigger: '.content', start: 'top bottom', end: 'top 15%', scrub },
     })
       .to(sceneState, { exit: 1, duration: 1 }, 0)
-      .to('.scene', { filter: `blur(${quality.canvasBlur}px)`, opacity: 0.75, yPercent: -20, duration: 1 }, 0);
+      .to('.scene', { filter: `blur(${quality.canvasBlur}px)`, opacity: 0.75, yPercent: -20, duration: 1 }, 0)
+      .to('.journey-nav', { autoAlpha: 0, duration: 0.4 }, 0);
 
     gsap.utils.toArray<HTMLElement>('[data-reveal]').forEach(element => {
       gsap.from(element, {
@@ -89,7 +135,12 @@ onMounted(() => {
   });
 });
 
-onBeforeUnmount(() => context?.revert());
+onBeforeUnmount(() => {
+  window.removeEventListener('touchstart', onTouchStart);
+  window.removeEventListener('touchend', onTouchEnd);
+  window.removeEventListener('touchcancel', onTouchEnd);
+  context?.revert();
+});
 </script>
 
 <template>
@@ -101,7 +152,10 @@ onBeforeUnmount(() => context?.revert());
     </TresCanvas>
   </div>
 
-  <div class="captions" aria-live="polite">
+  <JourneyNav :active="activeChapter" :ready="isSceneReady" @navigate="navigate" />
+
+  <!-- v-once: the captions are split into words for their entrance, so Vue mustn't re-render them -->
+  <div v-once class="captions" aria-live="polite">
     <p class="caption" data-caption="home">
       <span class="block mb-3">Hi, I'm <strong>Craig.</strong> 👋</span>
       I'm a frontend developer based in <strong>Northern&nbsp;Ireland.</strong>
@@ -182,6 +236,10 @@ html, body {
   strong {
     font-weight: 700;
   }
+
+  .word {
+    display: inline-block;
+  }
 }
 
 #smooth-wrapper {
@@ -189,14 +247,16 @@ html, body {
   z-index: 20;
 }
 
+// Each beat gets roughly a screen of scrolling, so captions stay up long enough to read
 .scene-track {
-  height: 600vh;
+  height: 700vh;
 }
 
 .content {
   @apply mx-auto max-w-6xl px-5 md:px-8 flex flex-col gap-40 lg:gap-56 pb-40;
 
-  // Starts just as the planet reveal finishes, so the hand-off overlaps the last beat
-  margin-top: -40vh;
+  // Starts arriving just as the planet reveal finishes (windows.reveal), so the hand-off
+  // follows straight on from it
+  margin-top: -45vh;
 }
 </style>
