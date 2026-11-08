@@ -90,7 +90,7 @@ import {
   bloomThresholdAt, diveAt, flightProgressAt, frameAt, isInBelfast, veilAt, windowOpacity, windows,
 } from '@/scene/choreography';
 import { sceneState } from '@/scene/state';
-import { cityFovFor, flightAt, HEADING } from '@/scene/belfast/flight';
+import { cityFovFor, FLIGHT_PITCH, flightAt, HEADING } from '@/scene/belfast/flight';
 import { city } from '@/scene/belfast/mode';
 import { clamp01, damp, lerp, smoothstep } from '@/services/three';
 
@@ -199,10 +199,10 @@ const lookMatrix = new Matrix4()
 const lookQuaternion = new Quaternion()
 
 /**
- * Flies the camera down towards the Northern Ireland marker by `dive` (0 → 1), heading the way the flight
- * over the city goes. It ends up looking down along that heading with the horizon level, just as the
- * camera over the city starts: behind the marker on the way in, and ahead of it on the way out (where the
- * flight finished), so the climb back out never retraces the way in.
+ * Drops the camera down towards the Northern Ireland marker by `dive` (0 → 1), tilting up off the planet
+ * as it goes so it falls into the city backwards, facing the way the camera over the city faces. It ends
+ * up where the flight starts: looking out along the heading, just above the horizon. Climbing out, it
+ * starts from where the flight finishes, behind the marker and looking down, so nothing is retraced.
  */
 const diveTowardsHome = (cam: PerspectiveCamera, earthRotationY: number, dive: number, isLeaving: boolean) => {
   marker.copy(HOME_MARKER).applyAxisAngle(UP, earthRotationY).add(EARTH_POSITION)
@@ -210,13 +210,16 @@ const diveTowardsHome = (cam: PerspectiveCamera, earthRotationY: number, dive: n
   north.copy(UP).addScaledVector(surfaceUp, -surfaceUp.y).normalize()
   east.crossVectors(north, surfaceUp)
   heading.copy(north).multiplyScalar(Math.cos(HEADING)).addScaledVector(east, Math.sin(HEADING))
-  // Above the marker, looking down along the heading at the same angle as the ends of the flight (38.7°)
-  approach.copy(marker).addScaledVector(surfaceUp, 0.02).addScaledVector(heading, isLeaving ? 0.025 : -0.025)
+  // The flight starts north-east of the marker (past the cranes) and finishes south-west of it
+  approach.copy(marker).addScaledVector(surfaceUp, isLeaving ? 0.03 : 0.012).addScaledVector(heading, isLeaving ? -0.02 : 0.01)
   cam.position.lerp(approach, dive)
-  lookTarget.copy(approach).addScaledVector(surfaceUp, -0.02).addScaledVector(heading, 0.025)
+  const pitch = isLeaving ? FLIGHT_PITCH.end : FLIGHT_PITCH.start
+  lookTarget.copy(cam.position).addScaledVector(heading, Math.cos(pitch)).addScaledVector(surfaceUp, Math.sin(pitch))
   lookMatrix.lookAt(cam.position, lookTarget, surfaceUp)
   lookQuaternion.setFromRotationMatrix(lookMatrix)
-  cam.quaternion.slerp(lookQuaternion, smoothstep(clamp01(dive * 2.5)))
+  // The tilt leads the fall (dive eases in, its square root doesn't), so the planet drops out of view
+  // while it's still clear of the clouds
+  cam.quaternion.slerp(lookQuaternion, smoothstep(clamp01(Math.sqrt(dive) * 1.4)))
 }
 
 const { onLoop } = useRenderLoop()

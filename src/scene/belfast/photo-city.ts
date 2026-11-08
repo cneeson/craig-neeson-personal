@@ -83,8 +83,10 @@ export const createPhotoCity = (renderer: WebGLRenderer, apiKey: string, onFail:
         scene.traverse(object => {
             const mesh = object as Mesh;
             if (!mesh.isMesh) return;
-            const material = mesh.material as ShaderMaterial;
-            material.uniforms.map.value.dispose();
+            // Usually the tile shader, but a tile can be dropped before its materials were swapped
+            const material = mesh.material as ShaderMaterial | MeshBasicMaterial;
+            const map = 'uniforms' in material ? material.uniforms.map?.value : material.map;
+            map?.dispose();
             material.dispose();
         });
     });

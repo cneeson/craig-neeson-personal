@@ -3,35 +3,58 @@ import { clamp01, lerp } from '@/services/three';
 import { createSpline } from '@/scene/choreography';
 
 /**
- * The flight over Belfast: one straight sweep north, never turning, the same way the camera faces over
- * the planet. Out of the clouds over the south of the city, down along the Lagan with City Hall off to the
- * left, skimming the river past the Big Fish, then up past Titanic Belfast and the cranes on the right and
- * out towards the lough. Only the height and the tilt of the view change (0 → 1 across the flight).
+ * The flight over Belfast, flown backwards: the camera always faces north-east, out towards the lough,
+ * while it travels south-west. It drops out of the clouds over the dry dock and backs down it, under
+ * Samson and Goliath between their legs, then winds low past Titanic Belfast, over the Lagan at the Big Fish
+ * and over City Hall, before rising back up into the clouds (0 → 1 across the flight).
  */
 
 /**
- * The compass bearing of the flight: north, as the camera dives in from the planet (within a few degrees),
- * so it never turns between the planet and the city. See `diveTowardsHome` in PlanetScene.
+ * The compass bearing the camera faces. The cranes line up along it exactly, at right angles to their
+ * girders. The dive from the planet turns to it as it tilts up (see `diveTowardsHome` in PlanetScene).
  */
-export const HEADING = 0;
+export const HEADING = MathUtils.degToRad(40);
 const forward = { x: Math.sin(HEADING), z: -Math.cos(HEADING) };
 
-// Over the Lagan, which runs north from Ormeau Bridge to the Big Fish; this point is just past the Big Fish,
-// where the flight is lowest. City Hall is 600 m to the left, Titanic Belfast 700 m to the right. The ends
-// are hidden in the clouds, so the flight runs well beyond what's seen of it.
-const CENTRE = { x: -35, z: 25 };
-const [START, END] = [-260, 260];
+// Scene units (10 m): x east, z south, y the height above the ground, pitch in degrees above the horizon
+const waypoints: { x: number, z: number, y: number, pitch: number }[] = [
+    // In the clouds, out along the dry dock
+    { x: 126, z: -81, y: 30, pitch: -8 },
+    // Backing down the dock over the ship in it
+    { x: 85, z: -33, y: 9, pitch: -2 },
+    // Under the cranes, parked side by side at the end of the dock (in the tiles; OSM has Samson further
+    // up), looking up a little to see their girders go overhead
+    { x: 69, z: -13, y: 5, pitch: 4 },
+    { x: 65, z: -8.5, y: 5, pitch: 4 },
+    { x: 55, z: 4, y: 5.5, pitch: 0 },
+    // Sideways round the dock beside Titanic Belfast
+    { x: 22, z: -28, y: 7, pitch: -4 },
+    // Low over the Lagan at the Big Fish
+    { x: -38, z: 37, y: 3.5, pitch: -6 },
+    // Over City Hall, then climbing away into the clouds
+    { x: -97, z: 84, y: 10, pitch: -18 },
+    { x: -150, z: 140, y: 75, pitch: -38 },
+];
 
-// A sweep down and back up again, symmetrical about the river
-const heightAt = createSpline([0, 0.15, 0.32, 0.5, 0.68, 0.85, 1], [90, 50, 20, 12, 20, 50, 95]);
-// Degrees below the horizon: steep where it meets the dive at either end, nearly level when low
-const pitchAt = createSpline([0, 0.2, 0.4, 0.6, 0.8, 1], [-38.7, -24, -13, -13, -24, -38.7]);
+// Spaced by the distance between waypoints, so the speed stays fairly even
+const distances = waypoints.map((point, i) => (i === 0 ? 0 : Math.hypot(
+    point.x - waypoints[i - 1].x, point.y - waypoints[i - 1].y, point.z - waypoints[i - 1].z,
+)));
+const total = distances.reduce((sum, distance) => sum + distance, 0);
+let travelled = 0;
+const knots = distances.map(distance => (travelled += distance) / total);
+const [xAt, yAt, zAt, pitchAt] = (['x', 'y', 'z', 'pitch'] as const)
+    .map(key => createSpline(knots, waypoints.map(point => point[key])));
+
+/** Where the camera looks at the start and end of the flight, in radians above the horizon. */
+export const FLIGHT_PITCH = {
+    start: MathUtils.degToRad(waypoints[0].pitch),
+    end: MathUtils.degToRad(waypoints[waypoints.length - 1].pitch),
+};
 
 export const flightAt = (t: number, position: Vector3, target: Vector3) => {
     const time = clamp01(t);
-    // Steady over the ground, so the speed carries on from the dive without stopping
-    const distance = lerp(START, END, time);
-    position.set(CENTRE.x + forward.x * distance, heightAt(time), CENTRE.z + forward.z * distance);
+    position.set(xAt(time), yAt(time), zAt(time));
     const pitch = MathUtils.degToRad(pitchAt(time));
     target.set(forward.x * Math.cos(pitch), Math.sin(pitch), forward.z * Math.cos(pitch))
         .multiplyScalar(50)
