@@ -4,35 +4,34 @@ import { createSpline } from '@/scene/choreography';
 
 /**
  * The flight over Belfast, flown backwards: the camera looks back the way it came, turning naturally as
- * the path bends. It drops out of the clouds over the dry dock and backs down it, under Samson and Goliath
- * between their legs, then low over the SSE Arena, across the Lagan by the Dargan (rail) Bridge, over the
- * weir and on over the city centre, rising back up into the clouds (0 → 1 across the flight).
+ * the path bends. It drops out of the clouds just short of Samson and Goliath, backs down between their legs,
+ * then low over the SSE Arena, across the Lagan by the Dargan (rail) Bridge, over the weir and on over the city
+ * centre, rising back up into the clouds (0 → 1 across the flight).
  */
 
 // Scene units (10 m): x east, z south, y the height above the ground, pitch in degrees above the horizon.
-// Placed from the tiles, not OSM: the cranes move along their dock.
-const waypoints: { x: number, z: number, y: number, pitch: number }[] = [
-    // In the clouds, out along the dry dock, tilted down to match the glide in from orbit
-    { x: 126, z: -81, y: 30, pitch: -22 },
-    // Backing down the dock over the ship in it
-    { x: 85, z: -33, y: 9, pitch: -2 },
-    // Under the cranes, parked side by side at the end of the dock, looking up a little at their girders
-    { x: 69, z: -13, y: 5, pitch: 4 },
+// `pace` slows the stretch arriving at a waypoint. Placed from the tiles, not OSM: the cranes move along their dock.
+const waypoints: { x: number, z: number, y: number, pitch: number, pace?: number }[] = [
+    // In the clouds over the end of the dock, tilted down to match the glide in from orbit
+    { x: 80, z: -27, y: 16, pitch: -20 },
+    // Under the cranes, parked side by side at the end of the dock, looking up a little at their girders.
+    // Sinking down to them slowly, so the clouds have cleared before the camera passes under.
+    { x: 69, z: -13, y: 5, pitch: 4, pace: 0.25 },
     { x: 65, z: -8.5, y: 5, pitch: 4 },
     // Over the SSE Arena
     { x: 5, z: 2, y: 7, pitch: -6 },
     // Across the Lagan beside the M3 and Dargan bridges, then over the weir
-    { x: -35, z: 13, y: 4, pitch: -4 },
+    { x: -35, z: 13, y: 3.5, pitch: -4 },
     { x: -42, z: 40, y: 4.5, pitch: -6 },
     // Over the city centre, then climbing away into the clouds
     { x: -97, z: 84, y: 14, pitch: -20 },
     { x: -150, z: 140, y: 75, pitch: -38 },
 ];
 
-// Spaced by the distance between waypoints, so the speed stays fairly even
+// Spaced by the distance between waypoints (over its pace), so the speed stays fairly even
 const distances = waypoints.map((point, i) => (i === 0 ? 0 : Math.hypot(
     point.x - waypoints[i - 1].x, point.y - waypoints[i - 1].y, point.z - waypoints[i - 1].z,
-)));
+) / (point.pace ?? 1)));
 const total = distances.reduce((sum, distance) => sum + distance, 0);
 let travelled = 0;
 const knots = distances.map(distance => (travelled += distance) / total);

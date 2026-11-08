@@ -47,10 +47,14 @@ type Keyframe = Partial<SceneFrame> & {
 
 // The camera arrives at each beat's framing as its caption becomes readable, then drifts
 // slowly through it rather than stopping. Unset values carry over from the previous keyframe.
+// Until the clouds over Belfast the camera follows the glide from orbit instead (see approachAt), and only the
+// earth's spin comes from here.
 const keyframes: Keyframe[] = [
-    { at: 0, earthRotationY: 0, cameraZ: 10, cameraRotationX: 0, cameraRotationY: 0 },
-    // Swoop down over the horizon to Northern Ireland. From there the camera dives into the clouds
-    // (see diveAt), and climbs back out of them to pull back across Europe.
+    // Turned so the camera starts out looking away from the sun, which would wash out the planet under the
+    // title, then spun into position under it
+    { at: 0, earthRotationY: -0.6, cameraZ: 10, cameraRotationX: 0, cameraRotationY: 0 },
+    // Over Northern Ireland. From there the camera dives into the clouds, and climbs back out of them
+    // (see diveAt) to pull back across Europe.
     { at: windows.northernIreland[0], earthRotationY: -0.36, cameraZ: 10.75, cameraRotationX: -0.375 },
     { at: windows.northernIreland[1], earthRotationY: -0.44, cameraZ: 10.95 },
     // Drift east to take in Europe. Portrait pulls back and aims up/left to fit all five markers.
@@ -138,7 +142,7 @@ export const windowOpacity = (progress: number, [start, end]: readonly [number, 
         smoothstep(clamp01((end + fade - progress) / fade)),
     );
 
-// The approach starts halfway through the Northern Ireland caption, so it glides in gradually
+// The descent starts halfway through the Northern Ireland caption, so it glides in gradually
 const [diveFrom, cityFrom, cityTo, climbTo] = [
     (windows.northernIreland[0] + windows.northernIreland[1]) / 2, windows.belfast[0], windows.belfast[1], windows.europe[0],
 ];
@@ -148,14 +152,39 @@ export const isInBelfast = (progress: number) => progress >= cityFrom && progres
 /** 0 → 1 across the flight over Belfast. */
 export const flightProgressAt = (progress: number) => clamp01((progress - cityFrom) / (cityTo - cityFrom));
 
-/**
- * 0 → 1 (steadily) as the camera glides down from orbit towards Northern Ireland and into the clouds,
- * and 1 → 0 as it climbs back out of them after Belfast. PlanetScene eases the motion.
- */
+/** 1 → 0 (steadily) as the camera climbs back out of the clouds after Belfast. PlanetScene eases the motion. */
 export const diveAt = (progress: number) => {
-    if (progress < cityFrom) return clamp01((progress - diveFrom) / (cityFrom - diveFrom));
     if (progress < cityTo) return 1;
     return 1 - clamp01((progress - cityTo) / (climbTo - cityTo));
+};
+
+// The glide in from orbit, which ends in the clouds and carries on just past them so it's still moving there
+const approachKnots = [0, windows.northernIreland[0], diveFrom, cityFrom, cityFrom + 0.03];
+const approachSplines = {
+    arc: createSpline(approachKnots, [30, -11, -12, -2, -1.5]),
+    // Eased in proportion, like a steady descent: the surface keeps coming up at the same rate however close
+    height: createSpline(approachKnots, [0.21, 0.5, 0.45, 0.018, 0.012].map(Math.log)),
+    aim: createSpline(approachKnots, [9.7, -15, -14, -11, -11]),
+};
+
+/**
+ * The glide from orbit down to Northern Ireland, until the clouds. The camera starts out far to the north,
+ * looking on past the North Pole, backs away south past Northern Ireland, still looking north, then sinks
+ * down onto it, turning to the way the flight over the city starts out looking (`turn`, 0 → 1). All along a
+ * great circle through the Northern Ireland marker, heading a little east of north so it passes beside the
+ * pole rather than over it, where the planet's texture pinches (see APPROACH_BEARING in PlanetScene):
+ * - `arc`: degrees along it from the marker, north positive;
+ * - `height`: above the surface, in earth radii;
+ * - `aim`: degrees above the horizon it looks, so the horizon stays in view right down to the clouds.
+ */
+export const approachAt = (progress: number) => {
+    const p = Math.min(progress, cityFrom);
+    return {
+        arc: approachSplines.arc(p),
+        height: Math.exp(approachSplines.height(p)),
+        aim: approachSplines.aim(p),
+        turn: smoothstep(clamp01((p - diveFrom) / (cityFrom - diveFrom))),
+    };
 };
 
 /** 0 → 1 → 0 around a point, rising over `before`, staying at 1 for `hold` either side, and falling over `after`. */

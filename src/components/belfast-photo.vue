@@ -8,6 +8,9 @@ import { onBeforeUnmount } from 'vue';
 import { useRenderLoop, useTresContext } from '@tresjs/core';
 import { createPhotoCity } from '@/scene/belfast/photo-city';
 import { createDaySkyMaterial } from '@/scene/belfast/photo-materials';
+import { createWater, SkyUniforms } from '@/scene/belfast/water';
+import { createStarlings } from '@/scene/belfast/starlings';
+import { createTrain } from '@/scene/belfast/train';
 import { attribution } from '@/scene/belfast/attribution';
 import { GOOGLE_MAPS_API_KEY } from '@/scene/belfast/mode';
 import { sceneState } from '@/scene/state';
@@ -38,7 +41,11 @@ const photoCity = createPhotoCity(renderer.value, GOOGLE_MAPS_API_KEY, error => 
   console.warn('Belfast tiles failed to load; showing the night city instead', error);
   emit('failed');
 });
-root.add(sky, photoCity.group);
+// Shares the sky's uniforms, so its reflections match the sky
+const water = createWater(skyMaterial.uniforms as SkyUniforms, renderer.value.capabilities.getMaxAnisotropy());
+const starlings = createStarlings();
+const train = createTrain(skyMaterial.uniforms.uSun);
+root.add(sky, photoCity.group, water.mesh, starlings.object, train.object);
 
 let frame = 0;
 const showAttribution = (isShown: boolean) => {
@@ -50,6 +57,9 @@ const showAttribution = (isShown: boolean) => {
 
 onBeforeUnmount(() => {
   photoCity.dispose();
+  water.dispose();
+  starlings.dispose();
+  train.dispose();
   sky.geometry.dispose();
   skyMaterial.dispose();
   showAttribution(false);
@@ -57,7 +67,7 @@ onBeforeUnmount(() => {
 });
 
 const { onLoop } = useRenderLoop();
-onLoop(({ delta }) => {
+onLoop(({ delta, elapsed }) => {
   const { progress } = sceneState;
   const isFlying = isInBelfast(progress);
   // Past the flight, the reader would come back into it from the end
@@ -68,6 +78,10 @@ onLoop(({ delta }) => {
   const isActive = isFlying && photoCity.isReady;
   root.visible = isActive;
   showAttribution(isActive);
-  if (isActive) sky.position.copy(camera.position);
+  if (!isActive) return;
+  sky.position.copy(camera.position);
+  water.update(elapsed);
+  starlings.update(elapsed, camera as PerspectiveCamera, renderer.value);
+  train.update(flightProgressAt(progress));
 });
 </script>

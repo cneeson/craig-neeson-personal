@@ -87,7 +87,7 @@ import BelfastPhoto from './belfast-photo.vue'
 import CloudVeil from './cloud-veil.vue'
 import { isMobile, prefersReducedMotion, quality } from '@/services/device';
 import {
-  bloomThresholdAt, diveAt, flightProgressAt, frameAt, isInBelfast, veilAt, windowOpacity, windows,
+  approachAt, bloomThresholdAt, diveAt, flightProgressAt, frameAt, isInBelfast, veilAt, windowOpacity, windows,
 } from '@/scene/choreography';
 import { sceneState } from '@/scene/state';
 import { cityFovFor, FLIGHT_ENDS, flightAt } from '@/scene/belfast/flight';
@@ -110,14 +110,23 @@ const EARTH_POSITION = new Vector3(0, -1.1, 9.5)
 const HOME_MARKER = new Vector3(0.23, 0.823, 0.54)
 const UP = new Vector3(0, 1, 0)
 
+// The glide from orbit follows a great circle through the marker, heading this far east of north (radians)
+const APPROACH_BEARING = MathUtils.degToRad(25)
+const HOME_UP = HOME_MARKER.clone().normalize()
+// Along the great circle at the marker
+const HOME_AHEAD = (() => {
+  const north = UP.clone().addScaledVector(HOME_UP, -HOME_UP.y).normalize()
+  const east = new Vector3().crossVectors(north, HOME_UP)
+  return north.multiplyScalar(Math.cos(APPROACH_BEARING)).addScaledVector(east, Math.sin(APPROACH_BEARING))
+})()
+
 // Field of view and near plane: narrow over the planet, wider (more so on portrait screens) over the city
 const PLANET_LENS = { fov: 35, near: 0.01 }
 const CITY_NEAR = 0.3
 
-// Where the glide down from orbit ends: just above the planet's clouds (the marker sits on them), a little
-// behind the marker. `ratio` sets the easing: about √ratio of the distance is left halfway through. Climbing
-// out eases less, so it's well clear of the surface by the time the clouds part.
-const APPROACH = { height: 0.008, behind: 0.012, ratio: { in: 0.03, out: 0.12 } }
+// Where the climb out of the clouds starts: just above the planet's clouds (the marker sits on them), a little
+// behind the marker. `ratio` sets the easing: about √ratio of the distance is left halfway through.
+const CLIMB = { height: 0.008, behind: 0.012, ratio: 0.12 }
 
 export default defineComponent({
   name: 'PlanetScene',
@@ -203,31 +212,51 @@ const lookTarget = new Vector3()
 const lookMatrix = new Matrix4()
 const lookQuaternion = new Quaternion()
 
+/** Points `heading` `turn` radians east of `north`, and the camera along it, `pitch` radians above level. */
+const aim = (cam: PerspectiveCamera, turn: number, pitch: number) => {
+  east.crossVectors(north, surfaceUp)
+  heading.copy(north).multiplyScalar(Math.cos(turn)).addScaledVector(east, Math.sin(turn))
+  lookTarget.copy(cam.position)
+    .addScaledVector(heading, Math.cos(pitch))
+    .addScaledVector(surfaceUp, Math.sin(pitch))
+  lookMatrix.lookAt(cam.position, lookTarget, surfaceUp)
+  lookQuaternion.setFromRotationMatrix(lookMatrix)
+}
+
 /**
- * Glides the camera from orbit down towards the Northern Ireland marker by `dive` (0 → 1), tilting up
- * over the horizon as it gets closer, so the surface stays in view right up until the clouds. It ends
- * just above them, south-west of the marker, looking the way the flight over the city starts out looking.
- * Climbing out it reverses from where the flight finishes, so it carries on backwards and upwards, the
- * way the flight was going, out to the view of Europe.
+ * The glide from orbit down to Northern Ireland and into the clouds (see approachAt), looking north over the
+ * horizon the whole way, then turning to the way the flight over the city starts out looking.
  */
-const diveTowardsHome = (cam: PerspectiveCamera, earthRotationY: number, dive: number, isLeaving: boolean) => {
+const glideFromOrbit = (cam: PerspectiveCamera, earthRotationY: number, progress: number) => {
+  const { arc, height, aim: aimAbove, turn } = approachAt(progress)
+  const angle = MathUtils.degToRad(arc)
+  surfaceUp.copy(HOME_UP).multiplyScalar(Math.cos(angle)).addScaledVector(HOME_AHEAD, Math.sin(angle))
+    .applyAxisAngle(UP, earthRotationY)
+  // `north` is along the great circle here, which aim() turns from
+  north.copy(HOME_UP).multiplyScalar(-Math.sin(angle)).addScaledVector(HOME_AHEAD, Math.cos(angle))
+    .applyAxisAngle(UP, earthRotationY)
+  cam.position.copy(EARTH_POSITION).addScaledVector(surfaceUp, 1 + height)
+  const horizon = Math.acos(1 / (1 + height))
+  aim(cam, turn * (FLIGHT_ENDS.start.heading - APPROACH_BEARING), MathUtils.degToRad(aimAbove) - horizon)
+  cam.quaternion.copy(lookQuaternion)
+}
+
+/**
+ * Climbs from the clouds over Northern Ireland back out to the planet's framing by `dive` (1 → 0). It starts
+ * from where the flight over the city finishes, so it carries on backwards and upwards, the way the flight
+ * was going, out to the view of Europe.
+ */
+const climbFromHome = (cam: PerspectiveCamera, earthRotationY: number, dive: number) => {
   marker.copy(HOME_MARKER).applyAxisAngle(UP, earthRotationY).add(EARTH_POSITION)
   surfaceUp.copy(marker).sub(EARTH_POSITION).normalize()
   north.copy(UP).addScaledVector(surfaceUp, -surfaceUp.y).normalize()
-  east.crossVectors(north, surfaceUp)
-  const look = isLeaving ? FLIGHT_ENDS.end : FLIGHT_ENDS.start
-  heading.copy(north).multiplyScalar(Math.cos(look.heading)).addScaledVector(east, Math.sin(look.heading))
-  approach.copy(marker).addScaledVector(surfaceUp, APPROACH.height).addScaledVector(heading, -APPROACH.behind)
-  // Closing a constant fraction of the remaining distance with each step, like a steady descent, so the
-  // surface keeps coming up at the same rate however close it is
-  const ratio = isLeaving ? APPROACH.ratio.out : APPROACH.ratio.in
-  cam.position.lerp(approach, (1 - ratio ** dive) / (1 - ratio))
-  lookTarget.copy(cam.position)
-    .addScaledVector(heading, Math.cos(look.pitch))
-    .addScaledVector(surfaceUp, Math.sin(look.pitch))
-  lookMatrix.lookAt(cam.position, lookTarget, surfaceUp)
-  lookQuaternion.setFromRotationMatrix(lookMatrix)
-  // Fully tilted over the horizon a while before the clouds, and held there
+  const look = FLIGHT_ENDS.end
+  aim(cam, look.heading, look.pitch)
+  approach.copy(marker).addScaledVector(surfaceUp, CLIMB.height).addScaledVector(heading, -CLIMB.behind)
+  // Closing a constant fraction of the remaining distance with each step, like a steady climb
+  cam.position.lerp(approach, (1 - CLIMB.ratio ** dive) / (1 - CLIMB.ratio))
+  aim(cam, look.heading, look.pitch)
+  // Tilted over the horizon until well clear of the clouds
   cam.quaternion.slerp(lookQuaternion, smoothstep(clamp01(dive / 0.75)))
 }
 
@@ -261,10 +290,16 @@ onLoop(({ delta, elapsed }) => {
     setLens(cam, cityFovFor(cam.aspect), CITY_NEAR)
   } else {
     const frame = frameAt(progress, portrait)
-    cam.position.set(parallax.x * 0.025, -parallax.y * 0.015, frame.cameraZ)
-    cam.rotation.set(frame.cameraRotationX, frame.cameraRotationY, 0)
-    const dive = diveAt(progress)
-    if (dive > 0) diveTowardsHome(cam, frame.earthRotationY, dive, progress > windows.belfast[1])
+    if (progress < windows.belfast[1]) {
+      glideFromOrbit(cam, frame.earthRotationY, progress)
+      cam.rotateY(-parallax.x * 0.02)
+      cam.rotateX(-parallax.y * 0.012)
+    } else {
+      cam.position.set(parallax.x * 0.025, -parallax.y * 0.015, frame.cameraZ)
+      cam.rotation.set(frame.cameraRotationX, frame.cameraRotationY, 0)
+      const dive = diveAt(progress)
+      if (dive > 0) climbFromHome(cam, frame.earthRotationY, dive)
+    }
     setLens(cam, PLANET_LENS.fov, PLANET_LENS.near)
     if (earthRef.value) earthRef.value.rotation.y = frame.earthRotationY
 
@@ -273,7 +308,9 @@ onLoop(({ delta, elapsed }) => {
     if (midStarsRef.value) midStarsRef.value.instance.rotation.set(1 + elapsed * 0.003, 1 + elapsed * 0.003, 1)
     if (cloudsRef.value) cloudsRef.value.rotation.y = -elapsed * 0.006
 
-    homeMarkerRef.value?.setOpacity(windowOpacity(progress, windows.northernIreland), 1, elapsed)
+    // Faded out as the camera closes in on it, before it fills the view
+    const homeFade = smoothstep(clamp01((approachAt(progress).height - 0.08) / 0.15))
+    homeMarkerRef.value?.setOpacity(windowOpacity(progress, windows.northernIreland) * homeFade, 1, elapsed)
     const europeOpacity = windowOpacity(progress, windows.europe)
     europeMarkerRefs.value?.forEach(europeMarker => europeMarker.setOpacity(europeOpacity, 0.6, elapsed))
     if (!isOutlineSized) isOutlineSized = sizeOutline()

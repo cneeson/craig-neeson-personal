@@ -77,11 +77,15 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - `src/services/device.ts`: mobile detection (`pointer: coarse`) and the quality tiers (DPR cap,
   textures, star counts, blur).
 - `src/scene/belfast/`: the city. `geo.ts` (origin and bounds; must match the build script),
-  `flight.ts` (flown backwards, looking back along the path as it turns: down the dry dock and under the H&W
-  cranes, over the SSE Arena, across the Lagan by the M3 and Dargan (rail) bridges, over the weir and the city
-  centre. The orbit approach glides in low over the planet, tilted at the horizon along the flight's starting
-  heading, and the climb out carries on along its end heading; see `diveTowardsHome` and `FLIGHT_ENDS`. Place
-  waypoints from the tiles, not OSM: the cranes move along their dock), `photo-materials.ts` (tile shader with haze, day sky), `materials.ts` (night shaders), `landmarks.ts` (hand-built cranes,
+  `flight.ts` (flown backwards, looking back along the path as it turns: out of the clouds just short of the H&W
+  cranes and under them, over the SSE Arena, across the Lagan by the M3 and Dargan (rail) bridges, over the weir
+  and the city centre. Place waypoints from the tiles, not OSM: the cranes move along their dock). The glide from
+  orbit (`approachAt` in choreography, `glideFromOrbit` in PlanetScene) starts far north looking on past the pole,
+  backs south past Northern Ireland still looking north, and sinks onto it, turning to the flight's starting
+  heading; it runs along a great circle that passes beside the pole, as the planet's texture pinches at it. The
+  climb out carries on along the flight's end heading (`climbFromHome`, `FLIGHT_ENDS`). `water.ts`, `starlings.ts`
+  and `train.ts` animate the day city; the train is moved by the scroll so it always crosses the Dargan Bridge just
+  after the reader passes over it, `photo-materials.ts` (tile shader with haze, day sky), `materials.ts` (night shaders), `landmarks.ts` (hand-built cranes,
   Titanic Belfast, City Hall), `roads.ts` (road texture, drawn in the worker via OffscreenCanvas when possible).
 - `scripts/belfast/build.mjs` → `public/belfast/city.bin` (buildings + roads, binary layout in the script header)
   and `ground.png` (water/park mask). Landmarks that are hand-built are excluded by OSM id. The data is
