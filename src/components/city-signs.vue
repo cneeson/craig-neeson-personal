@@ -8,6 +8,7 @@ import { sceneState } from '@/scene/state';
 import { officeAnchors } from '@/scene/belfast/offices';
 import { stops, type Stop } from '@/data/journey';
 import EmployerDialog from './employer-dialog.vue';
+import CompanyLogo from './company-logo.vue';
 
 /**
  * What's written over Belfast: the gig poster of skills standing by the SSE Arena (placed in the scene with a
@@ -148,7 +149,7 @@ onBeforeUnmount(() => {
       <span class="leader" />
       <article class="card">
         <p class="eyebrow">{{ stops[beat].place }} · {{ stops[beat].dates }}</p>
-        <h3>{{ stops[beat].name }}</h3>
+        <h3><CompanyLogo :stop="stops[beat]" :size="30" /></h3>
         <p class="role">{{ stops[beat].role }}</p>
         <p class="line">{{ stops[beat].line }}</p>
         <button type="button" class="more" @click="openStop = stops[beat]">More about {{ stops[beat].name }}</button>
@@ -318,10 +319,7 @@ $blue: #88b8f2;
   }
 
   h3 {
-    margin-top: 2px;
-    font-size: 26px;
-    font-weight: 700;
-    line-height: 1.15;
+    margin: 10px 0 8px;
   }
 
   .role {

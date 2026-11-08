@@ -3,7 +3,7 @@
     <div v-if="stop" class="panel">
       <button class="close" aria-label="Close" @click="emit('close')">×</button>
       <p class="eyebrow">{{ stop.place }} · {{ stop.dates }}</p>
-      <h2 id="employer-dialog-title">{{ stop.name }}</h2>
+      <h2 id="employer-dialog-title"><CompanyLogo :stop="stop" :size="36" /></h2>
       <p class="role">{{ stop.role }}</p>
 
       <ul v-if="stop.details" class="points">
@@ -32,6 +32,7 @@ import { ref, watch } from 'vue';
 import { format } from 'date-fns';
 import type { Job } from '@/data/jobs';
 import type { Stop } from '@/data/journey';
+import CompanyLogo from './company-logo.vue';
 
 /** The details behind a sign over the city: the key points of each role there. */
 const props = defineProps<{
@@ -83,7 +84,7 @@ const formatDates = (job: Job) => {
   -webkit-backdrop-filter: blur(12px);
 
   h2 {
-    @apply text-3xl font-bold pr-8;
+    @apply mt-3 mb-3 pr-8;
   }
 
   h3 {

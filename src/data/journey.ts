@@ -12,7 +12,21 @@ export interface Stop {
     jobs: Job[];
     /** For the university, which isn't a job. */
     details?: string[];
+    /** Its logo in one colour (public/logos), and the logo's width over its height. */
+    logo: { file: string, aspect: number };
 }
+
+/**
+ * The size to show a logo at so they all look about as big: the same area, rather than the same height,
+ * so long wordmarks aren't huge beside stacked ones. `size` is the height of a 3:1 logo (px).
+ */
+export const logoSize = ({ aspect }: Stop['logo'], size = 28) => {
+    const height = Math.min(size * Math.sqrt(3 / aspect), size * 1.4);
+    return { width: `${(height * aspect).toFixed(1)}px`, height: `${height.toFixed(1)}px` };
+};
+
+/** The logo's file, to use as a mask filled with the text colour (an <img> would draw it black). */
+export const logoUrl = ({ file }: Stop['logo']) => `${process.env.BASE_URL}logos/${file}`;
 
 const jobsAt = (employer: string) => jobs.filter(job => job.employer === employer);
 
@@ -20,6 +34,7 @@ const jobsAt = (employer: string) => jobs.filter(job => job.employer === employe
 export const stops: Record<EmployerBeat, Stop> = {
     coleraine: {
         name: 'Ulster University',
+        logo: { file: 'ulster-university.svg', aspect: 1.803 },
         role: 'BSc Computing, First Class Honours',
         place: 'Coleraine',
         dates: '2013 – 2017',
@@ -32,6 +47,7 @@ export const stops: Record<EmployerBeat, Stop> = {
     },
     antrim: {
         name: 'Nitec Solutions',
+        logo: { file: 'nitec.svg', aspect: 3.005 },
         role: 'Placement Student → Software Developer',
         place: 'Antrim',
         dates: '2012 – 2018',
@@ -40,6 +56,7 @@ export const stops: Record<EmployerBeat, Stop> = {
     },
     liberty: {
         name: 'Liberty IT',
+        logo: { file: 'liberty-it.svg', aspect: 1.817 },
         role: 'Associate Software Engineer',
         place: 'Adelaide Street',
         dates: '2017',
@@ -48,6 +65,7 @@ export const stops: Record<EmployerBeat, Stop> = {
     },
     flexera: {
         name: 'Flexera',
+        logo: { file: 'flexera.svg', aspect: 4.203 },
         role: 'UI Engineer',
         place: 'Adelaide Street',
         dates: '2018 – 2019',
@@ -56,6 +74,7 @@ export const stops: Record<EmployerBeat, Stop> = {
     },
     locum: {
         name: 'Locate a Locum',
+        logo: { file: 'locate-a-locum.svg', aspect: 9.494 },
         role: 'Software Developer',
         place: 'The Gasworks',
         dates: '2019 – 2021',
@@ -64,6 +83,7 @@ export const stops: Record<EmployerBeat, Stop> = {
     },
     ankorstore: {
         name: 'Ankorstore',
+        logo: { file: 'ankorstore.svg', aspect: 6.622 },
         role: 'Senior Frontend Engineer',
         place: 'Paris, remotely',
         dates: '2021 – 2025',
@@ -72,6 +92,7 @@ export const stops: Record<EmployerBeat, Stop> = {
     },
     ocula: {
         name: 'Ocula Technologies',
+        logo: { file: 'ocula.svg', aspect: 3.655 },
         role: 'Senior Frontend Engineer',
         place: 'Lanyon Place',
         dates: 'Since January 2026',
