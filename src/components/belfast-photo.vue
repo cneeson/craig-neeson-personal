@@ -7,11 +7,14 @@ import { Group, Mesh, PerspectiveCamera, SphereGeometry } from 'three';
 import { onBeforeUnmount } from 'vue';
 import { useRenderLoop, useTresContext } from '@tresjs/core';
 import { createPhotoCity } from '@/scene/belfast/photo-city';
-import { createDaySkyMaterial } from '@/scene/belfast/photo-materials';
+import { cloudShadowUniforms, createDaySkyMaterial } from '@/scene/belfast/photo-materials';
 import { createWater, SkyUniforms } from '@/scene/belfast/water';
 import { createStarlings } from '@/scene/belfast/starlings';
 import { createTrain } from '@/scene/belfast/train';
 import { createTelescope } from '@/scene/belfast/telescope';
+import { createPlane } from '@/scene/belfast/plane';
+import { createFerry, createRiverBoat } from '@/scene/belfast/boats';
+import { createTraffic } from '@/scene/belfast/traffic';
 import { attribution } from '@/scene/belfast/attribution';
 import { sceneState } from '@/scene/state';
 import { flightProgressAt, isInBelfast, windows } from '@/scene/choreography';
@@ -46,7 +49,12 @@ const photoCity = createPhotoCity(renderer.value, process.env.VUE_APP_GOOGLE_MAP
 const water = createWater(skyMaterial.uniforms as SkyUniforms, renderer.value.capabilities.getMaxAnisotropy());
 const starlings = createStarlings();
 const train = createTrain(skyMaterial.uniforms.uSun);
-root.add(sky, photoCity.group, water.mesh, starlings.object, train.object, telescope.overlay);
+const plane = createPlane(skyMaterial.uniforms.uSun);
+const ferry = createFerry(skyMaterial.uniforms.uSun);
+const riverBoat = createRiverBoat(skyMaterial.uniforms.uSun);
+const traffic = createTraffic(skyMaterial.uniforms.uSun);
+root.add(sky, photoCity.group, water.mesh, starlings.object, train.object, plane.object, ferry.object,
+  riverBoat.object, traffic.object, telescope.overlay);
 
 let frame = 0;
 const showAttribution = (isShown: boolean) => {
@@ -62,6 +70,10 @@ onBeforeUnmount(() => {
   starlings.dispose();
   train.dispose();
   telescope.dispose();
+  plane.dispose();
+  ferry.dispose();
+  riverBoat.dispose();
+  traffic.dispose();
   sky.geometry.dispose();
   skyMaterial.dispose();
   showAttribution(false);
@@ -85,9 +97,14 @@ onLoop(({ delta, elapsed }) => {
   showAttribution(isActive);
   if (!isActive) return;
   sky.position.copy(camera.position);
+  cloudShadowUniforms.uCloudTime.value = elapsed;
   water.update(elapsed);
   starlings.update(elapsed, camera as PerspectiveCamera, renderer.value);
   train.update(progress);
+  plane.update(progress);
+  ferry.update(progress);
+  riverBoat.update(progress);
+  traffic.update(elapsed, camera as PerspectiveCamera, renderer.value, photoCity.group);
   telescope.update(progress, elapsed, (camera as PerspectiveCamera).aspect, sky, photoCity.group);
 });
 </script>

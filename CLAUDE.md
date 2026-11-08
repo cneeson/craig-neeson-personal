@@ -40,8 +40,11 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - `src/App.vue`: page shell. Sets up the fixed `.scene` canvas, the captions, the journey nav, and all
   GSAP/ScrollTrigger timelines (the journey across `.scene-track`, settling onto captions, the hand-off
   blur as `.content` arrives, and section reveals).
-- `src/components/PlanetScene.vue`: the Tres scene (earth, clouds, stars, markers, bloom) and the
-  render loop. Must stay inside `<Suspense>` because it awaits textures.
+- `src/components/PlanetScene.vue`: the Tres scene (earth, clouds, atmosphere, stars, markers, bloom + SMAA) and
+  the render loop. Must stay inside `<Suspense>` because it awaits textures.
+- `src/scene/earth.ts`: the earth's material (the day map plus NASA Black Marble city lights where the scene's sun
+  doesn't reach, coming on through dusk, and a haze towards the disc's edge) and the atmosphere shell, which glows
+  by how close each line of sight passes to the ground, so it works from orbit and from just above the clouds.
 - `src/components/belfast-photo.vue`: the Belfast flythrough by day, from Google Photorealistic 3D Tiles
   (`src/scene/belfast/photo-city.ts`, via `3d-tiles-renderer`). Mounted 1.5s after the planet. Extra cameras
   along the flight (`setCamera`) load it ahead of the reader: the start of the flight first (then it's drawn
@@ -103,15 +106,25 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   orbit (`approachAt` in choreography, `glideFromOrbit` in PlanetScene) starts far north looking on past the pole,
   backs south past Northern Ireland still looking north, and sinks onto it, turning to the flight's starting
   heading; it runs along a great circle that passes beside the pole, as the planet's texture pinches at it. The
-  climb out carries on along the flight's end heading (`climbFromHome`, `FLIGHT_ENDS`). `water.ts`, `starlings.ts`
-  and `train.ts` animate the city; the train is moved by the scroll, leaving Lanyon Place in the Ocula beat and
-  crossing the Lagan Railway Bridge as it's read, then east along the Bangor line, and `photo-materials.ts` (tile
-  shader with haze, day sky).
-- `scripts/belfast/water.mjs` → `public/belfast/water.png` (the water mask for `water.ts`, over `geo.ts`'s area). The
+  climb out carries on along the flight's end heading (`climbFromHome`, `FLIGHT_ENDS`). `water.ts`, `starlings.ts`,
+  `train.ts`, `plane.ts` and `boats.ts` animate the city; all but the water and starlings are moved by the scroll,
+  timed to beats. The train leaves Lanyon Place in the Ocula beat and crosses the Lagan Railway Bridge as it's read,
+  then heads east along the Bangor line. The plane takes off from Belfast City Airport and passes over the reader in
+  the craft beat. A ferry comes in down Musgrave Channel past the cranes, and a tour boat comes down the Lagan under
+  the train in the Ocula beat. The plane and boats are bigger, and fly or sail closer, than they would in life, so
+  they read. `traffic.ts` drives cars along the main roads near the flight (plus a few named streets it passes),
+  all on the GPU in two draw calls (models and points): the roads are points in a texture and each car's place is
+  worked out from the time. Within 140 units they're little models; further off, points, fading out by 400. They sit
+  on a top-down height render of the tiles around the camera, refreshed every second, in the browser only, like the
+  tiles. `photo-materials.ts` holds the tile shader (haze and drifting cloud shadows, shared with the overlays) and
+  the day sky.
+- `scripts/belfast/water.mjs` → `public/belfast/water.png` (the water mask for `water.ts`, over `geo.ts`'s area), and
+  `scripts/belfast/traffic.mjs` → `public/belfast/traffic.bin` (the traffic's roads, layout in the script header). The
   data, like the office footprints in `offices.ts`, is © OpenStreetMap contributors (credited in the attributions
   dialog); keep that credit.
 - `src/data/jobs.ts`: experience content. Other copy lives in the `src/views/*` components.
-- `public/textures/earth/` (desktop) and `public/textures/earth/low-res/` (mobile).
+- `public/textures/earth/` (desktop) and `public/textures/earth/low-res/` (mobile). `night-lights.jpg` is NASA's
+  Black Marble 2016, credited in the attributions dialog.
 
 ## Gotchas (each of these cost real debugging time)
 
@@ -121,9 +134,6 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - **The camera is created up front and passed to `<TresCanvas :camera>`.** If it's declared inside the
   async scene, Tres first creates a default camera and then swaps it out. `EffectComposerPmndrs`
   rebuilds on that swap but its effects don't re-attach, so bloom silently disappears, depending on load timing.
-- **cientos `<Outline>` starts with a 1×1 size uniform** and only updates on later resizes. On slow
-  loads the rim covers the whole screen and hides the stars. `PlanetScene` seeds the size once
-  (`sizeOutline`). Keep that if you touch the outline.
 - **Bugs that depend on load timing don't show up on localhost.** Test with throttled or intercepted
   requests (e.g. Playwright `page.route`) or against the live site before calling a scene fix done.
 - `useTexture` only accepts its fixed keys (`map`, `displacementMap`, `alphaMap`, ...). Other keys

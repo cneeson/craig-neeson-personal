@@ -3,7 +3,7 @@ import {
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { windows } from '@/scene/choreography';
-import { photoUniforms } from './photo-materials';
+import { CLOUD_SHADE_GLSL, CLOUD_SHADOW_GLSL, cloudShadowUniforms, photoUniforms } from './photo-materials';
 
 /**
  * The railway from Lanyon Place station, north over the Lagan Railway Bridge and east along the Bangor line: x,
@@ -130,7 +130,7 @@ const createCar = (hasCab: boolean) => {
  */
 export const createTrain = (sun: IUniform<Vector3>) => {
     const material = new ShaderMaterial({
-        uniforms: { uSun: sun, ...photoUniforms },
+        uniforms: { uSun: sun, ...photoUniforms, ...cloudShadowUniforms },
         vertexShader: /* glsl */ `
             attribute vec3 color;
             attribute float glow;
@@ -152,10 +152,12 @@ export const createTrain = (sun: IUniform<Vector3>) => {
             varying vec3 vColor;
             varying float vGlow;
             varying vec3 vWorld;
+            ${CLOUD_SHADOW_GLSL}
             void main() {
                 vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
-                float light = 0.75 + 0.35 * max(dot(n, uSun), 0.0) + 0.1 * n.y;
-                vec3 color = vGlow > 0.5 ? vColor * 1.6 : vColor * light;
+                float sunlit = cloudShadow(vWorld.xz);
+                float light = 0.75 + 0.35 * max(dot(n, uSun), 0.0) * sunlit + 0.1 * n.y;
+                vec3 color = vGlow > 0.5 ? vColor * 1.6 : vColor * light * mix(${CLOUD_SHADE_GLSL}, vec3(1.0), sunlit);
                 float distance = length(cameraPosition - vWorld);
                 float haze = 1.0 - exp(-pow(distance * uFogDensity, 2.0));
                 gl_FragColor = vec4(mix(color, uFogColor, haze), 1.0);

@@ -3,7 +3,7 @@ import {
     ShaderMaterial, Texture, TextureLoader, Vector3,
 } from 'three';
 import { bounds } from './geo';
-import { photoUniforms } from './photo-materials';
+import { CLOUD_SHADE_GLSL, CLOUD_SHADOW_GLSL, cloudShadowUniforms, photoUniforms } from './photo-materials';
 
 /** Linear colour from sRGB components (0..1), for shader constants. */
 const lin = (r: number, g: number, b: number) => new Color(r, g, b).convertSRGBToLinear();
@@ -81,6 +81,7 @@ export const createWater = (sky: SkyUniforms, anisotropy: number) => {
             uDeep: { value: lin(0.07, 0.12, 0.14) },
             ...sky,
             ...photoUniforms,
+            ...cloudShadowUniforms,
         },
         vertexShader: /* glsl */ `
             varying vec3 vWorld;
@@ -107,6 +108,7 @@ export const createWater = (sky: SkyUniforms, anisotropy: number) => {
             uniform float uFogDensity;
             varying vec3 vWorld;
             varying float vDistance;
+            ${CLOUD_SHADOW_GLSL}
 
             // The map holds tangent-space normals; swizzled so y is up
             vec3 ripple(vec2 uv) {
@@ -145,9 +147,11 @@ export const createWater = (sky: SkyUniforms, anisotropy: number) => {
                 float fresnel = 0.02 + 0.98 * pow(1.0 - max(dot(normal, view), 0.0), 5.0);
 
                 vec3 color = mix(uDeep, skyColor(reflected), fresnel);
-                // Glitter: a broad sheen, plus pinpricks bright enough to catch the bloom
+                // Glitter: a broad sheen, plus pinpricks bright enough to catch the bloom. None under a cloud.
+                float sunlit = cloudShadow(vWorld.xz);
                 float sun = max(dot(reflected, uSun), 0.0);
-                color += uSunColor * (pow(sun, 60.0) * 0.25 + pow(sun, 900.0) * 6.0);
+                color *= mix(${CLOUD_SHADE_GLSL}, vec3(1.0), sunlit);
+                color += uSunColor * (pow(sun, 60.0) * 0.25 + pow(sun, 900.0) * 6.0) * sunlit;
 
                 float haze = 1.0 - exp(-pow(vDistance * uFogDensity, 2.0));
                 // Mostly opaque, hiding the seams in the tiles' water, but letting a little of the photo through

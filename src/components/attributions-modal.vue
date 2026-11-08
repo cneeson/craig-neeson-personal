@@ -9,6 +9,9 @@
           High resolution earth textures downloaded with thanks from <a href="https://planetpixelemporium.com/earth8081.html" target="_blank" rel="noopener">Planet Pixel Emporium.</a>
         </li>
         <li>
+          City lights at night from <a href="https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/" target="_blank" rel="noopener">NASA Earth Observatory's Black Marble</a>, by Joshua Stevens, using Suomi NPP VIIRS data from Miguel Román, NASA GSFC.
+        </li>
+        <li>
           Belfast in 3D from <a href="https://developers.google.com/maps/documentation/tile/3d-tiles" target="_blank" rel="noopener">Google Photorealistic 3D Tiles</a>, with imagery and map data © Google and its data providers.
         </li>
         <li>
