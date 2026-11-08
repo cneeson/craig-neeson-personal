@@ -9,6 +9,9 @@
           High resolution earth textures downloaded with thanks from <a href="https://planetpixelemporium.com/earth8081.html" target="_blank" rel="noopener">Planet Pixel Emporium.</a>
         </li>
         <li>
+          Belfast's buildings, streets and waterways from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>, available under the Open Database License.
+        </li>
+        <li>
           SVG icons downloaded with thanks from <a href="https://www.svgrepo.com" target="_blank" rel="noopener">SVG Repo.</a>
         </li>
         <li>

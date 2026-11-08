@@ -21,10 +21,14 @@ const tracks: Track[] = ['earthRotationY', 'cameraZ', 'cameraRotationX', 'camera
  * the stretch where the caption is fully readable: it fades in just before and out just after.
  */
 export const windows = {
-    hero: [0, 0.05],
-    northernIreland: [0.24, 0.4],
-    europe: [0.54, 0.7],
-    reveal: [0.7, 0.92],
+    hero: [0, 0.04],
+    northernIreland: [0.13, 0.23],
+    // The flight over Belfast, between diving into the clouds and climbing back out of them
+    belfast: [0.3, 0.6],
+    // "Welcome to Belfast", as the city appears through the clouds
+    belfastTitle: [0.32, 0.36],
+    europe: [0.68, 0.78],
+    reveal: [0.78, 0.94],
 } as const;
 
 const captioned = [windows.northernIreland, windows.europe];
@@ -42,7 +46,8 @@ type Keyframe = Partial<SceneFrame> & {
 // slowly through it rather than stopping. Unset values carry over from the previous keyframe.
 const keyframes: Keyframe[] = [
     { at: 0, earthRotationY: 0, cameraZ: 10, cameraRotationX: 0, cameraRotationY: 0 },
-    // Swoop down over the horizon to Northern Ireland
+    // Swoop down over the horizon to Northern Ireland. From there the camera dives into the clouds
+    // (see diveAt), and climbs back out of them to pull back across Europe.
     { at: windows.northernIreland[0], earthRotationY: -0.36, cameraZ: 10.75, cameraRotationX: -0.375 },
     { at: windows.northernIreland[1], earthRotationY: -0.44, cameraZ: 10.95 },
     // Drift east to take in Europe. Portrait pulls back and aims up/left to fit all five markers.
@@ -65,7 +70,7 @@ const keyframes: Keyframe[] = [
  * Being monotone, it also never overshoots, so a value that only ever increases between
  * keyframes never reverses direction on the way.
  */
-const createSpline = (xs: number[], ys: number[]) => {
+export const createSpline = (xs: number[], ys: number[]) => {
     const last = xs.length - 1;
     const widths = xs.slice(1).map((x, i) => x - xs[i]);
     const slopes = widths.map((width, i) => (ys[i + 1] - ys[i]) / width);
@@ -130,13 +135,44 @@ export const windowOpacity = (progress: number, [start, end]: readonly [number, 
         smoothstep(clamp01((end + fade - progress) / fade)),
     );
 
+const [diveFrom, cityFrom, cityTo, climbTo] = [
+    windows.northernIreland[1], windows.belfast[0], windows.belfast[1], windows.europe[0],
+];
+
+export const isInBelfast = (progress: number) => progress >= cityFrom && progress < cityTo;
+
+/** 0 → 1 across the flight over Belfast. */
+export const flightProgressAt = (progress: number) => clamp01((progress - cityFrom) / (cityTo - cityFrom));
+
 /**
- * Bloom is strong for the atmospheric shots, and pulled back while markers are shown
- * so the map stays crisp.
+ * 0 → 1 as the camera dives from Northern Ireland down into the clouds (accelerating), and
+ * 1 → 0 as it climbs back out of them after Belfast (decelerating).
+ */
+export const diveAt = (progress: number) => {
+    if (progress < cityFrom) return clamp01((progress - diveFrom) / (cityFrom - diveFrom)) ** 3;
+    if (progress < cityTo) return 1;
+    return (1 - clamp01((progress - cityTo) / (climbTo - cityTo))) ** 3;
+};
+
+/** 0 → 1 → 0 around a point, rising over `before` and falling over `after`. */
+const bump = (progress: number, at: number, before: number, after: number) => smoothstep(progress < at
+    ? clamp01((progress - at + before) / before)
+    : clamp01((at + after - progress) / after));
+
+/** How much the clouds cover the screen. They hide the switch between the planet and the city. */
+export const veilAt = (progress: number) => Math.max(
+    bump(progress, cityFrom, 0.035, 0.022),
+    bump(progress, cityTo, 0.022, 0.03),
+);
+
+/**
+ * Bloom is strong for the atmospheric shots, pulled back while markers are shown so the map stays
+ * crisp, moderate over the city so its lights glow, and off in the clouds.
  */
 export const bloomThresholdAt = (progress: number) => {
     const focus = Math.max(...captioned.map(window => windowOpacity(progress, window, FADE * 2)));
-    return lerp(0.3, 0.9, focus);
+    const base = isInBelfast(progress) ? 0.55 : lerp(0.3, 0.9, focus);
+    return lerp(base, 1.2, veilAt(progress));
 };
 
 /** How close to a caption a scroll has to come to rest before it's eased the rest of the way in. */
@@ -148,6 +184,12 @@ const SETTLE_REACH = 0.07;
  * of travel: scrolling on past a caption never pulls the reader back to it.
  */
 export const settleAt = (progress: number, direction: number) => {
+    // Never left resting in the clouds: carry on through them the way the reader was going
+    if (direction !== 0 && veilAt(progress) > 0.05) {
+        let target = progress;
+        while (target > 0 && target < 1 && veilAt(target) > 0.02) target += 0.002 * Math.sign(direction);
+        return clamp01(target);
+    }
     for (const [start, end] of captioned) {
         const [readFrom, readTo] = [start + 0.01, end - 0.01];
         if (direction > 0 && progress > start - SETTLE_REACH && progress < readFrom) return readFrom;
@@ -165,6 +207,8 @@ const middle = ([start, end]: readonly [number, number]) => (start + end) / 2;
 export const chapters = [
     { label: 'Hello', from: 0, at: 0 },
     { label: 'Home', from: windows.northernIreland[0] - FADE, at: middle(windows.northernIreland) },
+    // Lands as the city has cleared the clouds, heading for the cranes
+    { label: 'Belfast', from: cityFrom - 0.035, at: cityFrom + (cityTo - cityFrom) * 0.12 },
     { label: 'Europe', from: windows.europe[0] - FADE, at: middle(windows.europe) },
     // Lands as the reveal completes, just before the content starts to arrive
     { label: 'The world', from: windows.europe[1] + FADE, at: windows.reveal[1] },

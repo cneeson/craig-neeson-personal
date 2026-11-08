@@ -22,3 +22,6 @@ pnpm-debug.log*
 *.sln
 *.sw?
 /docs
+
+# Belfast build script cache (raw Overpass responses)
+/scripts/belfast/.cache

@@ -17,6 +17,7 @@ npm install
 npm run serve      # dev server (http://localhost:8080)
 npm run lint       # eslint --fix; use `npx vue-cli-service lint --no-fix` to check only
 npm run build      # production build into dist/
+npm run belfast    # rebuild public/belfast/ from OpenStreetMap (Overpass); add --refresh to re-download
 ```
 
 There are no tests. Verify changes by running the site and looking at it (see Verifying).
@@ -34,6 +35,12 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   blur as `.content` arrives, and section reveals).
 - `src/components/PlanetScene.vue`: the Tres scene (earth, clouds, stars, markers, bloom) and the
   render loop. Must stay inside `<Suspense>` because it awaits textures.
+- `src/components/belfast-city.vue`: the Belfast flythrough (buildings, ground, lamps, traffic, sky, landmarks).
+  Mounted 1.5s after the planet so it loads in the background; decoded in `src/scene/belfast/city.worker.ts`,
+  then drawn once off screen to warm up the GPU. Sets `sceneState.cityReady`.
+- `src/components/cloud-veil.vue`: full-screen cloud layer hiding the planet ↔ city switch (`veilAt`). It holds,
+  then fades, if the city hasn't loaded by the time the reader gets there.
+- `src/components/city-labels.vue`: DOM landmark labels, positioned each frame by `PlanetScene` (`placeLabels`).
 - `src/components/city-marker.vue`: pin, label and glow. Driven entirely by `setOpacity(0..1)`.
 - `src/scene/choreography.ts`: **the whole journey is a pure function of scroll progress (0..1)**.
   It holds:
@@ -41,7 +48,8 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   - camera/earth keyframes, with optional portrait overrides, joined by monotone cubic splines so the
     camera never stops dead or reverses between keyframes;
   - `settleAt` (easing onto a nearby caption when scrolling stops);
-  - the nav `chapters`.
+  - the nav `chapters`;
+  - the dive into Belfast (`diveAt`, `veilAt`, `isInBelfast`, `flightProgressAt`).
 
   Tune the motion here. Keep keyframes on the window edges so the camera arrives as the caption does.
 - `src/scene/captions.ts`: word-by-word caption entrances. They play in time rather than being
@@ -52,6 +60,12 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - `src/scene/camera.ts`: the camera instance handed to `<TresCanvas>` (see gotchas).
 - `src/services/device.ts`: mobile detection (`pointer: coarse`) and the quality tiers (DPR cap,
   textures, star counts, blur).
+- `src/scene/belfast/`: the city. `geo.ts` (origin, bounds, landmark labels; must match the build script),
+  `flight.ts` (camera stops over the city), `materials.ts` (night shaders), `landmarks.ts` (hand-built cranes,
+  Titanic Belfast, City Hall), `roads.ts` (road texture, drawn in the worker via OffscreenCanvas when possible).
+- `scripts/belfast/build.mjs` → `public/belfast/city.bin` (buildings + roads, binary layout in the script header)
+  and `ground.png` (water/park mask). Landmarks that are hand-built are excluded by OSM id. The data is
+  © OpenStreetMap contributors (credited in the attributions dialog); keep that credit.
 - `src/data/jobs.ts`: experience content. Other copy lives in the `src/views/*` components.
 - `public/textures/earth/` (desktop) and `public/textures/earth/low-res/` (mobile).
 
@@ -81,6 +95,11 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - The captions are rendered `v-once` because `createCaption` splits their text into word spans. A Vue
   re-render would fight that.
 - The stars are tiny and rely on bloom to be visible. If they vanish, check the composer first.
+- City scale is 1 unit = 10 m, at the world origin. The planet group is hidden while in the city (and vice versa),
+  and the camera's fov/near change on the switch (`setLens`), which happens under full cloud cover.
+- City shaders output linear colour (write constants via `lin()`) and derive flat normals from screen-space
+  derivatives, so building vertices are shared. Windows fade to their average once smaller than a pixel or
+  two; keep that or the facades shimmer.
 - ScrollSmoother is desktop only. Touch devices use native scrolling, and the scene is sized in
   `100lvh` so mobile address-bar changes don't resize the canvas.
 
@@ -89,5 +108,7 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 Run the site (or `npm run build` and serve `dist/`) and screenshot several scroll positions with
 headless Chrome via Playwright, at desktop size (e.g. 1440×900) and at a phone size with touch and
 coarse pointer (e.g. 390×844). Use real GPU flags (`--use-angle=metal --ignore-gpu-blocklist` on macOS)
-or WebGL falls back to software. Check at least: the hero, the Northern Ireland marker, all five Europe
-markers in frame (portrait is the tight case), the planet reveal, and the content hand-off.
+or WebGL falls back to software. Check at least: the hero, the Northern Ireland marker, the dive into the clouds, the
+Belfast flight (cranes, Titanic Belfast, City Hall), all five Europe markers in frame (portrait is the tight
+case), the planet reveal, and the content hand-off. Settling moves the scroll after it stops, so dispatch a
+`touchstart` on window first to capture exact positions. Also test a delayed `city.bin` (`page.route`).
