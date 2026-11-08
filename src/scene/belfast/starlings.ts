@@ -2,6 +2,7 @@ import {
     BufferAttribute, BufferGeometry, Color, PerspectiveCamera, Points, ShaderMaterial, Vector2, Vector3, WebGLRenderer,
 } from 'three';
 import { isMobile } from '@/services/device';
+import { clamp01, smoothstep } from '@/services/three';
 import { photoUniforms } from './photo-materials';
 
 /**
@@ -12,7 +13,7 @@ const CENTRE = new Vector3(-22, 13, -12);
 /** Half the flock's size: about 200 m long and 140 m deep, as a sheet that curls up to 60 m. */
 const EXTENT = new Vector3(10, 5, 7);
 
-const COUNT = isMobile ? 5000 : 12000;
+const COUNT = isMobile ? 3000 : 6500;
 
 const bufferSize = new Vector2();
 
@@ -22,8 +23,9 @@ const BIRD_SIZE = 0.04;
 /**
  * A starling murmuration. Each bird is a point placed by the vertex shader from the time alone: a thin sheet
  * that drifts, curls, tilts and stretches, with waves running through it. Where it turns edge-on or folds, the
- * birds crowd into the dark bands murmurations are known for. Birds smaller than a pixel fade rather than vanish, so the flock reads as a
- * shifting cloud from a distance. Nothing is simulated or uploaded per frame.
+ * birds crowd into the darker bands murmurations are known for. It thins out raggedly towards its edges, with
+ * stragglers beyond them. Birds smaller than a pixel fade rather than vanish, so the flock reads as a shifting cloud
+ * from a distance. Nothing is simulated or uploaded per frame.
  */
 export const createStarlings = () => {
     const seeds = new Float32Array(COUNT * 4);
@@ -31,15 +33,18 @@ export const createStarlings = () => {
     let seed = 11;
     const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     for (let i = 0; i < COUNT; i++) {
-        // Over a thin disc with a crisp edge, thinning towards its rim, and patchy: denser in some places
-        let [x, z] = [0, 0];
+        // Over a thin disc, patchy (denser in some places), thinning out unevenly past a ragged rim into stragglers
+        let [x, z, edge] = [0, 0, 0];
         for (;;) {
-            const [r, angle] = [Math.sqrt(random()), random() * Math.PI * 2];
+            const [r, angle] = [Math.sqrt(random()) * 1.6, random() * Math.PI * 2];
             [x, z] = [Math.cos(angle) * r, Math.sin(angle) * r];
-            const density = 0.5 + 0.25 * Math.sin(x * 4.1 + 1.3) * Math.sin(z * 3.3 + 0.4) + 0.25 * Math.sin((x - z) * 6.7);
-            if (random() < density) break;
+            const rim = 1 + 0.25 * Math.sin(angle * 3 + 0.7) + 0.15 * Math.sin(angle * 7 + 2.1) + 0.08 * Math.sin(angle * 13);
+            edge = r / rim;
+            const patches = 0.5 + 0.25 * Math.sin(x * 4.1 + 1.3) * Math.sin(z * 3.3 + 0.4) + 0.25 * Math.sin((x - z) * 6.7);
+            const falloff = Math.max(1 - smoothstep(clamp01((edge - 0.35) / 0.75)), edge < 1.5 ? 0.03 : 0);
+            if (random() < patches * falloff) break;
         }
-        const thickness = 0.07 * (1 - (x * x + z * z));
+        const thickness = 0.07 * Math.max(1 - edge * edge, 0.15);
         positions.set([x, (random() - 0.5) * thickness, z], i * 3);
         seeds.set([random(), random(), random(), random()], i * 4);
     }
@@ -55,7 +60,8 @@ export const createStarlings = () => {
             uPixelsPerUnit: { value: 1000 },
             uSize: { value: BIRD_SIZE },
             uMinSize: { value: 1 },
-            uColor: { value: new Color(0.025, 0.025, 0.03) },
+            // Dark against the sky, but not black: they're small, and seen through the air
+            uColor: { value: new Color(0.075, 0.075, 0.085) },
             ...photoUniforms,
         },
         vertexShader: /* glsl */ `
@@ -117,7 +123,7 @@ export const createStarlings = () => {
                 gl_PointSize = max(pixels, 1.0) * uMinSize;
                 // Wingbeats: each bird's silhouette flickers as it flaps
                 float flap = 0.75 + 0.25 * sin(t * 14.0 + aSeed.w * 40.0);
-                vAlpha = clamp(pixels * pixels, 0.12, 1.0) * flap;
+                vAlpha = clamp(pixels * pixels, 0.08, 0.8) * flap;
             }
         `,
         fragmentShader: /* glsl */ `
