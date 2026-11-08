@@ -1,5 +1,5 @@
 import {
-    Group, MathUtils, Mesh, MeshBasicMaterial, PerspectiveCamera, ShaderMaterial, Vector2, Vector3,
+    Group, MathUtils, Mesh, MeshBasicMaterial, PerspectiveCamera, Vector2, Vector3,
     WebGLRenderer, WebGLRenderTarget,
 } from 'three';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
@@ -64,7 +64,13 @@ export const createPhotoCity = (
                 const mesh = object as Mesh;
                 if (!mesh.isMesh) return;
                 const original = mesh.material as MeshBasicMaterial;
-                mesh.material = createTileMaterial(original.map);
+                const material = createTileMaterial(original.map);
+                // The tiles renderer finds a tile's textures among its materials' properties, not in shader
+                // uniforms: kept here too, it counts the photo against the cache and frees it (and its
+                // decoded image) when the tile goes. Otherwise none of them are ever counted or freed, and
+                // the GPU fills until the city turns dark
+                if (original.map) Object.assign(material, { photo: original.map });
+                mesh.material = material;
                 original.dispose();
                 // Uploaded now, while loading in the background, rather than on the frame it first appears
                 if (original.map) renderer.initTexture(original.map);
@@ -93,14 +99,6 @@ export const createPhotoCity = (
     group.rotation.y = Math.PI;
     group.scale.setScalar(1 / UNIT);
     group.add(tiles.group);
-
-    // The renderer disposes of the tile shaders, but doesn't know about the photos in their uniforms
-    tiles.addEventListener('dispose-model', ({ scene }) => {
-        scene.traverse(object => {
-            const mesh = object as Mesh;
-            if (mesh.isMesh) (mesh.material as ShaderMaterial).uniforms.map?.value.dispose();
-        });
-    });
 
     let hasFailed = false;
     const fail = (error: unknown) => {
