@@ -9,6 +9,7 @@ import PlanetScene from './components/PlanetScene.vue';
 import CityAttribution from './components/city-attribution.vue';
 import JourneyNav from './components/journey-nav.vue';
 import PlanetHud from './components/planet-hud.vue';
+import CitySigns from './components/city-signs.vue';
 import Hero from './views/hero.vue'
 import Skills from './views/skills.vue';
 import Experience from './views/experience.vue';
@@ -162,6 +163,7 @@ onBeforeUnmount(() => {
 
   <div class="letterbox" aria-hidden="true" />
   <PlanetHud />
+  <CitySigns />
   <CityAttribution />
   <JourneyNav :active="activeChapter" :ready="isSceneReady" @navigate="navigate" />
 

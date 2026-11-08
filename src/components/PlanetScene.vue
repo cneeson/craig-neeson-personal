@@ -61,6 +61,8 @@
 
   <BelfastPhoto v-if="isCityMounted && cityMode === 'photo'" @failed="useNightCity" />
   <BelfastCity v-if="isCityMounted && cityMode === 'night'" />
+  <primitive :object="parisArc.object" />
+  <primitive :object="offices.object" />
   <CloudVeil ref="veilRef" />
 </template>
 
@@ -89,6 +91,8 @@ import { createArcs } from '@/scene/planet/arcs';
 import { EARTH_MESH_ROTATION, EARTH_POSITION, onEarth, PLACES } from '@/scene/planet/geo';
 import { patchClouds } from '@/scene/planet/clouds';
 import { cityFovAt, FLIGHT_ENDS, flightAt } from '@/scene/belfast/flight';
+import { createParisArc } from '@/scene/belfast/paris-arc';
+import { createOfficeHighlights } from '@/scene/belfast/offices';
 import { city } from '@/scene/belfast/mode';
 import { clamp01, damp, lerp, smoothstep } from '@/services/three';
 
@@ -154,6 +158,8 @@ const veilRef = shallowRef<{ update(amount: number, travel: number, aspect: numb
 
 const highlight = createHighlight()
 const arcs = createArcs()
+const parisArc = createParisArc()
+const offices = createOfficeHighlights()
 // Where the clouds part, over the middle of Northern Ireland
 const NORTHERN_IRELAND = onEarth(PLACES.northernIreland.lat, PLACES.northernIreland.lon)
 const clouds = patchClouds()
@@ -161,6 +167,8 @@ const cloudCentre = new Vector3()
 onBeforeUnmount(() => {
   highlight.dispose()
   arcs.dispose()
+  parisArc.dispose()
+  offices.dispose()
 })
 
 // The scene is fully hidden behind the content once the exit transition completes, so
@@ -277,6 +285,8 @@ onLoop(({ delta, elapsed }) => {
   cityReveal = sceneState.cityReady ? damp(cityReveal, 1, 3, delta) : 0
   const veil = isOverBelfast ? Math.max(veilAt(progress), 1 - cityReveal) : veilAt(progress)
   if (planetRef.value) planetRef.value.visible = !isInCity
+  parisArc.update(progress, isInCity)
+  offices.update(progress, elapsed, isInCity)
 
   if (isInCity) {
     const flight = flightProgressAt(progress)

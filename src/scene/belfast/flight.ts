@@ -6,8 +6,8 @@ import { createSpline, flightProgressAt, windows } from '@/scene/choreography';
  * The walk through Belfast, timed to the beats (0 → 1 across the flight). Out of the clouds right under
  * Samson and Goliath on a wide lens, backing away from them as the lens narrows so they tower over the
  * reader; west over the water to the SSE Arena; across the Lagan by the Albert Clock and up over City Hall,
- * looking out north-west towards Coleraine and Antrim; down Adelaide Street at street level, looking back up
- * it at City Hall; over to the Gasworks, looking south-east towards Paris; then north along the Lagan to
+ * looking out north-west towards Coleraine and Antrim; down Adelaide Street over the roofs, looking back up
+ * it past the offices; over to the Gasworks, looking south-east towards Paris; then north along the Lagan to
  * Lanyon Place and the railway bridge, and back up into the clouds.
  */
 
@@ -39,21 +39,22 @@ const waypoints: Waypoint[] = [
     { at: windows.coleraine[1], x: -96, z: 83, y: 35, pitch: 0, heading: 321.8 },
     { at: windows.antrim[0], x: -96.5, z: 84, y: 35, pitch: 0, heading: 304.2 },
     { at: windows.antrim[1], x: -96, z: 86, y: 33, pitch: -2, heading: 304.2 },
-    // Down to Adelaide Street, backing down it looking back up at City Hall: just over the roofs where it's
-    // narrow (the tiles melt any lower), past Adelaide Exchange (Liberty IT), then down to street level by Flexera
-    { at: windows.liberty[0], x: -86.6, z: 103, y: 4.6, pitch: -10, heading: 346 },
-    { at: windows.liberty[1], x: -86, z: 112, y: 3.8, pitch: -5, heading: 351 },
-    { at: windows.flexera[0], x: -85.1, z: 127, y: 2.4, pitch: 3, heading: 357 },
-    { at: windows.flexera[1], x: -85, z: 134, y: 2.6, pitch: 3, heading: 357 },
-    // The Gasworks (Locate a Locum), then up and turning south-east, after the arc to Paris (Ankorstore)
-    { at: windows.locum[0], x: -72, z: 143, y: 5, pitch: -3, heading: 100 },
-    { at: windows.locum[1], x: -70, z: 140, y: 6, pitch: -4, heading: 105 },
-    { at: windows.ankorstore[0], x: -66, z: 134, y: 11, pitch: 0, heading: 140 },
-    { at: windows.ankorstore[1], x: -62, z: 130, y: 13, pitch: 2, heading: 145 },
+    // Down to Adelaide Street, backing down it just over the roofs (the tiles melt any lower), looking back up
+    // it towards City Hall: at Adelaide Exchange (Liberty IT) on the right, then Flax House (Flexera) on the left
+    { at: windows.liberty[0], x: -85.6, z: 133, y: 7, pitch: -11, heading: 14 },
+    { at: windows.liberty[1], x: -85.4, z: 136, y: 6.8, pitch: -10, heading: 12 },
+    { at: windows.flexera[0], x: -85.2, z: 139, y: 6.6, pitch: -11, heading: 353 },
+    { at: windows.flexera[1], x: -85.2, z: 142, y: 6.6, pitch: -10, heading: 355 },
+    // Over the Gasworks, looking down at Ormeau Business Park (Locate a Locum), then back from it as the arc
+    // to Paris (Ankorstore) sets off south-east
+    { at: windows.locum[0], x: -70, z: 143, y: 7, pitch: -12, heading: 132 },
+    { at: windows.locum[1], x: -69, z: 142, y: 8, pitch: -12, heading: 134 },
+    { at: windows.ankorstore[0], x: -80, z: 152, y: 11, pitch: 3, heading: 97 },
+    { at: windows.ankorstore[1], x: -83, z: 157, y: 13, pitch: 5, heading: 101 },
     // North along the Lagan to Lanyon Place (Ocula, at Formation Works), watching the train set off over the
     // railway bridge, then climbing away
-    { at: windows.ocula[0], x: -24, z: 56, y: 7, pitch: -4, heading: 172 },
-    { at: windows.ocula[1], x: -26, z: 38, y: 10, pitch: -7, heading: 176 },
+    { at: windows.ocula[0], x: -24, z: 56, y: 7, pitch: -4, heading: 163 },
+    { at: windows.ocula[1], x: -26, z: 38, y: 10, pitch: -7, heading: 167 },
     { at: cityTo - 0.02, x: -28, z: 24, y: 24, pitch: -18 },
     { at: cityTo, x: -30, z: 6, y: 70, pitch: -38 },
 ];

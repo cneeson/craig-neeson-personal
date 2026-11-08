@@ -60,6 +60,14 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - `src/components/planet-hud.vue`: DOM overlays pinned to the planet (the forecast, the lock-on to Belfast, the
   labels where the reach arcs land). Positioned every frame through `onOverlayFrame` (`src/scene/overlay.ts`), which
   the render loop calls with the camera; shown and hidden in time by class.
+- `src/components/city-signs.vue`: the text over Belfast. The skills gig poster stands by the SSE Arena (a CSS3DRenderer
+  following the city camera, turned to face it); each employer gets a callout flat to the screen, with a dot on its
+  building and a leader up to a card kept inside the viewport (in the sky instead if the building's out of view, as on
+  narrow screens, and always for Ankorstore). The cards' buttons open `employer-dialog.vue` with the role's key points
+  from `src/data/journey.ts` (the stops) and `jobs.ts`. Only the buttons take the pointer, so the page still scrolls.
+- `src/scene/belfast/offices.ts`: the employers' buildings (OSM footprints, rough heights), outlined in light while
+  their beat is up, and the callouts' anchors. Frame each beat's camera on its building in `flight.ts`.
+  `paris-arc.ts` draws the arc from Ormeau Business Park in the Gasworks towards Paris for Ankorstore.
 - `src/scene/planet/`: the effects on the planet. `clouds.ts` patches the cloud layer to gather over Northern Ireland
   and part over it (the centre must be turned into the cloud mesh's spinning space); `highlight.ts` traces the
   outline (`northern-ireland.ts`, from Natural Earth) and scans the land; `arcs.ts` draws the arcs to the HQs.
