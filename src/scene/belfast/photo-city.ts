@@ -32,7 +32,7 @@ const SETTLE_FRAMES = 10;
 
 /**
  * Seconds the reader waits in the clouds (on a slow connection) before the city shows whatever has
- * loaded so far, or, if nothing has, gives way to the night city.
+ * loaded so far, or, if nothing has, gives up (and the clouds stay).
  */
 const MAX_WAIT = { partial: 6, nothing: 12 };
 

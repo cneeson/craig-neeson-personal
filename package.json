@@ -6,7 +6,7 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
-    "belfast": "node scripts/belfast/build.mjs"
+    "belfast": "node scripts/belfast/water.mjs"
   },
   "dependencies": {
     "@tresjs/cientos": "^4.3.1",

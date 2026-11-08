@@ -26,7 +26,7 @@ jobs:
       - run: npx vue-cli-service lint --no-fix
       - run: npm run build
         env:
-          # Google Photorealistic 3D Tiles; without it the site falls back to the night-time city
+          # Google Photorealistic 3D Tiles; without it the flight over Belfast stays in the clouds
           VUE_APP_GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'

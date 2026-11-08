@@ -59,8 +59,7 @@
     <TresPointLight :position="[25, -5, -30]" color="#5198ed" :intensity="1000" :distance="80" :decay="1" />
   </TresGroup>
 
-  <BelfastPhoto v-if="isCityMounted && cityMode === 'photo'" @failed="useNightCity" />
-  <BelfastCity v-if="isCityMounted && cityMode === 'night'" />
+  <BelfastPhoto v-if="isCityMounted && !hasCityFailed" @failed="hasCityFailed = true" />
   <primitive :object="parisArc.object" />
   <primitive :object="offices.object" />
   <CloudVeil ref="veilRef" />
@@ -77,7 +76,6 @@ import { Stars, Outline } from '@tresjs/cientos'
 import { BloomPmndrs, EffectComposerPmndrs } from '@tresjs/post-processing'
 // @ts-ignore-next-line
 import { BlendFunction } from 'postprocessing'
-import BelfastCity from './belfast-city.vue'
 import BelfastPhoto from './belfast-photo.vue'
 import CloudVeil from './cloud-veil.vue'
 import { isMobile, prefersReducedMotion, quality } from '@/services/device';
@@ -93,7 +91,6 @@ import { patchClouds } from '@/scene/planet/clouds';
 import { cityFovAt, FLIGHT_ENDS, flightAt } from '@/scene/belfast/flight';
 import { createParisArc } from '@/scene/belfast/paris-arc';
 import { createOfficeHighlights } from '@/scene/belfast/offices';
-import { city } from '@/scene/belfast/mode';
 import { clamp01, damp, lerp, smoothstep } from '@/services/three';
 
 
@@ -187,14 +184,11 @@ const sizeOutline = () => {
   return true
 }
 
-// Belfast loads in the background once the planet is up: by day from Google's tiles, or the night city
+// Belfast loads in the background from Google's tiles once the planet is up (if there's a key in the build).
+// If they can't load, it's dropped and the clouds stay over the flight.
 const isCityMounted = ref(false)
-setTimeout(() => (isCityMounted.value = true), 1500)
-const cityMode = ref(city.mode)
-const useNightCity = () => {
-  city.mode = 'night'
-  cityMode.value = 'night'
-}
+if (process.env.VUE_APP_GOOGLE_MAPS_API_KEY) setTimeout(() => (isCityMounted.value = true), 1500)
+const hasCityFailed = ref(false)
 
 const setLens = (cam: PerspectiveCamera, fov: number, near: number) => {
   if (cam.fov === fov && cam.near === near) return
@@ -333,7 +327,7 @@ onLoop(({ delta, elapsed }) => {
 
   // Scrolling streams the clouds past, and they drift a little on their own
   veilRef.value?.update(veil, progress * 24 + elapsed * 0.03, cam.aspect)
-  if (bloomRef.value?.effect) bloomRef.value.effect.luminanceMaterial.threshold = bloomThresholdAt(progress, city.mode === 'photo')
+  if (bloomRef.value?.effect) bloomRef.value.effect.luminanceMaterial.threshold = bloomThresholdAt(progress)
   updateOverlays(cam, progress, elapsed)
 
   invalidate()

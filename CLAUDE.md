@@ -17,15 +17,16 @@ npm install
 npm run serve      # dev server (http://localhost:8080)
 npm run lint       # eslint --fix; use `npx vue-cli-service lint --no-fix` to check only
 npm run build      # production build into dist/
-npm run belfast    # rebuild public/belfast/ from OpenStreetMap (Overpass); add --refresh to re-download
+npm run belfast    # rebuild public/belfast/water.png from OpenStreetMap (Overpass); add --refresh to re-download
 ```
 
 There are no tests. Verify changes by running the site and looking at it (see Verifying).
 
 ## Google 3D Tiles key
 
-The day city needs `VUE_APP_GOOGLE_MAPS_API_KEY` (Map Tiles API). Locally it goes in `.env.local`
-(gitignored, never commit it); CI reads the `GOOGLE_MAPS_API_KEY` repo secret. Without it the night city is used.
+The city needs `VUE_APP_GOOGLE_MAPS_API_KEY` (Map Tiles API). Locally it goes in `.env.local`
+(gitignored, never commit it); CI reads the `GOOGLE_MAPS_API_KEY` repo secret. There's no fallback city: without a
+key, or if the tiles fail, the city isn't mounted and the flight stays in the clouds.
 Each visit that reaches the city starts a billable root-tileset session.
 
 ## Deployment
@@ -51,10 +52,6 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   so `TilesFadePlugin` can cross-fade levels; it needs `#include <dithering_fragment>` in that shader. Google's
   terms forbid hosting or bundling the tiles: only load them in the browser, in the same visit. Their
   attribution (logo + data providers) must stay visible while they're on screen (`city-attribution.vue`).
-- `src/components/belfast-city.vue`: the night-time Belfast from OpenStreetMap, the fallback when the tiles
-  can't be used (no key, Save-Data, the root tileset fails, or nothing loads in time; `?city=night` forces it).
-  `src/scene/belfast/mode.ts` holds the choice. Decoded in `src/scene/belfast/city.worker.ts`, then drawn once
-  off screen to warm up the GPU. Sets `sceneState.cityReady`.
 - `src/components/cloud-veil.vue`: full-screen cloud layer hiding the planet ↔ city switch (`veilAt`). It holds,
   then fades, if the city hasn't loaded by the time the reader gets there.
 - `src/components/planet-hud.vue`: DOM overlays pinned to the planet (the forecast, the lock-on to Belfast, the
@@ -68,7 +65,7 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - `src/scene/belfast/offices.ts`: the employers' buildings (OSM footprints, rough heights), outlined in light while
   their beat is up, and the callouts' anchors. Frame each beat's camera on its building in `flight.ts`.
   `paris-arc.ts` draws the arc from Ormeau Business Park in the Gasworks towards Paris for Ankorstore.
-- `src/scene/belfast/telescope.ts`: the coin-op telescope over City Hall (day city only). A camera of its own about a
+- `src/scene/belfast/telescope.ts`: the coin-op telescope over City Hall. A camera of its own about a
   kilometre short of each place (Coleraine, then Antrim) renders into a texture, shown through the eyepieces by a
   screen-space lens shader (distortion, fringes, wobble, iris, a whip across between them, a reticle on the target).
   Its cameras are extra views for the tiles (`photo-city.ts` `extraViews`): prefetched after the flight, then loaded
@@ -107,12 +104,12 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   backs south past Northern Ireland still looking north, and sinks onto it, turning to the flight's starting
   heading; it runs along a great circle that passes beside the pole, as the planet's texture pinches at it. The
   climb out carries on along the flight's end heading (`climbFromHome`, `FLIGHT_ENDS`). `water.ts`, `starlings.ts`
-  and `train.ts` animate the day city; the train is moved by the scroll, leaving Lanyon Place in the Ocula beat and
-  crossing the Lagan Railway Bridge as it's read, then east along the Bangor line, `photo-materials.ts` (tile shader with haze, day sky), `materials.ts` (night shaders), `landmarks.ts` (hand-built cranes,
-  Titanic Belfast, City Hall), `roads.ts` (road texture, drawn in the worker via OffscreenCanvas when possible).
-- `scripts/belfast/build.mjs` → `public/belfast/city.bin` (buildings + roads, binary layout in the script header)
-  and `ground.png` (water/park mask). Landmarks that are hand-built are excluded by OSM id. The data is
-  © OpenStreetMap contributors (credited in the attributions dialog); keep that credit.
+  and `train.ts` animate the city; the train is moved by the scroll, leaving Lanyon Place in the Ocula beat and
+  crossing the Lagan Railway Bridge as it's read, then east along the Bangor line, and `photo-materials.ts` (tile
+  shader with haze, day sky).
+- `scripts/belfast/water.mjs` → `public/belfast/water.png` (the water mask for `water.ts`, over `geo.ts`'s area). The
+  data, like the office footprints in `offices.ts`, is © OpenStreetMap contributors (credited in the attributions
+  dialog); keep that credit.
 - `src/data/jobs.ts`: experience content. Other copy lives in the `src/views/*` components.
 - `public/textures/earth/` (desktop) and `public/textures/earth/low-res/` (mobile).
 
@@ -144,9 +141,7 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - The stars are tiny and rely on bloom to be visible. If they vanish, check the composer first.
 - City scale is 1 unit = 10 m, at the world origin. The planet group is hidden while in the city (and vice versa),
   and the camera's fov/near change on the switch (`setLens`), which happens under full cloud cover.
-- City shaders output linear colour (write constants via `lin()`) and derive flat normals from screen-space
-  derivatives, so building vertices are shared. Windows fade to their average once smaller than a pixel or
-  two; keep that or the facades shimmer.
+- City shaders output linear colour (write constants via `lin()`).
 - ScrollSmoother is desktop only. Touch devices use native scrolling, and the scene is sized in
   `100lvh` so mobile address-bar changes don't resize the canvas.
 
@@ -158,4 +153,4 @@ coarse pointer (e.g. 390×844). Use real GPU flags (`--use-angle=metal --ignore-
 or WebGL falls back to software. Check at least: the hero, the Northern Ireland marker, the dive into the clouds, the
 Belfast flight (the intro caption, under both cranes, City Hall), all five Europe markers in frame (portrait is the tight
 case), the planet reveal, and the content hand-off. Settling moves the scroll after it stops, so dispatch a
-`touchstart` on window first to capture exact positions. Also test a delayed `city.bin` (`page.route`).
+`touchstart` on window first to capture exact positions. Also test slow tile loads (`page.route` on `tile.googleapis.com`): the clouds should hold, then clear.

@@ -13,13 +13,12 @@ import { createStarlings } from '@/scene/belfast/starlings';
 import { createTrain } from '@/scene/belfast/train';
 import { createTelescope } from '@/scene/belfast/telescope';
 import { attribution } from '@/scene/belfast/attribution';
-import { GOOGLE_MAPS_API_KEY } from '@/scene/belfast/mode';
 import { sceneState } from '@/scene/state';
 import { flightProgressAt, isInBelfast, windows } from '@/scene/choreography';
 import { camera } from '@/scene/camera';
 
 const emit = defineEmits<{
-  /** The tiles can't load, so the night city should take over. */
+  /** The tiles can't load, so the city should be dropped. */
   failed: [];
 }>();
 
@@ -39,8 +38,8 @@ sky.renderOrder = -1;
 sky.frustumCulled = false;
 
 const telescope = createTelescope(renderer.value);
-const photoCity = createPhotoCity(renderer.value, GOOGLE_MAPS_API_KEY, error => {
-  console.warn('Belfast tiles failed to load; showing the night city instead', error);
+const photoCity = createPhotoCity(renderer.value, process.env.VUE_APP_GOOGLE_MAPS_API_KEY ?? '', error => {
+  console.warn('Belfast tiles failed to load', error);
   emit('failed');
 }, telescope);
 // Shares the sky's uniforms, so its reflections match the sky

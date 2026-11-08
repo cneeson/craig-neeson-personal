@@ -62,12 +62,12 @@ export type SkyUniforms ={ uHaze: IUniform<Color>, uZenith: IUniform<Color>, uSu
 /**
  * The river, docks and lough, over the flat water in the tiles: rippling, reflecting the day sky (more of it
  * at grazing angles), with the sun glittering in it. The water areas come from the OpenStreetMap mask
- * (ground.png); the tiles' quays hide its soft edges. It fades out towards the edge of the mask, where the
+ * (water.png, built by scripts/belfast/water.mjs); the tiles' quays hide its soft edges. It fades out towards the edge of the mask, where the
  * tiles' own water carries on.
  */
 export const createWater = (sky: SkyUniforms, anisotropy: number) => {
-    const mask = new TextureLoader().load(`${process.env.BASE_URL}belfast/ground.png`);
-    // ground.png's first row is the north edge, which is the plane's minimum z
+    const mask = new TextureLoader().load(`${process.env.BASE_URL}belfast/water.png`);
+    // water.png's first row is the north edge, which is the plane's minimum z
     mask.flipY = false;
     const ripples = createRippleTexture();
     ripples.anisotropy = anisotropy;

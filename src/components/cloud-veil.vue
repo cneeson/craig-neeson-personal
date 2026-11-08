@@ -5,10 +5,9 @@
 <script lang="ts" setup>
 import { Mesh, PlaneGeometry, ShaderMaterial } from 'three';
 import { onBeforeUnmount } from 'vue';
-import { city } from '@/scene/belfast/mode';
 
 /**
- * A full-screen layer of cloud (moonlit or sunlit, to match the city) that the camera flies through,
+ * A full-screen layer of sunlit cloud that the camera flies through,
  * hiding the switch between the planet and the city. Driven by `update`: 0 is clear, 1 is solid cloud.
  * Clouds gather at the edges first, and stream outwards as the reader scrolls, so it feels like flying
  * into them.
@@ -18,7 +17,6 @@ const material = new ShaderMaterial({
     uVeil: { value: 0 },
     uTravel: { value: 0 },
     uAspect: { value: 1 },
-    uDay: { value: 0 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -31,7 +29,6 @@ const material = new ShaderMaterial({
     uniform float uVeil;
     uniform float uTravel;
     uniform float uAspect;
-    uniform float uDay;
     varying vec2 vUv;
 
     float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -69,9 +66,8 @@ const material = new ShaderMaterial({
       float edges = (r - 0.45) * 0.6 * smoothstep(0.0, 0.3, uVeil) * (1.0 - uVeil);
       float cover = density - threshold + edges;
       float alpha = clamp(cover * 3.0, 0.0, 1.0);
-      // Moonlit over the night city, sunlit over the day one
-      vec3 shadow = pow(mix(vec3(0.16, 0.15, 0.26), vec3(0.58, 0.63, 0.72), uDay), vec3(2.2));
-      vec3 lit = pow(mix(vec3(0.62, 0.62, 0.76), vec3(0.97, 0.97, 0.99), uDay), vec3(2.2));
+      vec3 shadow = pow(vec3(0.58, 0.63, 0.72), vec3(2.2));
+      vec3 lit = pow(vec3(0.97, 0.97, 0.99), vec3(2.2));
       vec3 color = mix(shadow, lit, smoothstep(0.35, 0.85, density));
       gl_FragColor = vec4(color, alpha);
     }
@@ -97,7 +93,6 @@ defineExpose({
     material.uniforms.uVeil.value = amount;
     material.uniforms.uTravel.value = travel;
     material.uniforms.uAspect.value = aspect;
-    material.uniforms.uDay.value = city.mode === 'photo' ? 1 : 0;
   },
 });
 </script>
