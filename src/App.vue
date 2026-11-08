@@ -7,7 +7,6 @@ import { TresCanvas } from '@tresjs/core'
 import { differenceInYears } from 'date-fns';
 import PlanetScene from './components/PlanetScene.vue';
 import JourneyNav from './components/journey-nav.vue';
-import CityLabels from './components/city-labels.vue';
 import Hero from './views/hero.vue'
 import Skills from './views/skills.vue';
 import Experience from './views/experience.vue';
@@ -78,8 +77,7 @@ onMounted(() => {
 
     // Captions are shown while their beat is mostly in view, in step with the markers
     const captions = [
-      { window: windows.northernIreland, ...createCaption(document.querySelector('[data-caption="home"]') as HTMLElement) },
-      { window: windows.belfastTitle, ...createCaption(document.querySelector('[data-caption="belfast"]') as HTMLElement) },
+      { window: windows.belfastIntro, ...createCaption(document.querySelector('[data-caption="belfast"]') as HTMLElement) },
       { window: windows.europe, ...createCaption(document.querySelector('[data-caption="europe"]') as HTMLElement) },
     ];
     const syncToJourney = (progress: number) => {
@@ -154,17 +152,13 @@ onBeforeUnmount(() => {
     </TresCanvas>
   </div>
 
-  <CityLabels />
   <JourneyNav :active="activeChapter" :ready="isSceneReady" @navigate="navigate" />
 
   <!-- v-once: the captions are split into words for their entrance, so Vue mustn't re-render them -->
   <div v-once class="captions" aria-live="polite">
-    <p class="caption" data-caption="home">
-      <span class="block mb-3">Hi, I'm <strong>Craig.</strong> 👋</span>
-      I'm a frontend developer based in <strong>Northern&nbsp;Ireland.</strong>
-    </p>
     <p class="caption" data-caption="belfast">
-      Welcome to <strong>Belfast.</strong>
+      <span class="block mb-3">Hi, I'm <strong>Craig.</strong> 👋</span>
+      I'm a frontend developer based in <strong>Belfast.</strong>
     </p>
     <p class="caption" data-caption="europe">
       For <strong>{{ yearsExperience }} years</strong> I've worked with companies across

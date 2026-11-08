@@ -40,7 +40,6 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   then drawn once off screen to warm up the GPU. Sets `sceneState.cityReady`.
 - `src/components/cloud-veil.vue`: full-screen cloud layer hiding the planet ↔ city switch (`veilAt`). It holds,
   then fades, if the city hasn't loaded by the time the reader gets there.
-- `src/components/city-labels.vue`: DOM landmark labels, positioned each frame by `PlanetScene` (`placeLabels`).
 - `src/components/city-marker.vue`: pin, label and glow. Driven entirely by `setOpacity(0..1)`.
 - `src/scene/choreography.ts`: **the whole journey is a pure function of scroll progress (0..1)**.
   It holds:
@@ -60,8 +59,9 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - `src/scene/camera.ts`: the camera instance handed to `<TresCanvas>` (see gotchas).
 - `src/services/device.ts`: mobile detection (`pointer: coarse`) and the quality tiers (DPR cap,
   textures, star counts, blur).
-- `src/scene/belfast/`: the city. `geo.ts` (origin, bounds, landmark labels; must match the build script),
-  `flight.ts` (camera stops over the city), `materials.ts` (night shaders), `landmarks.ts` (hand-built cranes,
+- `src/scene/belfast/`: the city. `geo.ts` (origin and bounds; must match the build script),
+  `flight.ts` (the camera's path and where it looks, timed separately; the path runs down the dock under both
+  cranes, and the view only turns one way), `materials.ts` (night shaders), `landmarks.ts` (hand-built cranes,
   Titanic Belfast, City Hall), `roads.ts` (road texture, drawn in the worker via OffscreenCanvas when possible).
 - `scripts/belfast/build.mjs` → `public/belfast/city.bin` (buildings + roads, binary layout in the script header)
   and `ground.png` (water/park mask). Landmarks that are hand-built are excluded by OSM id. The data is
@@ -109,6 +109,6 @@ Run the site (or `npm run build` and serve `dist/`) and screenshot several scrol
 headless Chrome via Playwright, at desktop size (e.g. 1440×900) and at a phone size with touch and
 coarse pointer (e.g. 390×844). Use real GPU flags (`--use-angle=metal --ignore-gpu-blocklist` on macOS)
 or WebGL falls back to software. Check at least: the hero, the Northern Ireland marker, the dive into the clouds, the
-Belfast flight (cranes, Titanic Belfast, City Hall), all five Europe markers in frame (portrait is the tight
+Belfast flight (the intro caption, under both cranes, City Hall), all five Europe markers in frame (portrait is the tight
 case), the planet reveal, and the content hand-off. Settling moves the scroll after it stops, so dispatch a
 `touchstart` on window first to capture exact positions. Also test a delayed `city.bin` (`page.route`).

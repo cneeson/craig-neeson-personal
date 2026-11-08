@@ -25,13 +25,16 @@ export const windows = {
     northernIreland: [0.13, 0.23],
     // The flight over Belfast, between diving into the clouds and climbing back out of them
     belfast: [0.3, 0.6],
-    // "Welcome to Belfast", as the city appears through the clouds
-    belfastTitle: [0.32, 0.36],
+    // The introduction, as the flight heads in towards the cranes
+    belfastIntro: [0.345, 0.43],
     europe: [0.68, 0.78],
     reveal: [0.78, 0.94],
 } as const;
 
-const captioned = [windows.northernIreland, windows.europe];
+/** Beats with markers on the planet, which pull the bloom back so the map stays crisp. */
+const marked = [windows.northernIreland, windows.europe];
+/** Beats that scrolling settles onto: the markers, and the introduction over Belfast. */
+const settled = [windows.northernIreland, windows.belfastIntro, windows.europe];
 
 /** How far either side of a readable window its caption and markers fade over. */
 export const FADE = 0.04;
@@ -170,12 +173,12 @@ export const veilAt = (progress: number) => Math.max(
  * crisp, moderate over the city so its lights glow, and off in the clouds.
  */
 export const bloomThresholdAt = (progress: number) => {
-    const focus = Math.max(...captioned.map(window => windowOpacity(progress, window, FADE * 2)));
+    const focus = Math.max(...marked.map(window => windowOpacity(progress, window, FADE * 2)));
     const base = isInBelfast(progress) ? 0.55 : lerp(0.3, 0.9, focus);
     return lerp(base, 1.2, veilAt(progress));
 };
 
-/** How close to a caption a scroll has to come to rest before it's eased the rest of the way in. */
+/** How close to a beat a scroll has to come to rest before it's eased the rest of the way in. */
 const SETTLE_REACH = 0.07;
 
 /**
@@ -190,7 +193,7 @@ export const settleAt = (progress: number, direction: number) => {
         while (target > 0 && target < 1 && veilAt(target) > 0.02) target += 0.002 * Math.sign(direction);
         return clamp01(target);
     }
-    for (const [start, end] of captioned) {
+    for (const [start, end] of settled) {
         const [readFrom, readTo] = [start + 0.01, end - 0.01];
         if (direction > 0 && progress > start - SETTLE_REACH && progress < readFrom) return readFrom;
         if (direction < 0 && progress < end + SETTLE_REACH && progress > readTo) return readTo;
@@ -207,8 +210,8 @@ const middle = ([start, end]: readonly [number, number]) => (start + end) / 2;
 export const chapters = [
     { label: 'Hello', from: 0, at: 0 },
     { label: 'Home', from: windows.northernIreland[0] - FADE, at: middle(windows.northernIreland) },
-    // Lands as the city has cleared the clouds, heading for the cranes
-    { label: 'Belfast', from: cityFrom - 0.035, at: cityFrom + (cityTo - cityFrom) * 0.12 },
+    // Lands as the introduction plays, heading for the cranes
+    { label: 'Belfast', from: cityFrom - 0.035, at: windows.belfastIntro[0] + 0.01 },
     { label: 'Europe', from: windows.europe[0] - FADE, at: middle(windows.europe) },
     // Lands as the reveal completes, just before the content starts to arrive
     { label: 'The world', from: windows.europe[1] + FADE, at: windows.reveal[1] },

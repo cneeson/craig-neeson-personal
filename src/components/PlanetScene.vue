@@ -43,7 +43,7 @@
         />
       </TresMesh>
 
-      <CityMarker ref="homeMarkerRef" :position="[0.23, 0.823, 0.54]" label="Northern Ireland" />
+      <CityMarker ref="homeMarkerRef" :position="[0.23, 0.823, 0.54]" label="Belfast" />
 
       <TresGroup :position="[0.3, 0.8, 0.54]">
         <CityMarker
@@ -89,8 +89,6 @@ import {
 } from '@/scene/choreography';
 import { sceneState } from '@/scene/state';
 import { flightAt } from '@/scene/belfast/flight';
-import { landmarks } from '@/scene/belfast/geo';
-import { labelElements } from '@/scene/belfast/labels';
 import { clamp01, damp, lerp, smoothstep } from '@/services/three';
 
 
@@ -197,31 +195,6 @@ const diveTowardsHome = (cam: PerspectiveCamera, earthRotationY: number, dive: n
   cam.position.lerp(approach, dive)
 }
 
-const labelPoint = new Vector3()
-let areLabelsShown = false
-
-/** Pins the landmark labels to their landmarks on screen, while each is coming up on the flight. */
-const placeLabels = (cam: PerspectiveCamera, flight: number, visibility: number) => {
-  if (!visibility && !areLabelsShown) return
-  areLabelsShown = visibility > 0
-  cam.updateMatrixWorld()
-  landmarks.forEach((landmark, index) => {
-    const element = labelElements[index]
-    if (!element) return
-    let opacity = 0
-    if (visibility > 0) {
-      labelPoint.set(...landmark.position).project(cam)
-      const isOnScreen = labelPoint.z < 1 && Math.abs(labelPoint.x) < 1.2 && Math.abs(labelPoint.y) < 1.2
-      opacity = isOnScreen ? windowOpacity(flight, [landmark.from, landmark.to], 0.04) * visibility : 0
-      if (opacity > 0) {
-        const [x, y] = [(labelPoint.x + 1) / 2 * sizes.width.value, (1 - labelPoint.y) / 2 * sizes.height.value]
-        element.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -100%)`
-      }
-    }
-    element.style.opacity = opacity.toFixed(3)
-  })
-}
-
 const { onLoop } = useRenderLoop()
 
 onLoop(({ delta, elapsed }) => {
@@ -272,7 +245,6 @@ onLoop(({ delta, elapsed }) => {
 
   // Scrolling streams the clouds past, and they drift a little on their own
   veilRef.value?.update(veil, progress * 24 + elapsed * 0.03, cam.aspect)
-  placeLabels(cam, flightProgressAt(progress), isInCity ? 1 - veil : 0)
   if (bloomRef.value) bloomRef.value.effect.luminanceMaterial.threshold = bloomThresholdAt(progress)
 
   invalidate()

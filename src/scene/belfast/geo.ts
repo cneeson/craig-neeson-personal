@@ -18,14 +18,3 @@ export const bounds = {
     minZ: (-(BBOX.north - ORIGIN.lat) * metresPerLat) / UNIT,
     maxZ: (-(BBOX.south - ORIGIN.lat) * metresPerLat) / UNIT,
 };
-
-export type Point = [number, number, number];
-
-/** Landmarks the flight passes, labelled on screen while `[from, to]` of the flight (0 → 1). */
-export const landmarks: { name: string; position: Point; from: number; to: number }[] = [
-    { name: 'Samson & Goliath', position: [87, 11.5, -35], from: 0.12, to: 0.42 },
-    { name: 'Titanic Belfast', position: [33, 4.6, -45.5], from: 0.4, to: 0.6 },
-    { name: 'The Big Fish', position: [-43, 1, 28], from: 0.62, to: 0.75 },
-    { name: 'Albert Clock', position: [-60.4, 3.8, 34.7], from: 0.64, to: 0.8 },
-    { name: 'City Hall', position: [-96.9, 5.8, 81.2], from: 0.78, to: 0.98 },
-];
