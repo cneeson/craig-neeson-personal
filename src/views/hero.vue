@@ -1,158 +1,79 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import Letters from '@/animations/letters.vue';
-
-export default defineComponent({
-    name: 'Hero'
-});
-
-export const totalTransitionDuration = 2000;
-</script>
 <script lang="ts" setup>
-import { onMounted, toRefs, ref } from 'vue';
-import { createTimeline, stagger } from 'animejs';
+import { onBeforeUnmount, onMounted } from 'vue';
+import { gsap } from 'gsap';
 
-const props = defineProps<{
-    isVisible: boolean;
-}>();
+const name = 'Craig Neeson';
+const subtitle = ['Senior', 'Frontend', 'Developer'];
 
-const {isVisible} = toRefs(props);
-
-const timeline = ref();
+let context: gsap.Context | undefined;
 
 onMounted(() => {
-    timeline.value = createTimeline({ autoplay: false })
-        .add('[data-animate="title"]', {
-            y: {
-                from: '1.8rem',
-                duration: 800,
-                to: 0
-            },
-            easing: 'easeIn',
-            opacity: [
-                { from: 0, to: 1, duration: 400, delay: stagger(100) }
-            ],
-            filter: [
-                { from: 'blur(12px)', delay: stagger(100) }
-            ],
-        })
-        .add('[data-animate="title-break"]', {
-            easing: 'easeOutQuint',
-            duration: 2500,
-            opacity: [
-                { from: 0, to: 1, duration: 1000 }
-            ],
-            width: {
-                from: '0%',
-                to: '90%',
-            },
-        }, 600)
-        .add('[data-animate="subtitle"]', {
-            easing: 'easeIn',
-            duration: 1000,
-            delay: stagger(400),
-            opacity: [
-                { from: 0, to: 1 }
-            ],
-            filter: [
-                { from: 'blur(20px)'}
-            ]
-        }, 900)
-        .add('[data-animate="scroll-indicator"]', {
-            y: {
-                from: '1.8rem',
-                duration: 800,
-                to: 0
-            },
-            easing: 'easeIn',
-            opacity: [
-                { from: 0, to: 1, duration: 400, delay: stagger(100) }
-            ],
-            filter: [
-                { from: 'blur(12px)', delay: stagger(100) }
-            ],
-        }, 2000)
-        .add('[data-animate="scroll-indicator"] p', {
-            keyframes: {
-                '0%'  : { rotate: 0, scale: 1 },
-                '25%'  : { rotate: 5, scale: 1.2 },
-                '50%' : { rotate: 0, scale: 1 },
-                '75%'  : { rotate: -5, scale: 1.2 },
-                '100%': { rotate: 0, scale: 1 },
-            },
-            duration: 750,
-            loop: true,
-            loopDelay: 2000
-        });
-
-    setTimeout(() => {
-        timeline.value.play()
-    }, 1000)
+  context = gsap.context(() => {
+    gsap.timeline({ delay: 0.6, defaults: { ease: 'power3.out' } })
+      .from('[data-intro="letter"]', { autoAlpha: 0, y: '0.6em', filter: 'blur(12px)', duration: 0.9, stagger: 0.05 })
+      .from('[data-intro="rule"]', { autoAlpha: 0, scaleX: 0, duration: 1.6, ease: 'expo.out' }, 0.5)
+      .from('[data-intro="word"]', { autoAlpha: 0, filter: 'blur(16px)', duration: 1, stagger: 0.25, ease: 'power1.out' }, 0.8)
+      .from('[data-intro="scroll"]', { autoAlpha: 0, y: 20, duration: 0.8 }, 2)
+      .to('[data-intro="scroll"] img', { y: 8, duration: 0.9, ease: 'sine.inOut', repeat: -1, yoyo: true });
+  });
 });
 
+onBeforeUnmount(() => context?.revert());
 </script>
 
 <template>
-    <Transition>
-        <section class="hero" v-show="isVisible" data-speed="0.5">
-            <div class="hero-content">
-                <Letters 
-                    is="h1"
-                    class="text-slate-50 pb-6 mx-7 font-extrabold title" 
-                    animate-key="title"
-                    str="Craig Neeson"
-                />
-                <hr class="border-b border-solid border-slate-600 opacity-0 mx-auto" data-animate="title-break">
-                <h2 class="text-slate-300 text-5xl mt-5 flex justify-center gap-2 subtitle">
-                    <span class="opacity-0" data-animate="subtitle">Senior</span>
-                    <span class="opacity-0" data-animate="subtitle">Frontend</span>
-                    <span class="opacity-0" data-animate="subtitle">Developer</span>
-                </h2>
-            </div>
-            <div class="scroll-indicator hero-content opacity-0" data-animate="scroll-indicator">
-                <p>
-                    Scroll
-                </p>
-                <img src="images/arrow-down.svg" alt="arrow-down" />
-            </div>
-        </section>
-    </Transition>
+  <section class="hero">
+    <div class="hero-content">
+      <h1 class="title" :aria-label="name">
+        <span
+          v-for="(letter, index) in name"
+          :key="index"
+          class="inline-block whitespace-pre"
+          aria-hidden="true"
+          data-intro="letter"
+        >{{ letter }}</span>
+      </h1>
+      <hr class="rule" data-intro="rule">
+      <p class="subtitle">
+        <span v-for="word in subtitle" :key="word" class="inline-block" data-intro="word">{{ word }}</span>
+      </p>
+
+      <div class="scroll-indicator" data-intro="scroll" aria-hidden="true">
+        <span>Scroll</span>
+        <img src="images/arrow-down.svg" alt="" />
+      </div>
+    </div>
+  </section>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .hero {
-    @apply text-center p-2 flex justify-center items-center h-[100vh] relative;
+  @apply h-screen relative;
 }
 
-.scroll-indicator {
-    @apply absolute bottom-6 left-0 right-0 flex flex-col gap-3 justify-center items-center text-white font-bold text-2xl;
-}
-
-.scroll-indicator img {
-    @apply w-8 h-8;
+.hero-content {
+  @apply h-full flex flex-col items-center justify-center text-center px-6;
 }
 
 .title {
-    @apply text-4xl md:text-5xl lg:text-6xl;
+  @apply text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight;
+}
+
+.rule {
+  @apply w-full max-w-md my-6 border-0 h-px;
+
+  background: linear-gradient(90deg, transparent, rgba(203, 213, 225, 0.6), transparent);
 }
 
 .subtitle {
-    @apply text-2xl md:text-3xl lg:text-4xl;
+  @apply text-slate-300 text-2xl md:text-3xl lg:text-4xl flex flex-wrap justify-center gap-x-2;
 }
 
-.letters {
-    font-weight: 600;
-}
+.scroll-indicator {
+  @apply absolute bottom-8 inset-x-0 flex flex-col gap-2 items-center text-sm uppercase tracking-[0.3em] text-slate-200;
 
-.v-enter-active,
-.v-leave-active {
-  transition: opacity 0.2s ease;
-  filter: blur(0);
-}
-
-.v-enter-from,
-.v-leave-to {
-  opacity: 0;
-  filter: blur(12px);
+  img {
+    @apply w-6 h-6;
+  }
 }
 </style>

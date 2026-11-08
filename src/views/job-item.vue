@@ -1,85 +1,55 @@
-<script lang="ts">
-import { computed, defineComponent } from 'vue';
-import { format, formatDistanceStrict } from 'date-fns'
-
-export default defineComponent({
-    name: 'JobItem'
-});
-
-export const totalTransitionDuration = 2000;
-</script>
 <script lang="ts" setup>
+import { computed } from 'vue';
+import { format, formatDistanceStrict } from 'date-fns'
+import type { Job } from '@/data/jobs';
 
-
-const props =defineProps<{
-  employer: string;
-  role: string;
-  startDate: string;
-  endDate: string;
-  href: string;
-  imgSrc: string;
-  imgAlt: string;
-  keyPoints: string[];
-  isCurrent?: boolean;
+const props = defineProps<{
+  job: Job;
 }>();
 
-const startFormatted = computed(() => {
-  return format(new Date(props.startDate), 'MMM yyyy');
-});
-
-const endFormatted = computed(() => {
-  return format(new Date(props.endDate), 'MMM yyyy');
-});
-
-const timeSinceStart = computed(() => {
-  return formatDistanceStrict(new Date(props.startDate), props.endDate ? new Date(props.endDate) : new Date());
+const dates = computed(() => {
+  const start = new Date(props.job.startDate);
+  const end = props.job.endDate ? new Date(props.job.endDate) : new Date();
+  const range = `${format(start, 'MMM yyyy')} – ${props.job.endDate ? format(end, 'MMM yyyy') : 'Present'}`;
+  return `${range} · ${formatDistanceStrict(start, end)}`;
 });
 </script>
 
 <template>
-    <div class="job-item">
-      <div class="flex items-center mb-5">
-          <div class="w-[65px] mr-4">
-              <img :src="imgSrc" :alt="imgAlt" class="w-full rounded-md" />
-          </div>
-          <div>
-              <a :href="href" target='_blank' class="hover:underline text-white font-bold">
-                  <h4 class="text-lg">{{employer}}</h4>
-              </a>
-              <h5 class="mb-1">{{role}}</h5>
-              <p class="text-xs">
-                {{`${startFormatted} - ${isCurrent ? 'Present' : endFormatted} | ${timeSinceStart}`}}
-              </p>
-          </div>
+  <article class="job-item">
+    <header class="flex items-center gap-4" :class="{ 'mb-5': job.keyPoints.length }">
+      <img :src="job.imgSrc" :alt="`${job.employer} logo`" class="w-14 h-14 lg:w-16 lg:h-16 rounded-lg object-cover shrink-0" loading="lazy" />
+      <div>
+        <h3 class="text-lg lg:text-xl font-bold">
+          <a :href="job.href" target="_blank" rel="noopener" class="hover:underline underline-offset-4">{{ job.employer }}</a>
+        </h3>
+        <p class="text-slate-200">{{ job.role }}</p>
+        <p class="text-xs text-slate-300 mt-1">{{ dates }}</p>
       </div>
+    </header>
 
-      <ul>
-        <li v-for="point in keyPoints" :key="point">
-          <p class="text-sm lg:text-base">{{ point }}</p>
-        </li>
-      </ul>
-    </div>
+    <ul v-if="job.keyPoints.length">
+      <li v-for="point in job.keyPoints" :key="point">{{ point }}</li>
+    </ul>
+  </article>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .job-item {
-  background: rgba(169, 169, 169, 0.2);
-  border-radius: 5px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  border: 1px solid rgba(169, 169, 169, 0.3);
+  @apply p-6 lg:p-8 rounded-xl text-white;
 
-  @apply text-white p-7;
-
-  line-height: 1.61;
+  background: rgba(169, 169, 169, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 
   ul {
-    @apply list-disc ml-4;
-    
-    li {
-      @apply mb-3;
-    }
+    @apply list-disc pl-5 flex flex-col gap-3 text-sm lg:text-base leading-relaxed text-slate-100;
+  }
+
+  li::marker {
+    color: #88b8f2;
   }
 }
 </style>

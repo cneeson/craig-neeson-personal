@@ -1,34 +1,25 @@
-<script lang="ts">
-import { defineComponent, ref } from 'vue';
-
-export default defineComponent({
-    name: 'Footer'
-});
-
-export const totalTransitionDuration = 2000;
-</script>
 <script lang="ts" setup>
+import { ref } from 'vue';
 import AttributionsModal from '../components/attributions-modal.vue';
 
 const isAttributionsOpen = ref(false);
 </script>
 
 <template>
-    <footer>
-      <h1 class="text-2xl font-extrabold">Craig Neeson</h1>
-      <a class="underline cursor-pointer" @click="isAttributionsOpen = true">Attributions</a>
-    </footer>
-    <AttributionsModal :is-open="isAttributionsOpen" @on-close="isAttributionsOpen = false" />
+  <footer>
+    <p class="text-xl font-extrabold">Craig Neeson</p>
+    <button class="underline underline-offset-4 text-slate-200 hover:text-white" @click="isAttributionsOpen = true">Attributions</button>
+  </footer>
+  <AttributionsModal :is-open="isAttributionsOpen" @close="isAttributionsOpen = false" />
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 footer {
-  @apply text-white flex justify-between items-center p-5 px-7 absolute bottom-0 w-full;
-  height: 80px;
+  @apply flex justify-between items-center px-6 md:px-8 py-6;
 
-  background: rgba(169, 169, 169, 0.2);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(5px);
+  background: rgba(169, 169, 169, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
-
 </style>

@@ -1,17 +1,12 @@
 <template>
-   <div class="relative">
-      <hr class="absolute bg-white top-0 h-[105%] w-1 rounded-full">
-      <hr class="absolute bg-white top-0 h-[105%] w-3 blur-[20px] rounded-full">
-    </div>
+  <div class="divider" aria-hidden="true" />
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<style lang="scss" scoped>
+.divider {
+  @apply w-px self-stretch rounded-full;
 
-export default defineComponent({
-  name: 'Divider',
-});
-</script>
-
-<script lang="ts" setup>
-</script>
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.8) 20%, rgba(255, 255, 255, 0.8) 80%, transparent);
+  box-shadow: 0 0 18px 2px rgba(136, 184, 242, 0.45);
+}
+</style>

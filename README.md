@@ -20,7 +20,5 @@ npm run build
 npm run lint
 ```
 
-# Deployment
-- Run `npm run build` to build website into the dist directory
-- Commit and push changes to the master branch
-- GitHub Pages will re-deploy the website. :thumbsup
+## Deployment
+Pushing to `main` runs the [Build and deploy](.github/workflows/deploy.yml) GitHub Actions workflow, which lints, builds into `dist/` and publishes it to GitHub Pages at https://craigneeson.co.uk. Pull requests run the lint and build steps only.
