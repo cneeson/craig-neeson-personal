@@ -74,9 +74,10 @@ onMounted(() => {
       });
     }
 
-    // Catch-up smoothing between the scroll position and the scene. ScrollSmoother already
-    // smooths desktop scrolling, so it needs less on top; native touch scrolling needs a little more.
-    const scrub = prefersReducedMotion ? true : isMobile ? 0.8 : 0.6;
+    // Catch-up smoothing between the scroll position and the scene. ScrollSmoother already smooths desktop
+    // scrolling, so it needs little on top. On touch screens the scene stays with the finger, as the page
+    // does: any more lag and the same swipe moves it by more or less depending on how fast it was
+    const scrub = prefersReducedMotion ? true : isMobile ? 0.1 : 0.6;
 
     // Captions are shown while their beat is mostly in view, in step with the markers
     // (each is named after its beat in `windows`)
@@ -97,6 +98,7 @@ onMounted(() => {
     // Coming to rest while a caption is fading in eases it fully into view (see settleAt). Not
     // ScrollTrigger's own `snap`: alongside ScrollSmoother that stops the page following jumps
     // upwards. Nor its `scrollEnd` event, which doesn't always fire once smoothing finishes.
+    // Desktop only: on touch screens the page moving by itself after a swipe feels like it's fighting the finger.
     const settle = gsap.delayedCall(0.25, () => {
       const trigger = journey.scrollTrigger;
       if (isTouching || !trigger?.isActive) return;
@@ -114,7 +116,7 @@ onMounted(() => {
         end: 'bottom bottom',
         scrub,
         // Restarted on every scroll, so it only runs once scrolling (and smoothing) has stopped
-        onUpdate: () => prefersReducedMotion || settle.restart(true),
+        onUpdate: () => prefersReducedMotion || isMobile || settle.restart(true),
       },
     });
 
@@ -318,10 +320,10 @@ html, body {
   z-index: 20;
 }
 
-// Each beat gets roughly a screen of scrolling (0.05 of the journey), so captions stay up long
+// Each beat gets roughly a screen of scrolling (about 0.044 of the journey), so captions stay up long
 // enough to read, and the walk through Belfast gets most of it
 .scene-track {
-  height: 2100vh;
+  height: 2370vh;
 }
 
 .content {

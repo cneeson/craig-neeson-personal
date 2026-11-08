@@ -18,6 +18,8 @@ import { createSpline, flightProgressAt, windows } from '@/scene/choreography';
 interface Waypoint { at: number, x: number, z: number, y: number, pitch: number, heading?: number, zoom?: number }
 
 const [cityFrom, cityTo] = windows.belfast;
+/** Halfway between two beats, for the waypoints that carry the camera from one building to the next. */
+const between = (from: keyof typeof windows, to: keyof typeof windows) => (windows[from][1] + windows[to][0]) / 2;
 
 const waypoints: Waypoint[] = [
     // Right under the cranes, where they're parked side by side at the end of the dock, looking up at them on a
@@ -31,26 +33,35 @@ const waypoints: Waypoint[] = [
     // Round the SSE Arena, looking back at the gig poster on its west side
     { at: windows.skills[0], x: -10, z: 4, y: 5, pitch: 1, heading: 95 },
     { at: windows.skills[1], x: -21, z: 6, y: 6, pitch: 0, heading: 92 },
+    // Away from the Arena, turning up the Lagan towards the Albert Clock
+    { at: between('skills', 'rewind'), x: -40, z: 25, y: 11, pitch: -6, heading: 58 },
     // Over the Lagan by the Albert Clock, rising up over City Hall to look out north-west
-    { at: windows.rewind[0], x: -45, z: 30, y: 12, pitch: -8 },
+    { at: windows.rewind[0], x: -59, z: 44, y: 17, pitch: -8, heading: 24 },
     { at: windows.rewind[1], x: -88, z: 74, y: 28, pitch: -6, heading: 330 },
     // Coleraine, then Antrim, through the telescope
     { at: windows.coleraine[0], x: -95, z: 82, y: 34, pitch: 0, heading: 321.8 },
     { at: windows.coleraine[1], x: -96, z: 83, y: 35, pitch: 0, heading: 321.8 },
     { at: windows.antrim[0], x: -96.5, z: 84, y: 35, pitch: 0, heading: 304.2 },
     { at: windows.antrim[1], x: -96, z: 86, y: 33, pitch: -2, heading: 304.2 },
+    // Dropping off City Hall, turning down Adelaide Street on the way
+    { at: between('antrim', 'liberty'), x: -91, z: 110, y: 16, pitch: -9, heading: 340 },
     // Down to Adelaide Street, backing down it just over the roofs (the tiles melt any lower), looking back up
     // it towards City Hall: at Adelaide Exchange (Liberty IT) on the right, then Flax House (Flexera) on the left
     { at: windows.liberty[0], x: -85.6, z: 133, y: 7, pitch: -11, heading: 14 },
     { at: windows.liberty[1], x: -85.4, z: 136, y: 6.8, pitch: -10, heading: 12 },
     { at: windows.flexera[0], x: -85.2, z: 139, y: 6.6, pitch: -11, heading: 353 },
-    { at: windows.flexera[1], x: -85.2, z: 142, y: 6.6, pitch: -10, heading: 355 },
+    { at: windows.flexera[1], x: -85.2, z: 142, y: 6.8, pitch: -10, heading: 1 },
+    // Lifting over the roofs, turning out over the Gasworks
+    { at: between('flexera', 'locum'), x: -78, z: 145, y: 10, pitch: -10, heading: 65 },
     // Over the Gasworks, looking down at Ormeau Business Park (Locate a Locum), then back from it as the arc
-    // to Paris (Ankorstore) sets off south-east
-    { at: windows.locum[0], x: -70, z: 143, y: 7, pitch: -12, heading: 132 },
+    // to Paris (Ankorstore) sets off south-east, already drifting north, the way it goes next
+    { at: windows.locum[0], x: -70, z: 143, y: 7, pitch: -12, heading: 127 },
     { at: windows.locum[1], x: -69, z: 142, y: 8, pitch: -12, heading: 134 },
-    { at: windows.ankorstore[0], x: -80, z: 152, y: 11, pitch: 3, heading: 97 },
-    { at: windows.ankorstore[1], x: -83, z: 157, y: 13, pitch: 5, heading: 101 },
+    { at: windows.ankorstore[0], x: -80, z: 152, y: 11, pitch: 3, heading: 104 },
+    { at: windows.ankorstore[1], x: -79, z: 148, y: 14, pitch: 4, heading: 116 },
+    // Up and away north along the Lagan, turning to look down it, so the kilometre to Lanyon Place passes
+    // slowly far below
+    { at: between('ankorstore', 'ocula'), x: -50, z: 100, y: 34, pitch: -14, heading: 140 },
     // North along the Lagan to Lanyon Place (Ocula, at Formation Works), watching the train set off over the
     // railway bridge, then climbing away
     { at: windows.ocula[0], x: -24, z: 56, y: 7, pitch: -4, heading: 163 },

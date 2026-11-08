@@ -18,38 +18,39 @@ const tracks: Track[] = ['earthRotationY', 'cameraZ', 'cameraRotationX', 'camera
 
 /**
  * The beats of the journey as [start, end] progress ranges: where each one's words are fully readable (they
- * fade in just before and out just after). One screen of scrolling is 0.05 (see the track's height in App.vue).
+ * fade in just before and out just after). One screen of scrolling is about 0.044 (see the track's height in App.vue).
  */
 export const windows = {
-    hero: [0, 0.03],
+    hero: [0, 0.026],
     // Backing away over the Arctic, with Northern Ireland under thick cloud
-    forecast: [0.05, 0.08],
+    forecast: [0.044, 0.071],
     // The clouds part over Northern Ireland, its outline is traced and the display locks on to Belfast
-    northernIreland: [0.1, 0.16],
+    northernIreland: [0.088, 0.141],
     // The flight over Belfast, between diving into the clouds and climbing back out of them
-    belfast: [0.21, 0.86],
+    belfast: [0.185, 0.876],
     // Out of the clouds under the H&W cranes: the introduction
-    belfastIntro: [0.232, 0.28],
+    belfastIntro: [0.205, 0.247],
     // Backing away down the dock: what I do
-    craft: [0.295, 0.335],
+    craft: [0.26, 0.296],
     // Over the SSE Arena: the skills, billed like a gig
-    skills: [0.345, 0.4],
+    skills: [0.319, 0.367],
     // Rising over City Hall to look back up the coast
-    rewind: [0.415, 0.44],
+    rewind: [0.395, 0.417],
     // Through the telescope: Ulster University in Coleraine, then Nitec in Antrim
-    coleraine: [0.455, 0.495],
-    antrim: [0.505, 0.54],
-    // Down Adelaide Street, past Liberty IT then Flexera
-    liberty: [0.565, 0.6],
-    flexera: [0.615, 0.65],
+    coleraine: [0.431, 0.466],
+    antrim: [0.475, 0.506],
+    // Down Adelaide Street, past Liberty IT then Flexera. The gaps between the jobs leave room for the camera to
+    // travel and turn between their buildings: any shorter and a flick of the thumb whips straight across
+    liberty: [0.544, 0.575],
+    flexera: [0.597, 0.628],
     // Locate a Locum at the Gasworks, then Ankorstore, off towards Paris
-    locum: [0.67, 0.7],
-    ankorstore: [0.715, 0.745],
+    locum: [0.67, 0.696],
+    ankorstore: [0.723, 0.749],
     // Ocula, at Lanyon Place, as the train pulls out
-    ocula: [0.765, 0.82],
+    ocula: [0.793, 0.841],
     // Climbed back out over the planet, with arcs out to where the work has reached
-    reach: [0.88, 0.915],
-    reveal: [0.935, 0.975],
+    reach: [0.894, 0.925],
+    reveal: [0.943, 0.978],
 } as const;
 
 /** The employers, by the beat that shows each one. */
