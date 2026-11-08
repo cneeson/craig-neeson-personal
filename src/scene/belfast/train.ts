@@ -55,13 +55,14 @@ const HALF_WIDTH = 0.14;
 const BOGIE_SPACING = 1.6;
 const CARS = 3;
 
-const SILVER = '#d4d8de';
-const BLUE = '#1d4f9c';
-const GLASS = '#2b3644';
-const ROOF = '#7f848b';
-const UNDERFRAME = '#26282c';
-const YELLOW = '#f2c418';
-const DOOR = '#2e5ea8';
+// Weathered a little, and a shade greyer than paint, like everything in the photographed city around it
+const SILVER = '#c3c7cc';
+const BLUE = '#2b4c80';
+const GLASS = '#3a4552';
+const ROOF = '#767a80';
+const UNDERFRAME = '#2e3033';
+const YELLOW = '#d8b744';
+const DOOR = '#3a5c93';
 const LAMP = '#fff6e0';
 
 const colored = (geometry: BufferGeometry, color: string, glow = 0) => {
@@ -126,7 +127,7 @@ const createCar = (hasCab: boolean) => {
  * A Northern Ireland Railways train leaving Lanyon Place: a hand-built three-car Class 4000 in blue and silver.
  * Moved by the scroll like the camera, so however fast the reader goes it crosses the Lagan in front of them
  * during the Ocula beat, and carries on along the Bangor line. Each car follows the track between its own bogies, so the train
- * bends round the curves. Unlit apart from a little shading from the sun, like the tiles.
+ * bends round the curves. Shaded softly, like the photographed tiles around it, rather than lit.
  */
 export const createTrain = (sun: IUniform<Vector3>) => {
     const material = new ShaderMaterial({
@@ -137,9 +138,11 @@ export const createTrain = (sun: IUniform<Vector3>) => {
             varying vec3 vColor;
             varying float vGlow;
             varying vec3 vWorld;
+            varying float vHeight;
             void main() {
                 vColor = color;
                 vGlow = glow;
+                vHeight = position.y;
                 vec4 world = modelMatrix * vec4(position, 1.0);
                 vWorld = world.xyz;
                 gl_Position = projectionMatrix * viewMatrix * world;
@@ -152,12 +155,21 @@ export const createTrain = (sun: IUniform<Vector3>) => {
             varying vec3 vColor;
             varying float vGlow;
             varying vec3 vWorld;
+            varying float vHeight;
             ${CLOUD_SHADOW_GLSL}
             void main() {
                 vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
                 float sunlit = cloudShadow(vWorld.xz);
-                float light = 0.75 + 0.35 * max(dot(n, uSun), 0.0) * sunlit + 0.1 * n.y;
-                vec3 color = vGlow > 0.5 ? vColor * 1.6 : vColor * light * mix(${CLOUD_SHADE_GLSL}, vec3(1.0), sunlit);
+                // Lit like the photos around it: mostly the soft light from a bright sky, a little sun, and the sky's
+                // blue in the shade and on top
+                float light = 0.66 + 0.26 * max(dot(n, uSun), 0.0) * sunlit + 0.1 * n.y;
+                vec3 color = vColor * light * mix(${CLOUD_SHADE_GLSL}, vec3(1.0), sunlit);
+                color += uFogColor * (0.04 + 0.05 * max(n.y, 0.0));
+                // Darker low down, out of the light under the body, so it sits on the track
+                color *= mix(0.55, 1.0, smoothstep(0.02, 0.2, vHeight));
+                // A touch less saturated, as the photos are
+                color = mix(vec3(dot(color, vec3(0.2126, 0.7152, 0.0722))), color, 0.82);
+                if (vGlow > 0.5) color = vColor * 1.6;
                 float distance = length(cameraPosition - vWorld);
                 float haze = 1.0 - exp(-pow(distance * uFogDensity, 2.0));
                 gl_FragColor = vec4(mix(color, uFogColor, haze), 1.0);
