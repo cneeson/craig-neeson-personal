@@ -17,8 +17,6 @@ import CompanyLogo from './company-logo.vue';
  * flat to the screen and inside it, so they read on a phone too. Shown in time as the camera arrives.
  */
 
-/** The stops with a building to point at. */
-const callouts = (Object.keys(officeAnchors) as EmployerBeat[]).map(beat => ({ beat, anchor: officeAnchors[beat] as Vector3 }));
 /** The remote years at Ankorstore have the arc to Paris instead, and their card up in the sky. */
 const SKY_CARDS: EmployerBeat[] = ['ankorstore'];
 /** Seen through the telescope (telescope.ts): under the eyepieces, with how far it's looking. */
@@ -27,6 +25,10 @@ const SCOPE_CARDS: Partial<Record<EmployerBeat, string>> = {
   antrim: '21 km north-west',
 };
 const scopeBeats = Object.keys(SCOPE_CARDS) as ('coleraine' | 'antrim')[];
+/** The stops with a building to point at, in the city (those through the telescope have their cards under it). */
+const callouts = (Object.keys(officeAnchors) as EmployerBeat[])
+  .filter(beat => !(beat in SCOPE_CARDS))
+  .map(beat => ({ beat, anchor: officeAnchors[beat] as Vector3 }));
 /** The overview's pins: each office, and the telescope over City Hall for the first two. */
 const pins: { beat: EmployerBeat, anchor: Vector3, label?: string }[] = [
   { beat: 'coleraine', anchor: new Vector3(-96.7, 6, 83.7), label: 'The telescope at City Hall' },

@@ -31,8 +31,9 @@ const SIGHTS: Record<'coleraine' | 'antrim', Sight> = {
     // Ulster University's Coleraine campus, about 78 km north-west. Outside the photorealistic tiles' coverage
     // (just terrain and aerial photos), so seen from further off, where that holds up
     coleraine: { target: new Vector3(-4911, -45, -6048), bearing: 321.5, standOff: 320, height: 70, fov: 22 },
-    // Antrim Technology Park, where Nitec is, about 21 km north-west
-    antrim: { target: new Vector3(-1815, 1, -1103), bearing: 301.3, standOff: 120, height: 16, fov: 26 },
+    // Antrim Technology Park, where Nitec is (offices.ts), about 21 km north-west: from high enough to see it over
+    // the trees
+    antrim: { target: new Vector3(-1820, 0.5, -1087.5), bearing: 304.2, standOff: 100, height: 26, fov: 14 },
 };
 
 
@@ -178,7 +179,7 @@ export const createTelescope = (renderer: WebGLRenderer) => {
          */
         update(
             { open, sight: sightName, whip }: { open: number, sight: 'coleraine' | 'antrim', whip: number },
-            elapsed: number, aspect: number, sky: Object3D, world: Object3D,
+            elapsed: number, aspect: number, sky: Object3D, world: Object3D[],
         ) {
             overlay.visible = open > 0.001;
             // Sized to the screen in CSS pixels whether or not it's up, for the tiles
@@ -214,7 +215,7 @@ export const createTelescope = (renderer: WebGLRenderer) => {
             renderer.autoClear = false;
             renderer.clear();
             renderer.render(sky, camera);
-            renderer.render(world, camera);
+            world.forEach(object => renderer.render(object, camera));
             renderer.setRenderTarget(previousTarget);
             renderer.autoClear = autoClear;
 

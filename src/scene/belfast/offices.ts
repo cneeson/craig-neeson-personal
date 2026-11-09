@@ -8,7 +8,9 @@ import type { EmployerBeat } from '@/scene/director';
 interface Office {
     beat: EmployerBeat;
     footprint: [number, number][];
+    /** The roof's height, and the ground's where it isn't at 0 (out where the tiles' plane leaves the earth). */
     height: number;
+    ground?: number;
 }
 
 const OFFICES: Office[] = [
@@ -31,6 +33,14 @@ const OFFICES: Office[] = [
         footprint: [[-8.7, 86], [-8.6, 88.7], [-7.6, 88.7], [-7.1, 89], [-6.9, 88.6], [-7.1, 87.5], [-6.9, 87.4],
             [-6.9, 87.8], [-5.8, 87.8], [-5.9, 85.9]],
     },
+    // Nitec, 9 Technology Park, Antrim, 21 km off: only seen through the telescope (way 242023209)
+    {
+        beat: 'antrim',
+        height: 1.8,
+        ground: 0.5,
+        footprint: [[-1819.7, -1087.1], [-1816.9, -1086.4], [-1816.5, -1088], [-1820, -1088.8], [-1823.2, -1087.3],
+            [-1822.9, -1086.7], [-1822.7, -1086]],
+    },
 ];
 
 /** Sunk a little into the ground, so the outline meets it on slopes. */
@@ -47,7 +57,7 @@ export const officeAnchors = Object.fromEntries(OFFICES.map(office =>
     [office.beat, centreOf(office.footprint).setY(office.height + 0.4)])) as Partial<Record<EmployerBeat, Vector3>>;
 
 /** Walls round the footprint, with each vertex's height (0..1) and its distance from the nearest corner (m). */
-const wallsOf = ({ footprint, height }: Office) => {
+const wallsOf = ({ footprint, height, ground = 0 }: Office) => {
     const centre = centreOf(footprint);
     const corners = footprint.map(([x, z]) => {
         const out = new Vector3(x - centre.x, 0, z - centre.z);
@@ -66,7 +76,7 @@ const wallsOf = ({ footprint, height }: Office) => {
             [a, 0, start], [b, 0, start + metres], [b, 1, start + metres], [a, 0, start], [b, 1, start + metres], [a, 1, start],
         ];
         quad.forEach(([point, up, along]) => {
-            positions.push(point.x, up ? height : BASE, point.z);
+            positions.push(point.x, up ? height : ground + BASE, point.z);
             heights.push(up);
             edges.push(along, length);
         });

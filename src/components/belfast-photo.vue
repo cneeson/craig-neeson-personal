@@ -15,6 +15,7 @@ import { createTelescope } from '@/scene/belfast/telescope';
 import { createPlane } from '@/scene/belfast/plane';
 import { createFerry, createRiverBoat } from '@/scene/belfast/boats';
 import { createTraffic } from '@/scene/belfast/traffic';
+import { createOfficeHighlights } from '@/scene/belfast/offices';
 import { attribution } from '@/scene/belfast/attribution';
 import { sceneState } from '@/scene/state';
 import { isInBelfast } from '@/scene/choreography';
@@ -55,8 +56,9 @@ const plane = createPlane(skyMaterial.uniforms.uSun);
 const ferry = createFerry(skyMaterial.uniforms.uSun);
 const riverBoat = createRiverBoat(skyMaterial.uniforms.uSun);
 const traffic = createTraffic(skyMaterial.uniforms.uSun);
+const offices = createOfficeHighlights();
 root.add(sky, photoCity.group, water.mesh, starlings.object, train.object, plane.object, ferry.object,
-  riverBoat.object, traffic.object, telescope.overlay);
+  riverBoat.object, traffic.object, offices.object, telescope.overlay);
 
 /** Loaded before the city's shown: out of the clouds under the cranes, and where it goes on to (see firstShot). */
 const ARRIVAL = poseOf(shots.arrival, 0, 0);
@@ -88,6 +90,7 @@ onBeforeUnmount(() => {
   ferry.dispose();
   riverBoat.dispose();
   traffic.dispose();
+  offices.dispose();
   sky.geometry.dispose();
   skyMaterial.dispose();
   showAttribution(false);
@@ -124,6 +127,8 @@ onLoop(({ delta, elapsed }) => {
   ferry.update(shownFor);
   riverBoat.update((elapsed + 40) % BOAT_EVERY);
   traffic.update(elapsed, camera as PerspectiveCamera, renderer.value, photoCity.group);
-  telescope.update(scope, elapsed, (camera as PerspectiveCamera).aspect, sky, photoCity.group);
+  offices.update(cityState.offices, elapsed, true);
+  // The offices' outlines too, for Nitec's through the telescope
+  telescope.update(scope, elapsed, (camera as PerspectiveCamera).aspect, sky, [photoCity.group, offices.object]);
 });
 </script>

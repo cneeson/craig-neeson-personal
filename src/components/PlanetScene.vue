@@ -61,7 +61,6 @@
 
   <BelfastPhoto v-if="isCityMounted && !hasCityFailed" @failed="hasCityFailed = true" />
   <primitive :object="parisArc.object" />
-  <primitive :object="offices.object" />
   <CloudVeil ref="veilRef" />
 </template>
 
@@ -91,7 +90,6 @@ import { createArcs } from '@/scene/planet/arcs';
 import { EARTH_MESH_ROTATION, EARTH_POSITION, onEarth, PLACES } from '@/scene/planet/geo';
 import { patchClouds } from '@/scene/planet/clouds';
 import { createParisArc } from '@/scene/belfast/paris-arc';
-import { createOfficeHighlights } from '@/scene/belfast/offices';
 import { ATMOSPHERE_RADIUS, createAtmosphereMaterial, createEarthMaterial } from '@/scene/earth';
 import { clamp01, damp, lerp, smoothstep } from '@/services/three';
 
@@ -163,7 +161,6 @@ const veilRef = shallowRef<{ update(amount: number, travel: number, aspect: numb
 const highlight = createHighlight()
 const arcs = createArcs()
 const parisArc = createParisArc()
-const offices = createOfficeHighlights()
 // Where the clouds part, over the middle of Northern Ireland
 const NORTHERN_IRELAND = onEarth(PLACES.northernIreland.lat, PLACES.northernIreland.lon)
 const clouds = patchClouds()
@@ -172,7 +169,6 @@ onBeforeUnmount(() => {
   highlight.dispose()
   arcs.dispose()
   parisArc.dispose()
-  offices.dispose()
 })
 
 // Belfast loads in the background from Google's tiles once the planet is up (if there's a key in the build).
@@ -266,7 +262,6 @@ onLoop(({ delta, elapsed }) => {
   const veil = isOverBelfast ? Math.max(veilAt(progress), 1 - cityReveal) : veilAt(progress)
   if (planetRef.value) planetRef.value.visible = !isInCity
   parisArc.update(cityState.paris.draw, cityState.paris.opacity, isInCity)
-  offices.update(cityState.offices, elapsed, isInCity)
 
   if (isInCity) {
     placeCamera(cam, cityPoseAt(), cam.aspect)
