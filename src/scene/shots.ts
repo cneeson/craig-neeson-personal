@@ -1,5 +1,6 @@
 import { MathUtils, PerspectiveCamera, Vector3 } from 'three';
 import { clamp01, lerp, smoothstep } from '@/services/three';
+import { camera } from './camera';
 
 /**
  * The camera's framings over Belfast, and the stops of each part of the site (see director.ts).
@@ -19,9 +20,23 @@ export interface Shot {
     driftFor?: number;
     /** A framing that moves with the time (s) instead, such as the hover over the city. */
     at?: (time: number) => Pose;
+    /** Added to the pose (and drift) on portrait screens, which are narrow across, to keep what it frames in view. */
+    portrait?: Partial<ShotPose>;
 }
 
 const withZoom = (pose: ShotPose): Pose => ({ zoom: 1, ...pose });
+
+/** How portrait the screen is: 0 at square and wider, 1 at a phone held upright. */
+export const portraitness = (aspect: number) => clamp01((1 - aspect) / 0.55);
+
+const nudged = <T extends Partial<ShotPose>>(pose: T, by: Partial<ShotPose> | undefined, amount: number): T => {
+    if (!by || !amount) return pose;
+    const result: Partial<ShotPose> = { ...pose };
+    (Object.keys(by) as (keyof ShotPose)[]).forEach(key => {
+        if (result[key] !== undefined) result[key] = (result[key] as number) + (by[key] as number) * amount;
+    });
+    return result as T;
+};
 
 /** `to` as a heading (degrees) the short way round from `from`, so turning between them never goes the long way. */
 export const nearestHeading = (from: number, to: number) => from + MathUtils.euclideanModulo(to - from + 180, 360) - 180;
@@ -29,10 +44,11 @@ export const nearestHeading = (from: number, to: number) => from + MathUtils.euc
 /** Where a shot's camera is `held` seconds after arriving, at `time` (s). */
 export const poseOf = (shot: Shot, held: number, time: number): Pose => {
     if (shot.at) return shot.at(time);
-    const pose = withZoom(shot.pose);
+    const amount = portraitness(camera.aspect);
+    const pose = nudged(withZoom(shot.pose), shot.portrait, amount);
     if (!shot.drift) return pose;
     const t = smoothstep(clamp01(held / (shot.driftFor ?? 14)));
-    const to = { ...pose, ...shot.drift };
+    const to = { ...pose, ...nudged(shot.drift, shot.portrait, amount) };
     return {
         x: lerp(pose.x, to.x, t), y: lerp(pose.y, to.y, t), z: lerp(pose.z, to.z, t),
         pitch: lerp(pose.pitch, to.pitch, t), heading: lerp(pose.heading, nearestHeading(pose.heading, to.heading), t), zoom: lerp(pose.zoom, to.zoom, t),
@@ -100,6 +116,8 @@ export const shots = {
         pose: { x: -5, z: 60, y: 14, pitch: -6, heading: 300 },
         drift: { x: -8, z: 62, y: 15, heading: 302 },
         driftFor: 20,
+        // Further back, and round to the Obel, so a phone's narrow view takes them all in
+        portrait: { x: 12, z: 9, heading: 7 },
     },
 } satisfies Record<string, Shot>;
 
@@ -112,7 +130,7 @@ export const CITY_ENDS = {
 };
 
 /** The city camera's field of view: wider on portrait screens, which are narrow across. */
-export const cityFov = (zoom: number, aspect: number) => Math.min(100, lerp(50, 64, clamp01((1 - aspect) / 0.55)) * zoom);
+export const cityFov = (zoom: number, aspect: number) => Math.min(100, lerp(50, 64, portraitness(aspect)) * zoom);
 
 /** How far (degrees) portrait screens look further down, so the city fills the screen above the panels. */
 const PORTRAIT_TILT = -9;
@@ -125,7 +143,7 @@ export const placeCamera = (camera: PerspectiveCamera, pose: Pose, aspect: numbe
         [camera.fov, camera.aspect] = [fov, aspect];
         camera.updateProjectionMatrix();
     }
-    const tilt = PORTRAIT_TILT * clamp01((1 - aspect) / 0.55);
+    const tilt = PORTRAIT_TILT * portraitness(aspect);
     const [heading, pitch] = [MathUtils.degToRad(pose.heading), MathUtils.degToRad(pose.pitch + tilt)];
     camera.position.set(pose.x, pose.y, pose.z);
     target.set(Math.sin(heading) * Math.cos(pitch), Math.sin(pitch), -Math.cos(heading) * Math.cos(pitch)).add(camera.position);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { differenceInYears } from 'date-fns';
 import { createCaption } from '@/scene/captions';
 import { modes, route } from '@/scene/director';
@@ -13,22 +13,40 @@ const yearsExperience = differenceInYears(new Date(), new Date('2017-06-01'));
 const stops = modes.about;
 
 const root = ref<HTMLElement>();
+const box = ref<HTMLElement>();
 const isShown = computed(() => route.isIntroDone && route.mode === 'about');
 const isLast = computed(() => route.step === stops.length - 1);
 
+// The captions share one place, which takes the height of the one shown, so a short one leaves no gap
+let current: HTMLElement | undefined;
+const fit = () => {
+  if (box.value && current) box.value.style.height = `${current.offsetHeight}px`;
+};
+const resizes = new ResizeObserver(fit);
+
 onMounted(() => {
   const captions = [...(root.value?.querySelectorAll<HTMLElement>('[data-caption]') ?? [])]
-    .map(element => ({ stop: element.dataset.caption, ...createCaption(element) }));
-  watch(() => [isShown.value, route.stop, route.isArriving], () => captions.forEach(caption => (
-    isShown.value && route.isArriving && caption.stop === route.stop ? caption.show() : caption.hide()
-  )), { immediate: true });
+    .map(element => ({ stop: element.dataset.caption, element, ...createCaption(element) }));
+  watch(() => [isShown.value, route.stop, route.isArriving], () => {
+    captions.forEach(caption => (
+      isShown.value && route.isArriving && caption.stop === route.stop ? caption.show() : caption.hide()
+    ));
+    const shown = captions.find(caption => caption.stop === route.stop)?.element;
+    if (!shown || shown === current) return;
+    current = shown;
+    resizes.disconnect();
+    resizes.observe(current);
+    fit();
+  }, { immediate: true });
 });
+
+onBeforeUnmount(() => resizes.disconnect());
 </script>
 
 <template>
   <section ref="root" class="about panel-card" :class="{ 'is-shown': isShown }" aria-label="About me">
     <!-- v-once: the captions are split into words for their entrance, so Vue mustn't re-render them -->
-    <div v-once class="captions" aria-live="polite">
+    <div ref="box" v-once class="captions" aria-live="polite">
       <p class="caption" data-caption="hello">
         <span class="block mb-2">Hi, I'm <strong>Craig.</strong> 👋</span>
         For <strong>{{ yearsExperience }} years</strong> I've been building the interfaces that bring ideas to life,
@@ -65,7 +83,11 @@ onMounted(() => {
 <style lang="scss" scoped>
 .captions {
   display: grid;
-  min-height: 7.5em;
+  align-items: start;
+  transition: height 0.5s ease;
+  // Clipped as it shrinks under the caption going, but not the words rising in below the last line
+  overflow: clip;
+  overflow-clip-margin: 0.6em;
 }
 
 .caption {
