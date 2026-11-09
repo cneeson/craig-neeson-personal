@@ -60,8 +60,6 @@ const offices = createOfficeHighlights();
 root.add(sky, photoCity.group, water.mesh, starlings.object, train.object, plane.object, ferry.object,
   riverBoat.object, traffic.object, offices.object, telescope.overlay);
 
-/** Loaded before the city's shown: out of the clouds under the cranes, and where it goes on to (see firstShot). */
-const ARRIVAL = poseOf(shots.arrival, 0, 0);
 /** Visited in the background once it's shown, in about the order a reader would go. */
 const PREFETCH = (['hello', 'craft', 'overview', 'coleraine', 'liberty', 'flexera', 'locum', 'ankorstore', 'ocula', 'docks', 'arena', 'lagan'] as ShotName[])
   .map(name => poseOf(shots[name], 0, 0));
@@ -106,7 +104,7 @@ onLoop(({ delta, elapsed }) => {
   const stop = route.mode === 'experience' ? route.stop : null;
   const sights = stop === 'coleraine' || stop === 'antrim' ? [...new Set([stop, scope.sight])] : [];
   photoCity.update(camera as PerspectiveCamera, isFlying, delta, {
-    ahead: photoCity.isReady ? (destination ? [destination] : []) : [ARRIVAL, poseOf(firstShot(), 0, 0)],
+    ahead: photoCity.isReady ? (destination ? [destination] : []) : [poseOf(firstShot(), 0, performance.now() / 1000)],
     prefetch: PREFETCH,
     isMoving: !!destination,
     activeViews: telescope.camerasFor(sights),

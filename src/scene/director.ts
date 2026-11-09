@@ -2,7 +2,7 @@ import { reactive } from 'vue';
 import { gsap } from 'gsap';
 import { prefersReducedMotion } from '@/services/device';
 import { clamp01, damp, lerp } from '@/services/three';
-import { windows } from './choreography';
+import { ENTRANCE_DURATION, windows } from './choreography';
 import { nearestHeading, poseOf, shots, type Pose, type Shot, type ShotName } from './shots';
 import { sceneState } from './state';
 
@@ -53,6 +53,8 @@ export const route = reactive({
     isIntroDone: false,
     /** The title is up over the planet, waiting to set off. */
     isHeroUp: true,
+    /** The planet's ready (its textures uploaded, so the canvas fades in) and it's making its entrance. */
+    isPlanetUp: false,
 });
 
 /** What's shown over the city, eased in time. Read every frame by the render loop and the overlays. */
@@ -69,12 +71,14 @@ export const cityState = {
 
 const now = () => performance.now() / 1000;
 
-let shot: Shot = shots.arrival;
+let shot: Shot = shots.home;
 let landedAt = 0;
 /** The move under way, if any: from `from` to `shot`, along a curve lifted by `lift` (scene units). */
 let move: { from: Pose, k: number, lift: number } | null = null;
 let moveTween: gsap.core.Tween | undefined;
 let progressTween: gsap.core.Animation | undefined;
+/** Out of the clouds onto the city at the end of the intro. */
+let settling: gsap.core.Tween | undefined;
 
 const bezier = (a: number, b: number, c: number, d: number, t: number) => {
     const u = 1 - t;
@@ -172,6 +176,7 @@ export const go = (mode: Mode, step = 0) => {
     progressTween?.kill();
 
     if (PLANET_STOPS.includes(stop)) {
+        settling?.kill();
         // Up and away from where the camera is, then out through the clouds to the planet
         if (!isOnPlanet()) {
             const from = cityPoseAt();
@@ -201,19 +206,16 @@ export const go = (mode: Mode, step = 0) => {
     flyTo(shotOf(stop));
 };
 
-// --- The intro: the title over the planet, then the glide down from orbit into the clouds over Belfast ---
+// --- The intro: the title over the whole planet, then the descent into the clouds over Belfast ---
 
 let intro: gsap.core.Timeline | undefined;
-let heroHold: gsap.core.Tween | undefined;
-
-/** How long the title holds before setting off by itself (s). */
-const HERO_HOLD = 4.5;
 
 const finishIntro = () => {
-    cutTo(shots.arrival);
+    // Straight onto where it's going (home, unless a stop was linked to), under the clouds
+    cutTo(firstShot());
     route.isIntroDone = true;
     isWaitingForCity = true;
-    // Out of the clouds under the cranes once the city has loaded, then off to the stop
+    // Out of the clouds once the city has loaded
     const start = now();
     const waitForCity = () => {
         if (route.mode !== 'intro') return;
@@ -221,7 +223,7 @@ const finishIntro = () => {
             gsap.delayedCall(0.25, waitForCity);
             return;
         }
-        gsap.delayedCall(pending ? 0.3 : 1.2, () => {
+        gsap.delayedCall(0.3, () => {
             if (route.mode !== 'intro') return;
             isWaitingForCity = false;
             const next = pending ?? { mode: 'home' as Mode, step: 0 };
@@ -231,41 +233,54 @@ const finishIntro = () => {
     waitForCity();
 };
 
+let entrance: gsap.core.Tween | undefined;
+
+/** The planet's entrance (see entranceAt), played once its first frame has been drawn. */
+export const playEntrance = () => {
+    if (route.isPlanetUp) return;
+    route.isPlanetUp = true;
+    if (entrance) return;
+    if (prefersReducedMotion) sceneState.entrance = 1;
+    else entrance = gsap.to(sceneState, { entrance: 1, duration: ENTRANCE_DURATION, ease: 'none' });
+};
+
+/** Hurries the entrance to its end, when setting off before it's finished. */
+const finishEntrance = () => {
+    if (sceneState.entrance >= 1) return;
+    entrance?.kill();
+    entrance = gsap.to(sceneState, { entrance: 1, duration: 1, ease: 'power1.out' });
+};
+
 const setOff = () => {
-    heroHold?.kill();
     if (!intro || intro.isActive() || intro.progress() > 0) return;
     route.isHeroUp = false;
+    finishEntrance();
     intro.play();
 };
 
-/** Starts the intro. With somewhere to go already (a link to a stop), it sets off straight away, and quickly. */
+/**
+ * Starts the intro: the title over the planet, until Enter (or a scroll, swipe or key). With somewhere to go already
+ * (a link to a stop), it sets off straight away, and quickly.
+ */
 export const startIntro = (destination?: { mode: Mode, step: number }) => {
     pending = destination ?? null;
     sceneState.progress = 0;
-    const [forecastFrom, forecastTo] = windows.forecast;
-    const [islandFrom, islandTo] = windows.northernIreland;
     intro = gsap.timeline({ paused: true, onComplete: finishIntro })
-        // Backing away over the Arctic, with the forecast up
-        .to(sceneState, { progress: forecastFrom + 0.012, duration: 3, ease: 'power1.inOut' })
-        .to(sceneState, { progress: forecastTo - 0.004, duration: 2.2, ease: 'none' })
-        // The clouds part over Northern Ireland and it's traced
-        .to(sceneState, { progress: islandFrom + 0.02, duration: 2.2, ease: 'power1.inOut' })
-        .to(sceneState, { progress: islandTo - 0.006, duration: 3, ease: 'none' })
-        // Down into the clouds, which clear once the city is ready
-        .to(sceneState, { progress: windows.belfast[0], duration: 2.8, ease: 'power1.in' })
+        // One sweep down onto Northern Ireland, under way at once and gathering pace: the clouds parting over it and its outline traced and
+        // Belfast named on the way, then into the clouds, which clear once the city's ready
+        .to(sceneState, { progress: windows.belfast[0], duration: 6.5, ease: (t: number) => t ** 1.5 })
         .call(() => {
-            progressTween = gsap.to(sceneState, { progress: CITY_REST, duration: 1.5, ease: 'power1.out' });
+            // Not progressTween: the first move over the city mustn't stop it short, in the clouds
+            settling = gsap.to(sceneState, { progress: CITY_REST, duration: 1.5, ease: 'power1.out' });
         });
     if (prefersReducedMotion) intro.timeScale(3);
     if (destination) {
         intro.timeScale(3.5);
         setOff();
-    } else {
-        heroHold = gsap.delayedCall(HERO_HOLD, setOff);
     }
 };
 
-/** Sets off from the title, or speeds the glide along if it's already going. */
+/** Sets off from the title, or speeds the descent along if it's already going. */
 export const skipIntro = () => {
     if (!intro || route.isIntroDone) return;
     if (intro.progress() === 0) setOff();

@@ -6,6 +6,8 @@
 export const sceneState = {
     /** The journey out on the planet, 0 → 1 (hero → Northern Ireland → Belfast → Europe; see choreography.ts). */
     progress: 0,
+    /** The planet's first appearance, 0 → 1 (see entranceAt in choreography.ts). */
+    entrance: 0,
     /** Set once the Belfast flythrough has loaded (it's fetched in the background after the planet). */
     cityReady: false,
     /** The planet's spin (radians), written by the render loop for the overlays pinned to it. */

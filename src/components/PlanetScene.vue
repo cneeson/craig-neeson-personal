@@ -17,7 +17,7 @@
 
   <!-- Everything to do with the planet, hidden while flying over Belfast -->
   <TresGroup ref="planetRef">
-    <TresDirectionalLight :position="[100, 100, -30]" :intensity="0.8" />
+    <TresDirectionalLight ref="sunRef" :position="[100, 100, -30]" :intensity="0.8" />
 
     <!-- Three parallax layers of stars: near, medium, far -->
     <Stars ref="nearStarsRef" :radius="100" :depth="70" :count="quality.starCounts[0]" :size="0.5" />
@@ -48,15 +48,7 @@
       <primitive :object="arcs.object" />
     </TresGroup>
 
-    <TresGroup :position="[-18, -11, -30]">
-      <TresMesh>
-        <TresSphereGeometry :args="[0.5, 16, 16]" />
-        <TresMeshBasicMaterial color="orange" :transparent="true" :opacity="0.1" />
-      </TresMesh>
-      <TresPointLight :position="[2, 5, 0]" color="orange" :intensity="2500" :distance="50" :decay="0.5" />
-    </TresGroup>
-
-    <TresPointLight :position="[25, -5, -30]" color="#5198ed" :intensity="1000" :distance="80" :decay="1" />
+    <TresPointLight ref="fillRef" :position="[25, -5, -30]" color="#5198ed" :intensity="FILL_LIGHT" :distance="80" :decay="1" />
   </TresGroup>
 
   <BelfastPhoto v-if="isCityMounted && !hasCityFailed" @failed="hasCityFailed = true" />
@@ -65,9 +57,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, onBeforeUnmount, ref, shallowRef } from 'vue';
+import { defineComponent, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import {
-  Group, MathUtils, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, Quaternion, SRGBColorSpace, TextureLoader, Vector3,
+  DirectionalLight, Group, MathUtils, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, PointLight, Quaternion, SRGBColorSpace, TextureLoader, Vector3,
 } from 'three'
 import { useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
 import { Stars } from '@tresjs/cientos'
@@ -79,10 +71,10 @@ import BelfastPhoto from './belfast-photo.vue'
 import CloudVeil from './cloud-veil.vue'
 import { isMobile, prefersReducedMotion, quality } from '@/services/device';
 import {
-  approachAt, bloomThresholdAt, diveAt, frameAt, highlightAt, isInBelfast, reachAt, veilAt, windows,
+  approachAt, bloomThresholdAt, diveAt, ENTRANCE_DURATION, entranceAt, RISEN, frameAt, highlightAt, isInBelfast, reachAt, veilAt, windows,
 } from '@/scene/choreography';
-import { cityPoseAt, cityState, tickDirector } from '@/scene/director';
-import { CITY_ENDS, placeCamera } from '@/scene/shots';
+import { cityPoseAt, cityState, firstShot, playEntrance, route, tickDirector } from '@/scene/director';
+import { CITY_ENDS, placeCamera, poseOf } from '@/scene/shots';
 import { sceneState } from '@/scene/state';
 import { updateOverlays } from '@/scene/overlay';
 import { createHighlight } from '@/scene/planet/highlight';
@@ -90,7 +82,7 @@ import { createArcs } from '@/scene/planet/arcs';
 import { EARTH_MESH_ROTATION, EARTH_POSITION, onEarth, PLACES } from '@/scene/planet/geo';
 import { patchClouds } from '@/scene/planet/clouds';
 import { createParisArc } from '@/scene/belfast/paris-arc';
-import { ATMOSPHERE_RADIUS, createAtmosphereMaterial, createEarthMaterial } from '@/scene/earth';
+import { ATMOSPHERE_RADIUS, createAtmosphereMaterial, createEarthMaterial, SUN_DIRECTION } from '@/scene/earth';
 import { clamp01, damp, lerp, smoothstep } from '@/services/three';
 
 
@@ -98,7 +90,7 @@ import { clamp01, damp, lerp, smoothstep } from '@/services/three';
 const HOME_MARKER = onEarth(PLACES.belfast.lat, PLACES.belfast.lon).multiplyScalar(1.01)
 const UP = new Vector3(0, 1, 0)
 
-// The glide from orbit follows a great circle through the marker, heading this far east of north (radians)
+// The descent from orbit follows a great circle through the marker, heading this far east of north (radians)
 const APPROACH_BEARING = MathUtils.degToRad(25)
 const HOME_UP = HOME_MARKER.clone().normalize()
 // Along the great circle at the marker
@@ -110,11 +102,18 @@ const HOME_AHEAD = (() => {
 
 // Field of view and near plane: narrow over the planet, wider (more so on portrait screens) over the city
 const PLANET_LENS = { fov: 35, near: 0.01 }
+// The furthest below level the glide looks (radians), and where it has tilted up to by the end of the descent
+const MAX_DOWN = MathUtils.degToRad(80)
+const SETTLED_DOWN = MathUtils.degToRad(30)
+const PITCH_KNEE = 0.15
 const CITY_NEAR = 0.3
 
 // Where the climb out of the clouds starts: just above the planet's clouds (the marker sits on them), a little
 // behind the marker. `ratio` sets the easing: about √ratio of the distance is left halfway through.
 const CLIMB = { height: 0.008, behind: 0.012, ratio: 0.12 }
+
+// The blue fill light, at full strength
+const FILL_LIGHT = 1000
 
 export default defineComponent({
   name: 'PlanetScene',
@@ -122,7 +121,7 @@ export default defineComponent({
 </script>
 
 <script lang="ts" setup>
-const { camera, invalidate } = useTresContext()
+const { camera, invalidate, renderer, scene } = useTresContext()
 
 // A touch of parallax from the pointer on desktop, so the scene stays alive while at rest.
 // Registered before the await below, while the component instance is still active for the cleanup.
@@ -156,6 +155,8 @@ const nearStarsRef = shallowRef<{ instance: Group }>()
 const midStarsRef = shallowRef<{ instance: Group }>()
 const bloomRef = shallowRef<{ effect?: { luminanceMaterial: { threshold: number } } }>()
 const planetRef = shallowRef<Group>()
+const sunRef = shallowRef<DirectionalLight>()
+const fillRef = shallowRef<PointLight>()
 const veilRef = shallowRef<{ update(amount: number, travel: number, aspect: number): void }>()
 
 const highlight = createHighlight()
@@ -171,10 +172,17 @@ onBeforeUnmount(() => {
   parisArc.dispose()
 })
 
-// Belfast loads in the background from Google's tiles once the planet is up (if there's a key in the build).
-// If they can't load, it's dropped and the clouds stay over the flight.
+// Belfast loads in the background from Google's tiles once the planet has risen into view (if there's a key in the
+// build), as setting it up takes long enough to stall a frame. If they can't load, it's dropped and the clouds stay
+// over the flight.
 const isCityMounted = ref(false)
-if (process.env.VUE_APP_GOOGLE_MAPS_API_KEY) setTimeout(() => (isCityMounted.value = true), 1500)
+if (process.env.VUE_APP_GOOGLE_MAPS_API_KEY) {
+  const stop = watch(() => route.isPlanetUp, isUp => {
+    if (!isUp) return
+    stop()
+    setTimeout(() => (isCityMounted.value = true), ENTRANCE_DURATION * RISEN * 1000)
+  })
+}
 const hasCityFailed = ref(false)
 
 const setLens = (cam: PerspectiveCamera, fov: number, near: number) => {
@@ -195,6 +203,10 @@ const approach = new Vector3()
 const lookTarget = new Vector3()
 const lookMatrix = new Matrix4()
 const lookQuaternion = new Quaternion()
+const overviewQuaternion = new Quaternion()
+const offsetQuaternion = new Quaternion()
+const trueNorth = new Vector3()
+const X_AXIS = new Vector3(1, 0, 0)
 
 /** Points `heading` `turn` radians east of `north`, and the camera along it, `pitch` radians above level. */
 const aim = (cam: PerspectiveCamera, turn: number, pitch: number) => {
@@ -208,11 +220,12 @@ const aim = (cam: PerspectiveCamera, turn: number, pitch: number) => {
 }
 
 /**
- * The glide from orbit down to Northern Ireland and into the clouds (see approachAt), looking north over the
- * horizon the whole way, then turning to the way the flight over the city starts out looking.
+ * The descent from the whole planet down to Northern Ireland and into the clouds (see approachAt): looking at the
+ * middle of the planet to start with, framed beside the title (to the right on wide screens, lower down on portrait
+ * ones), then on over the horizon, and at the end turning to the way the first shot over the city looks.
  */
-const glideFromOrbit = (cam: PerspectiveCamera, earthRotationY: number, progress: number) => {
-  const { arc, height, aim: aimAbove, turn } = approachAt(progress)
+const glideFromOrbit = (cam: PerspectiveCamera, earthRotationY: number, progress: number, portrait: number) => {
+  const { arc, height, aim: aimAbove, overview, turn, time } = approachAt(progress, portrait)
   const angle = MathUtils.degToRad(arc)
   surfaceUp.copy(HOME_UP).multiplyScalar(Math.cos(angle)).addScaledVector(HOME_AHEAD, Math.sin(angle))
     .applyAxisAngle(UP, earthRotationY)
@@ -221,8 +234,26 @@ const glideFromOrbit = (cam: PerspectiveCamera, earthRotationY: number, progress
     .applyAxisAngle(UP, earthRotationY)
   cam.position.copy(EARTH_POSITION).addScaledVector(surfaceUp, 1 + height)
   const horizon = Math.acos(1 / (1 + height))
-  aim(cam, turn * (CITY_ENDS.start.heading - APPROACH_BEARING), MathUtils.degToRad(aimAbove) - horizon)
+  const first = turn > 0 ? MathUtils.degToRad(poseOf(firstShot(), 0, performance.now() / 1000).heading) : 0
+  // Far out, looking at the horizon would be past straight down, where it'd flip right over. So it tilts up from
+  // steeply down from the moment it sets off, and eases onto the horizon once it's close (the smooth larger of the
+  // two, so it never tips back)
+  const ahead = MathUtils.degToRad(aimAbove) - horizon
+  const steep = lerp(-MAX_DOWN, -SETTLED_DOWN, time ** 1.5)
+  aim(cam, turn * (first - APPROACH_BEARING), (ahead + steep + Math.hypot(ahead - steep, PITCH_KNEE)) / 2)
   cam.quaternion.copy(lookQuaternion)
+  if (overview <= 0) return
+
+  // The planet's middle, with its north up, turned off to the side of the title
+  trueNorth.copy(UP).addScaledVector(surfaceUp, -surfaceUp.y).normalize()
+  lookMatrix.lookAt(cam.position, EARTH_POSITION, trueNorth)
+  overviewQuaternion.setFromRotationMatrix(lookMatrix)
+  const halfWidth = Math.atan(Math.tan(MathUtils.degToRad(PLANET_LENS.fov / 2)) * cam.aspect)
+  offsetQuaternion.setFromAxisAngle(UP, halfWidth * 0.42 * (1 - portrait))
+  overviewQuaternion.multiply(offsetQuaternion)
+  offsetQuaternion.setFromAxisAngle(X_AXIS, MathUtils.degToRad(PLANET_LENS.fov / 2) * 0.32 * portrait)
+  overviewQuaternion.multiply(offsetQuaternion)
+  cam.quaternion.slerp(overviewQuaternion, overview)
 }
 
 /**
@@ -243,6 +274,77 @@ const climbFromHome = (cam: PerspectiveCamera, earthRotationY: number, dive: num
   cam.quaternion.slerp(lookQuaternion, smoothstep(clamp01(dive / 0.75)))
 }
 
+// The sun (unseen): how far beyond the planet it is, and how far inside the limb it's kept (radians, as the camera sees
+// it), so it's always behind the planet, lighting its edge
+const SUN = { distance: 60, inside: 0.035 }
+// Where the light on the planet's day side rests, and where it comes round from in the planet's entrance
+const SUN_REST = SUN_DIRECTION.clone()
+const sunPosition = new Vector3()
+const towardsSun = new Vector3()
+const toPlanet = new Vector3()
+const cameraRight = new Vector3()
+const cameraUp = new Vector3()
+const offset = new Vector3()
+const sunTurn = new Quaternion()
+const sunTurned = new Quaternion()
+
+/**
+ * Keeps the sun behind the planet as the camera sees it, just inside its upper left limb (higher up on portrait
+ * screens, where the planet's as wide as the screen), so it lights that edge from behind.
+ */
+const placeSun = (cam: PerspectiveCamera, portrait: number) => {
+  toPlanet.subVectors(EARTH_POSITION, cam.position)
+  const distance = toPlanet.length()
+  const angle = Math.max(Math.asin(Math.min(1, 1 / distance)) - SUN.inside, 0)
+  toPlanet.normalize()
+  cameraRight.set(1, 0, 0).applyQuaternion(cam.quaternion)
+  cameraUp.set(0, 1, 0).applyQuaternion(cam.quaternion)
+  offset.copy(cameraRight).multiplyScalar(lerp(-0.8, -0.55, portrait)).addScaledVector(cameraUp, lerp(0.6, 0.85, portrait))
+  offset.addScaledVector(toPlanet, -offset.dot(toPlanet)).normalize()
+  sunPosition.copy(cam.position)
+    .addScaledVector(toPlanet, Math.cos(angle) * (distance + SUN.distance))
+    .addScaledVector(offset, Math.sin(angle) * (distance + SUN.distance))
+  towardsSun.subVectors(sunPosition, EARTH_POSITION).normalize()
+}
+
+/**
+ * The planet's entrance (see entranceAt): the camera starts lifted, so the planet is below the frame and rises into
+ * it, its night side towards the camera with the sun behind it. As it does, the light on the planet comes round from
+ * behind it to where it rests, sweeping the day across the disc (the city lights and the air's colours follow it, as
+ * they're worked out from it). Returns how far round it's come.
+ */
+const revealPlanet = (cam: PerspectiveCamera, entrance: number) => {
+  const { rise, sunrise } = entranceAt(entrance)
+  if (rise < 1) {
+    cam.translateY((1 - rise) * 3.4)
+    cam.translateZ((1 - rise) * 1.5)
+  }
+  return sunrise
+}
+
+/** Lights the planet from the sun (see placeSun), as far round to where it rests as `sunrise` (0 → 1). */
+const lightPlanet = (sunrise: number) => {
+  sunTurn.setFromUnitVectors(towardsSun, SUN_REST)
+  SUN_DIRECTION.copy(towardsSun).applyQuaternion(sunTurned.identity().slerp(sunTurn, sunrise))
+  sunRef.value?.position.copy(SUN_DIRECTION).multiplyScalar(145)
+  if (fillRef.value) fillRef.value.intensity = FILL_LIGHT * lerp(0.12, 1, sunrise)
+}
+
+/**
+ * Uploads the planet's textures and compiles its shaders before it comes into view. It's culled while it's below the
+ * frame, so otherwise they'd go up on the first frame it's drawn, half way through its entrance, and stall it.
+ */
+let warmUp: Promise<void> | undefined
+let isWarm = false
+const warmPlanet = (cam: PerspectiveCamera) => {
+  warmUp ??= (async () => {
+    for (const texture of [earthTextures.map, earthTextures.displacementMap, earthTextures.alphaMap, lightsMap]) {
+      renderer.value.initTexture(texture)
+    }
+    await renderer.value.compileAsync(scene.value, cam)
+  })().catch(() => undefined).then(() => { isWarm = true })
+}
+
 const { onLoop } = useRenderLoop()
 
 onLoop(({ delta, elapsed }) => {
@@ -250,6 +352,8 @@ onLoop(({ delta, elapsed }) => {
   const progress = sceneState.progress
   const cam = camera.value as PerspectiveCamera | undefined
   if (!cam) return
+  if (isWarm) playEntrance()
+  else warmPlanet(cam)
   // Fully portrait framing on phones, partly on squarer screens such as portrait tablets
   const portrait = clamp01((1 - cam.aspect) / 0.55)
   parallax.x = damp(parallax.x, pointer.x, 2, delta)
@@ -271,7 +375,7 @@ onLoop(({ delta, elapsed }) => {
   } else {
     const frame = frameAt(progress, portrait)
     if (progress < windows.belfast[1]) {
-      glideFromOrbit(cam, frame.earthRotationY, progress)
+      glideFromOrbit(cam, frame.earthRotationY, progress, portrait)
       cam.rotateY(-parallax.x * 0.02)
       cam.rotateX(-parallax.y * 0.012)
     } else {
@@ -280,6 +384,9 @@ onLoop(({ delta, elapsed }) => {
       const dive = diveAt(progress)
       if (dive > 0) climbFromHome(cam, frame.earthRotationY, dive)
     }
+    const sunrise = revealPlanet(cam, sceneState.entrance)
+    placeSun(cam, portrait)
+    lightPlanet(sunrise)
     setLens(cam, PLANET_LENS.fov, PLANET_LENS.near)
     if (earthRef.value) earthRef.value.rotation.y = frame.earthRotationY
     sceneState.earthRotationY = frame.earthRotationY

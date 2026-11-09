@@ -66,7 +66,7 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   doesn't reach, coming on through dusk, and a haze towards the disc's edge) and the atmosphere shell, which glows
   by how close each line of sight passes to the ground, so it works from orbit and from just above the clouds.
 - `src/components/belfast-photo.vue`: Belfast by day, from Google Photorealistic 3D Tiles
-  (`src/scene/belfast/photo-city.ts`, via `3d-tiles-renderer`). Mounted 1.5s after the planet. Extra cameras
+  (`src/scene/belfast/photo-city.ts`, via `3d-tiles-renderer`). Mounted once the planet has risen into view (setting it up stalls a frame). Extra cameras
   at the shots (`setCamera`) load it ahead of the reader: the arrival and the first stop (`firstShot`) first (then
   it's drawn off screen to warm the GPU and `sceneState.cityReady` is set), the destination of each move while
   flying, and a prefetch camera walks the other shots while it's held still. The

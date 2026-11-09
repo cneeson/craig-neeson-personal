@@ -68,8 +68,6 @@ const hoverAt = (time: number): Pose => {
 };
 
 export const shots = {
-    /** Out of the clouds, right under the cranes on a wide lens, where the glide from orbit ends. */
-    arrival: { pose: { x: 62, z: -3, y: 4.5, pitch: 22, heading: 52, zoom: 1.6 } },
     home: { pose: hoverAt(0), at: hoverAt },
 
     // About: under the H&W cranes, backing away from them as the lens narrows (a dolly zoom) so they loom over
@@ -123,9 +121,8 @@ export const shots = {
 
 export type ShotName = keyof typeof shots;
 
-/** Where the camera looks as the glide from orbit hands over to the city, and as the climb back out sets off. */
+/** Where the camera looks as the climb back out of the city sets off. */
 export const CITY_ENDS = {
-    start: { heading: MathUtils.degToRad(shots.arrival.pose.heading), pitch: MathUtils.degToRad(shots.arrival.pose.pitch) },
     end: { heading: MathUtils.degToRad(174), pitch: MathUtils.degToRad(-38) },
 };
 

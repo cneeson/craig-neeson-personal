@@ -26,7 +26,6 @@ const gl = {
   antialias: false,
 }
 
-const isSceneReady = ref(false);
 const letterbox = ref<HTMLElement>();
 
 // The mode, for styles that depend on it (such as how much of the bottom of the screen is taken)
@@ -54,9 +53,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="scene" :class="{ 'is-ready': isSceneReady }">
+  <!-- Faded in once the planet's ready to come up (its textures uploaded, so it doesn't stall as it does) -->
+  <div class="scene" :class="{ 'is-ready': route.isPlanetUp }">
     <TresCanvas v-bind="gl" :camera="camera" :dpr="quality.dpr" render-mode="on-demand">
-      <Suspense @resolve="isSceneReady = true">
+      <Suspense>
         <PlanetScene />
       </Suspense>
     </TresCanvas>

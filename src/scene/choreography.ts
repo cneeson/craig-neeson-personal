@@ -21,10 +21,9 @@ const tracks: Track[] = ['earthRotationY', 'cameraZ', 'cameraRotationX', 'camera
  * in just before and out just after).
  */
 export const windows = {
+    // The whole planet, under the title
     hero: [0, 0.026],
-    // Backing away over the Arctic, with Northern Ireland under thick cloud
-    forecast: [0.044, 0.071],
-    // The clouds part over Northern Ireland, its outline is traced and the display locks on to Belfast
+    // Down onto Northern Ireland as the clouds part over it, its outline traced and Belfast named
     northernIreland: [0.088, 0.141],
     // Over Belfast, between diving into the clouds and climbing back out of them
     belfast: [0.185, 0.876],
@@ -156,32 +155,39 @@ export const diveAt = (progress: number) => {
     return 1 - clamp01((progress - cityTo) / (climbTo - cityTo));
 };
 
-// The glide in from orbit, which ends in the clouds and carries on just past them so it's still moving there
+// The descent from the whole planet, which ends in the clouds and carries on just past them so it's still moving there
 const approachKnots = [0, windows.northernIreland[0], diveFrom, cityFrom, cityFrom + 0.015];
 const approachSplines = {
-    arc: createSpline(approachKnots, [30, -11, -12, -2, -1.5]),
-    // Eased in proportion, like a steady descent: the surface keeps coming up at the same rate however close
-    height: createSpline(approachKnots, [0.21, 0.5, 0.45, 0.018, 0.012].map(Math.log)),
-    aim: createSpline(approachKnots, [9.7, -15, -14, -11, -11]),
+    arc: createSpline(approachKnots, [-24, -13, -7, -2, -1.5]),
+    // Eased in proportion, like a steady descent: the surface keeps coming up at the same rate however close.
+    // Starting far enough out for the whole planet to fit, further on portrait screens, which are narrow across.
+    height: createSpline(approachKnots, [3.6, 0.6, 0.12, 0.018, 0.012].map(Math.log)),
+    portraitHeight: createSpline(approachKnots, [7.4, 0.7, 0.13, 0.018, 0.012].map(Math.log)),
+    aim: createSpline(approachKnots, [-15, -15, -14, -11, -11]),
 };
 
 /**
- * The glide from orbit down to Northern Ireland, until the clouds. The camera starts out far to the north,
- * looking on past the North Pole, backs away south past Northern Ireland, still looking north, then sinks
- * down onto it, turning to the way the flight over the city starts out looking (`turn`, 0 → 1). All along a
- * great circle through the Northern Ireland marker, heading a little east of north so it passes beside the
- * pole rather than over it, where the planet's texture pinches (see APPROACH_BEARING in PlanetScene):
- * - `arc`: degrees along it from the marker, north positive;
+ * The descent from the whole planet down to Northern Ireland, until the clouds. The camera starts out far off
+ * over the Atlantic to the south, looking at the middle of the planet (`overview` 1, with it framed off to the side
+ * of the title), and comes down along a great circle through the Northern Ireland marker, tilting up to look on
+ * ahead over the horizon, then turning to the way the first shot over the city looks (`turn`, 0 → 1):
+ * - `arc`: degrees along the great circle from the marker, north positive;
  * - `height`: above the surface, in earth radii;
- * - `aim`: degrees above the horizon it looks, so the horizon stays in view right down to the clouds.
+ * - `aim`: degrees above the horizon it looks, once it's looking ahead;
+ * - `time`: how far through the descent it is in time (0 → 1).
  */
-export const approachAt = (progress: number) => {
+export const approachAt = (progress: number, portrait = 0) => {
     const p = Math.min(progress, cityFrom);
+    const time = (p / cityFrom) ** (2 / 3);
     return {
         arc: approachSplines.arc(p),
-        height: Math.exp(approachSplines.height(p)),
+        height: Math.exp(lerp(approachSplines.height(p), approachSplines.portraitHeight(p), portrait)),
         aim: approachSplines.aim(p),
-        turn: smoothstep(clamp01((p - diveFrom) / (cityFrom - diveFrom))),
+        // All spread over the time the descent takes (the intro tweens progress as t^1.5; see director.ts), from the
+        // moment it sets off, so the camera turns in one gradual sweep
+        overview: 1 - smoothstep(clamp01(time / 0.7)),
+        turn: smoothstep(time),
+        time,
     };
 };
 
@@ -203,20 +209,38 @@ export const veilAt = (progress: number) => Math.max(
 /** 0 → 1 across [from, to], eased. */
 const ramp = (progress: number, from: number, to: number) => smoothstep(clamp01((progress - from) / (to - from)));
 
+/** How long the planet's first appearance takes, in seconds, and how far through it it's risen into view. */
+export const ENTRANCE_DURATION = 6;
+export const RISEN = 0.62;
+
 /**
- * Northern Ireland picked out from orbit. It's under thick cloud as the camera backs away (`cover`), then the
- * clouds part over it (`hole`), its outline is traced (`draw`), the land is tinted (`fill`) and scanned (`scan`),
- * and it all fades (`opacity`) as the clouds roll back in for the dive.
+ * The planet's first appearance (0 → 1 over ENTRANCE_DURATION), before the title. Its night side rises out of the dark
+ * below the frame, with the sun behind it, so there's only its city lights and a ring of air, and the day sweeps across
+ * the disc as it comes up.
+ */
+export const entranceAt = (entrance: number) => ({
+    /** Up into the frame from below (0 → 1), after a moment of just the stars. */
+    rise: 1 - (1 - clamp01((entrance - 0.06) / (RISEN - 0.06))) ** 3,
+    /** The light on the planet swinging round from behind it to where it shines (0 → 1). */
+    sunrise: ramp(entrance, 0.08, 0.7),
+});
+
+/**
+ * Northern Ireland picked out from orbit. Thick cloud gathers over it as the descent sets off (`cover`), and parts
+ * over it as the camera comes down (`hole`), its outline is traced (`draw`), the land is tinted (`fill`) and scanned
+ * (`scan`), and it all fades (`opacity`) as the camera goes into the clouds for the city.
  */
 export const highlightAt = (progress: number) => {
     const [start, end] = windows.northernIreland;
-    const closing = ramp(progress, end, end + 0.02);
     return {
-        cover: progress < cityTo ? ramp(progress, windows.forecast[0] - 0.02, windows.forecast[0] + 0.01) : 0,
-        hole: ramp(progress, start - 0.015, start + 0.004) * (1 - closing),
-        draw: ramp(progress, start - 0.002, start + 0.02),
-        fill: ramp(progress, start + 0.012, start + 0.025),
-        scan: clamp01((progress - start - 0.015) / 0.025),
+        // Gathering over it as the descent sets off, so it isn't singled out under the title
+        cover: progress < cityTo ? ramp(progress, 0, 0.03) : 0,
+        // In step with the descent: opening as soon as it sets off, and right open by the time it's over the country.
+        // The outline's traced well before, so it can be read on the way down.
+        hole: ramp(progress, 0.004, start - 0.01),
+        draw: ramp(progress, start - 0.042, start - 0.015),
+        fill: ramp(progress, start - 0.025, start - 0.008),
+        scan: clamp01((progress - start + 0.02) / 0.03),
         opacity: 1 - ramp(progress, end, end + 0.012),
     };
 };
