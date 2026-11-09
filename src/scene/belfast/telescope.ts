@@ -29,11 +29,11 @@ interface Sight {
 // The tiles are laid on a plane touching the earth at Belfast, so the ground drops away with distance
 const SIGHTS: Record<'coleraine' | 'antrim', Sight> = {
     // Ulster University's Coleraine campus, about 78 km north-west. Outside the photorealistic tiles' coverage
-    // (just terrain and aerial photos), so seen from further off, where that holds up
-    coleraine: { target: new Vector3(-4911, -45, -6048), bearing: 321.5, standOff: 320, height: 70, fov: 22 },
+    // (just terrain and aerial photos), so its buildings are outlined (offices.ts)
+    coleraine: { target: new Vector3(-4855, -45.5, -6110), bearing: 321.5, standOff: 110, height: 35, fov: 26 },
     // Antrim Technology Park, where Nitec is (offices.ts), about 21 km north-west: from high enough to see it over
     // the trees
-    antrim: { target: new Vector3(-1820, 0.5, -1087.5), bearing: 304.2, standOff: 100, height: 26, fov: 14 },
+    antrim: { target: new Vector3(-1819.5, 0.3, -1098.7), bearing: 304.2, standOff: 100, height: 26, fov: 14 },
 };
 
 
