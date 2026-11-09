@@ -3,9 +3,9 @@
 </template>
 
 <script lang="ts" setup>
-import { Group, Mesh, PerspectiveCamera, SphereGeometry } from 'three';
+import { Group, Mesh, PerspectiveCamera, SphereGeometry, WebGLRenderer } from 'three';
 import { onBeforeUnmount } from 'vue';
-import { useRenderLoop, useTresContext } from '@tresjs/core';
+import { useLoop, useTres } from '@tresjs/core';
 import { createPhotoCity } from '@/scene/belfast/photo-city';
 import { cloudShadowUniforms, createDaySkyMaterial } from '@/scene/belfast/photo-materials';
 import { createWater, SkyUniforms } from '@/scene/belfast/water';
@@ -33,7 +33,7 @@ const emit = defineEmits<{
  * orbit comes out of the clouds loads in the background while the reader is still on the planet, then the rest
  * (see photo-city.ts).
  */
-const { renderer } = useTresContext();
+const renderer = useTres().renderer as WebGLRenderer;
 
 const root = new Group();
 root.visible = false;
@@ -43,13 +43,13 @@ const sky = new Mesh(new SphereGeometry(800, 32, 16), skyMaterial);
 sky.renderOrder = -1;
 sky.frustumCulled = false;
 
-const telescope = createTelescope(renderer.value);
-const photoCity = createPhotoCity(renderer.value, process.env.VUE_APP_GOOGLE_MAPS_API_KEY ?? '', error => {
+const telescope = createTelescope(renderer);
+const photoCity = createPhotoCity(renderer, process.env.VUE_APP_GOOGLE_MAPS_API_KEY ?? '', error => {
   console.warn('Belfast tiles failed to load', error);
   emit('failed');
 }, telescope);
 // Shares the sky's uniforms, so its reflections match the sky
-const water = createWater(skyMaterial.uniforms as SkyUniforms, renderer.value.capabilities.getMaxAnisotropy());
+const water = createWater(skyMaterial.uniforms as SkyUniforms, renderer.capabilities.getMaxAnisotropy());
 const starlings = createStarlings();
 const train = createTrain(skyMaterial.uniforms.uSun);
 const plane = createPlane(skyMaterial.uniforms.uSun);
@@ -95,8 +95,8 @@ onBeforeUnmount(() => {
   sceneState.cityReady = false;
 });
 
-const { onLoop } = useRenderLoop();
-onLoop(({ delta, elapsed }) => {
+const { onBeforeRender } = useLoop();
+onBeforeRender(({ delta, elapsed }) => {
   const isFlying = isInBelfast(sceneState.progress);
   const destination = cityDestination();
   const { scope } = cityState;
@@ -119,12 +119,12 @@ onLoop(({ delta, elapsed }) => {
   sky.position.copy(camera.position);
   cloudShadowUniforms.uCloudTime.value = elapsed;
   water.update(elapsed);
-  starlings.update(elapsed, camera as PerspectiveCamera, renderer.value);
+  starlings.update(elapsed, camera as PerspectiveCamera, renderer);
   train.update(cityState.trainAway);
   plane.update(elapsed % PLANE_EVERY);
   ferry.update(shownFor);
   riverBoat.update((elapsed + 40) % BOAT_EVERY);
-  traffic.update(elapsed, camera as PerspectiveCamera, renderer.value, photoCity.group);
+  traffic.update(elapsed, camera as PerspectiveCamera, renderer, photoCity.group);
   offices.update(cityState.offices, elapsed, true);
   // The offices' outlines too, for Nitec's through the telescope
   telescope.update(scope, elapsed, (camera as PerspectiveCamera).aspect, sky, [photoCity.group, offices.object]);

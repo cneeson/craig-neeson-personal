@@ -9,15 +9,15 @@
     "belfast": "node scripts/belfast/water.mjs && node scripts/belfast/traffic.mjs"
   },
   "dependencies": {
-    "@tresjs/cientos": "^4.3.1",
-    "@tresjs/core": "^4.3.6",
-    "@tresjs/post-processing": "^2.4.0",
+    "@tresjs/cientos": "^5.10.1",
+    "@tresjs/core": "^5.10.1",
+    "@tresjs/post-processing": "^3.11.1",
     "3d-tiles-renderer": "^0.5.4",
     "core-js": "^3.8.3",
     "date-fns": "^4.1.0",
     "gsap": "^3.13.0",
     "three": "^0.176.0",
-    "vue": "^3.2.13"
+    "vue": "^3.5.45"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",

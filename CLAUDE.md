@@ -7,7 +7,9 @@ camera between stops over the city, with a panel for each. Live at https://craig
 ## Stack
 
 - Vue 3 (`<script setup>`, TypeScript) on **Vue CLI 5 / webpack**, not Vite
-- TresJS 4 (`@tresjs/core`, `@tresjs/cientos`, `@tresjs/post-processing`) over three.js
+- TresJS 5 (`@tresjs/core`, `@tresjs/cientos`, `@tresjs/post-processing` 3) over three.js. Tres 5 is ESM-only and
+  reaches for `THREE.Timer` behind a revision check, which webpack would fail on with our three (r176), so
+  `vue.config.js` turns off its missing-export check for `@tresjs`
 - GSAP 3 (tweens and timelines for the camera moves and the intro; ScrollTrigger and ScrollSmoother are no longer used)
 - Tailwind 3 plus scoped SCSS (Dart Sass)
 
@@ -151,11 +153,10 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   rebuilds on that swap but its effects don't re-attach, so bloom silently disappears, depending on load timing.
 - **Bugs that depend on load timing don't show up on localhost.** Test with throttled or intercepted
   requests (e.g. Playwright `page.route`) or against the live site before calling a scene fix done.
-- `useTexture` only accepts its fixed keys (`map`, `displacementMap`, `alphaMap`, ...). Other keys
-  return nothing, so the bump map travels as `displacementMap` and the clouds as `alphaMap`.
 - In `<script setup>` with top-level `await`, call `defineExpose` (and anything the parent needs
   immediately) **before** the first await.
-- Rendering is `render-mode="on-demand"`; the loop calls `invalidate()` every frame.
+- Rendering is `render-mode="on-demand"`; the loop (`useLoop().onBeforeRender`) calls `invalidate()` every frame.
+  `useTres().renderer` is the renderer itself (typed as WebGL or WebGPU, so it's cast to `WebGLRenderer`), not a ref.
 - The captions are rendered `v-once` because `createCaption` splits their text into word spans. A Vue
   re-render would fight that.
 - The stars are tiny and rely on bloom to be visible. If they vanish, check the composer first.

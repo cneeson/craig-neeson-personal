@@ -27,6 +27,14 @@ module.exports = defineConfig({
         compilerOptions: { ...(options && options.compilerOptions), isCustomElement: isTresElement },
       }))
 
+    // Tres reaches for `THREE.Timer` (three r179+) only after checking the revision, and falls back to `Clock` on
+    // ours, so the missing export is fine there
+    config.module
+      .rule('tres-optional-exports')
+      .test(/\.m?js$/)
+      .include.add(path.resolve(__dirname, 'node_modules/@tresjs')).end()
+      .parser({ exportsPresence: false })
+
     // On the .ts modules and each component's own module (not its ?vue&type=... blocks, so a
     // style edit is still swapped in place), after they're compiled
     config.when(process.env.NODE_ENV === 'development', config => config.module

@@ -32,7 +32,7 @@
       <TresMesh ref="cloudsRef">
         <TresSphereGeometry :args="[1.01, quality.sphereSegments, quality.sphereSegments]" />
         <TresMeshBasicMaterial
-          :alpha-map="earthTextures.alphaMap"
+          :alpha-map="cloudsMap"
           :transparent="true"
           :opacity="0.2"
           :depth-write="false"
@@ -60,8 +60,9 @@
 import { defineComponent, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import {
   DirectionalLight, Group, MathUtils, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, PointLight, Quaternion, SRGBColorSpace, TextureLoader, Vector3,
+  WebGLRenderer,
 } from 'three'
-import { useRenderLoop, useTexture, useTresContext } from '@tresjs/core'
+import { useLoop, useTres } from '@tresjs/core'
 import { Stars } from '@tresjs/cientos'
 // @ts-ignore-next-line
 import { BloomPmndrs, EffectComposerPmndrs, SMAAPmndrs } from '@tresjs/post-processing'
@@ -121,7 +122,8 @@ export default defineComponent({
 </script>
 
 <script lang="ts" setup>
-const { camera, invalidate, renderer, scene } = useTresContext()
+const { camera, invalidate, scene } = useTres()
+const renderer = useTres().renderer as WebGLRenderer
 
 // A touch of parallax from the pointer on desktop, so the scene stays alive while at rest.
 // Registered before the await below, while the component instance is still active for the cleanup.
@@ -135,18 +137,13 @@ if (!isMobile && !prefersReducedMotion) window.addEventListener('pointermove', t
 onBeforeUnmount(() => window.removeEventListener('pointermove', trackPointer))
 
 const textureDir = `${process.env.BASE_URL}${quality.textureDir}`
-// useTexture only accepts its own fixed keys, hence the bump map travelling as `displacementMap`
-const [earthTextures, lightsMap] = await Promise.all([
-  useTexture({
-    map: `${textureDir}diffuse.jpg`,
-    displacementMap: `${textureDir}spec-inverted.jpg`,
-    alphaMap: `${textureDir}clouds.jpg`,
-  }),
-  new TextureLoader().loadAsync(`${textureDir}night-lights.jpg`),
-]);
-earthTextures.map.colorSpace = SRGBColorSpace;
+const textureLoader = new TextureLoader()
+const [dayMap, bumpMap, cloudsMap, lightsMap] = await Promise.all(
+  ['diffuse.jpg', 'spec-inverted.jpg', 'clouds.jpg', 'night-lights.jpg'].map(file => textureLoader.loadAsync(`${textureDir}${file}`)),
+);
+dayMap.colorSpace = SRGBColorSpace;
 lightsMap.colorSpace = SRGBColorSpace;
-const earth = createEarthMaterial({ map: earthTextures.map, bumpMap: earthTextures.displacementMap, lightsMap });
+const earth = createEarthMaterial({ map: dayMap, bumpMap, lightsMap });
 const atmosphereMaterial = createAtmosphereMaterial(EARTH_POSITION);
 
 const earthRef = shallowRef<Group>()
@@ -338,16 +335,16 @@ let warmUp: Promise<void> | undefined
 let isWarm = false
 const warmPlanet = (cam: PerspectiveCamera) => {
   warmUp ??= (async () => {
-    for (const texture of [earthTextures.map, earthTextures.displacementMap, earthTextures.alphaMap, lightsMap]) {
-      renderer.value.initTexture(texture)
+    for (const texture of [dayMap, bumpMap, cloudsMap, lightsMap]) {
+      renderer.initTexture(texture)
     }
-    await renderer.value.compileAsync(scene.value, cam)
+    await renderer.compileAsync(scene.value, cam)
   })().catch(() => undefined).then(() => { isWarm = true })
 }
 
-const { onLoop } = useRenderLoop()
+const { onBeforeRender } = useLoop()
 
-onLoop(({ delta, elapsed }) => {
+onBeforeRender(({ delta, elapsed }) => {
   tickDirector(delta)
   const progress = sceneState.progress
   const cam = camera.value as PerspectiveCamera | undefined
