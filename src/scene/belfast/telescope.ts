@@ -2,7 +2,6 @@ import {
     HalfFloatType, Mesh, Object3D, PerspectiveCamera, PlaneGeometry, ShaderMaterial, Vector2, Vector3,
     WebGLRenderer, WebGLRenderTarget,
 } from 'three';
-import { windows } from '@/scene/choreography';
 import { isMobile } from '@/services/device';
 import { clamp01, smoothstep } from '@/services/three';
 import { photoUniforms } from './photo-materials';
@@ -36,18 +35,6 @@ const SIGHTS: Record<'coleraine' | 'antrim', Sight> = {
     antrim: { target: new Vector3(-1815, 1, -1103), bearing: 301.3, standOff: 120, height: 16, fov: 26 },
 };
 
-const [opensAt, swingsAt, closesAt] = [windows.coleraine[0], (windows.coleraine[1] + windows.antrim[0]) / 2, windows.antrim[1]];
-/** How long the iris takes to open or close, and the whip across, in journey progress. */
-const IRIS = 0.012;
-const SWING = 0.007;
-
-/**
- * Which of the telescope's cameras should be loading: each from a while before it's looked through until it's
- * done with. Mostly one at a time, as two (on top of the reader's wide view over City Hall) can fill the cache;
- * Coleraine's tiles are few and coarse, so they overlap just before the swing across.
- */
-const coleraineFrom = windows.skills[0];
-const antrimFrom = swingsAt - 0.02;
 
 const createSightCamera = ({ target, bearing, standOff, height, fov }: Sight) => {
     const camera = new PerspectiveCamera(fov, 1, 0.3, 1000);
@@ -174,31 +161,33 @@ export const createTelescope = (renderer: WebGLRenderer) => {
         overlay,
         /** Both cameras, for the tiles to load for. */
         cameras: [cameras.coleraine, cameras.antrim],
-        /** The cameras to load for at `progress`. */
-        camerasAt(progress: number) {
-            const isColeraine = progress > coleraineFrom && progress < swingsAt + SWING;
-            const isAntrim = progress > antrimFrom && progress < closesAt + IRIS;
-            return [...(isColeraine ? [cameras.coleraine] : []), ...(isAntrim ? [cameras.antrim] : [])];
+        /**
+         * The cameras to load for, by the sights about to be looked through. Mostly one at a time, as two (on top
+         * of the reader's wide view over City Hall) can fill the cache.
+         */
+        camerasFor(sights: ('coleraine' | 'antrim')[]) {
+            return sights.map(sight => cameras[sight]);
         },
         /** The CSS size the tiles should pick detail for, as seen through it. */
         resolution,
 
         /**
-         * Every frame in the city: opens, swings and closes with the journey, and draws what the camera in
-         * use sees (`sky` follows it, `world` is what's drawn).
+         * Every frame in the city, with how far it's `open` (0 → 1), the `sight` it shows and the `whip` across from
+         * one to the other (-1 → 1, the cut at 0). Draws what that sight's camera sees (`sky` follows it, `world` is
+         * what's drawn).
          */
-        update(progress: number, elapsed: number, aspect: number, sky: Object3D, world: Object3D) {
-            const open = smoothstep(clamp01((progress - opensAt + IRIS) / IRIS)) * (1 - smoothstep(clamp01((progress - closesAt) / IRIS)));
+        update(
+            { open, sight: sightName, whip }: { open: number, sight: 'coleraine' | 'antrim', whip: number },
+            elapsed: number, aspect: number, sky: Object3D, world: Object3D,
+        ) {
             overlay.visible = open > 0.001;
             // Sized to the screen in CSS pixels whether or not it's up, for the tiles
             renderer.getSize(resolution);
             if (!overlay.visible) return;
 
-            // Whips from -1 to 1 across the cut from one to the other
-            const swing = clamp01((progress - swingsAt + SWING) / (SWING * 2)) * 2 - 1;
-            const isSwinging = Math.abs(swing) < 1;
-            const sight = progress < swingsAt ? SIGHTS.coleraine : SIGHTS.antrim;
-            const camera = progress < swingsAt ? cameras.coleraine : cameras.antrim;
+            const isSwinging = Math.abs(whip) < 1;
+            const sight = SIGHTS[sightName];
+            const camera = cameras[sightName];
 
             const isPortrait = aspect < 1;
             // Wider on narrow screens, so what it's looking at fits across
@@ -234,9 +223,9 @@ export const createTelescope = (renderer: WebGLRenderer) => {
             photoUniforms.uFogDensity.value = fogDensity;
 
             const { uniforms } = material;
-            uniforms.uOpen.value = open;
+            uniforms.uOpen.value = smoothstep(clamp01(open));
             // Rising to 1 at the cut, then back from -1 (the new view arriving from the other side)
-            uniforms.uSwing.value = isSwinging ? (swing < 0 ? 1 + swing : swing - 1) : 0;
+            uniforms.uSwing.value = isSwinging ? (whip < 0 ? 1 + whip : whip - 1) : 0;
             uniforms.uTime.value = elapsed;
             uniforms.uAspect.value = aspect;
             uniforms.uBinocular.value = isPortrait ? 0 : 1;

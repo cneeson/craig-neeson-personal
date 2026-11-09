@@ -5,13 +5,13 @@ import {
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { isMobile } from '@/services/device';
-import { flightAt } from './flight';
+import { poseOf, shots } from '@/scene/shots';
 import { CLOUD_SHADE_GLSL, CLOUD_SHADOW_GLSL, cloudShadowUniforms, photoUniforms } from './photo-materials';
 
 /** traffic.bin stores half-metres; the scene works in 10 m units. */
 const HALF_METRE = 0.05;
 
-/** Only roads this close to the flight (scene units) get cars, and only cars this far from the camera are drawn. */
+/** Only roads this close to the camera's shots (scene units) get cars, and only cars this far from the camera are drawn. */
 const NEAR_ROUTE = 150;
 /** Closer than this a car is a model; further, a point; beyond the last, nothing. */
 const MODEL_RANGE = 100;
@@ -73,7 +73,7 @@ const resample = (points: [number, number][]) => {
     return samples;
 };
 
-/** The stretches of `samples` within NEAR_ROUTE of the flight, as [from, to) index ranges. */
+/** The stretches of `samples` within NEAR_ROUTE of the shots, as [from, to) index ranges. */
 const nearRoute = (samples: [number, number][], route: [number, number][]) => {
     const runs: [number, number][] = [];
     let from = -1;
@@ -99,17 +99,20 @@ let seed = 11;
 const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 
 /**
- * Lays out the cars: the roads near the flight resampled into a texture (x, z per texel), and per car where its
+ * Lays out the cars: the roads near the shots resampled into a texture (x, z per texel), and per car where its
  * road starts in the texture, how many points it has and its length; its direction (1 along the road, -1 against)
  * and how far left of the middle it drives; how far along it starts and its speed (scene units a second); its
  * colour and length (2.2 for a bus).
  */
 const layOut = (roads: Road[]) => {
-    const route: [number, number][] = [];
-    const [position, target] = [new Vector3(), new Vector3()];
-    for (let t = 0; t <= 1; t += 1 / 300) {
-        flightAt(t, position, target);
-        route.push([position.x, position.z]);
+    // Where the camera goes: each shot, where it drifts to, and the hover's sweep
+    const route: [number, number][] = Object.values(shots).flatMap(shot => [0, 60].map(held => {
+        const { x, z } = poseOf(shot, held, 0);
+        return [x, z] as [number, number];
+    }));
+    for (let time = 0; time < 140; time += 5) {
+        const { x, z } = poseOf(shots.home, 0, time);
+        route.push([x, z]);
     }
 
     const samples: number[] = [];

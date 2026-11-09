@@ -1,8 +1,8 @@
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, Group, Mesh, ShaderMaterial, Vector3 } from 'three';
-import { windowOpacity, windows, type EmployerBeat } from '@/scene/choreography';
+import type { EmployerBeat } from '@/scene/director';
 
 /**
- * The buildings the career walk stops at, outlined in light while their beat is up. Footprints from
+ * The buildings the experience stops at, outlined in light while they're shown. Footprints from
  * OpenStreetMap, in scene units (10 m, x east, z south); heights are roughly the buildings' in the tiles.
  */
 interface Office {
@@ -139,16 +139,16 @@ export const createOfficeHighlights = () => {
 
     return {
         object: group,
-        /** Every frame, with the journey's progress, the time (s) and whether the city is shown. */
-        update(progress: number, elapsed: number, isInCity: boolean) {
+        /** Every frame, with how strongly each is outlined (0 → 1), the time (s) and whether the city is shown. */
+        update(amounts: Record<EmployerBeat, number>, elapsed: number, isInCity: boolean) {
             group.visible = isInCity;
             if (!isInCity) return;
             highlights.forEach(({ office, seen, hidden, uniforms }) => {
-                const [start, end] = windows[office.beat];
-                const opacity = windowOpacity(progress, [start - 0.004, end]);
+                const opacity = amounts[office.beat];
                 seen.visible = hidden.visible = opacity > 0.001;
                 if (!seen.visible) return;
-                const rise = Math.min(1, Math.max(0, (progress - start + 0.004) / 0.01));
+                // Rising up the walls as it appears
+                const rise = Math.min(1, opacity * 1.4);
                 uniforms.uOpacity.value = opacity;
                 uniforms.uRise.value = 1 - (1 - rise) ** 3;
                 uniforms.uTime.value = elapsed;

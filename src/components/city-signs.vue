@@ -1,24 +1,21 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
-import { PerspectiveCamera, Scene, Vector3 } from 'three';
-import { CSS3DObject, CSS3DRenderer } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
-import { isInBelfast, windowOpacity, windows, type EmployerBeat } from '@/scene/choreography';
+import { PerspectiveCamera, Vector3 } from 'three';
+import { isInBelfast } from '@/scene/choreography';
+import { cityState, route, type EmployerBeat } from '@/scene/director';
 import { onOverlayFrame } from '@/scene/overlay';
 import { sceneState } from '@/scene/state';
 import { officeAnchors } from '@/scene/belfast/offices';
+import { navigate } from '@/services/navigation';
 import { stops, type Stop } from '@/data/journey';
 import EmployerDialog from './employer-dialog.vue';
 import CompanyLogo from './company-logo.vue';
 
 /**
- * What's written over Belfast: the gig poster of skills standing by the SSE Arena (placed in the scene with a
- * CSS3DRenderer that follows the city camera, turned to face it), and a callout for each stop along the career
- * walk, pointing down at the building (outlined by offices.ts) and opening its details. The callouts stay flat
- * to the screen and inside it, so they read on a phone too. Both are shown in time while their beat is up.
+ * The experience written over Belfast: a callout for each stop, pointing down at the building (outlined by
+ * offices.ts) and opening its details, and in the overview a pin on each building to fly to it. The callouts stay
+ * flat to the screen and inside it, so they read on a phone too. Shown in time as the camera arrives.
  */
-
-/** The poster: where it stands (scene units, 10 m) and its size (world units per CSS pixel). */
-const POSTER = { position: new Vector3(-1, 6.5, 5.5), scale: 0.017 };
 
 /** The stops with a building to point at. */
 const callouts = (Object.keys(officeAnchors) as EmployerBeat[]).map(beat => ({ beat, anchor: officeAnchors[beat] as Vector3 }));
@@ -29,11 +26,16 @@ const SCOPE_CARDS: Partial<Record<EmployerBeat, string>> = {
   coleraine: '78 km north-west, as the crow flies',
   antrim: '21 km north-west',
 };
-const scopeBeats = Object.keys(SCOPE_CARDS) as EmployerBeat[];
+const scopeBeats = Object.keys(SCOPE_CARDS) as ('coleraine' | 'antrim')[];
+/** The overview's pins: each office, and the telescope over City Hall for the first two. */
+const pins: { beat: EmployerBeat, anchor: Vector3, label?: string }[] = [
+  { beat: 'coleraine', anchor: new Vector3(-96.7, 6, 83.7), label: 'The telescope at City Hall' },
+  ...callouts,
+];
 
 const root = ref<HTMLElement>();
-const poster = ref<HTMLElement>();
 const calloutElements = new Map<EmployerBeat, HTMLElement>();
+const pinElements: HTMLElement[] = [];
 const openStop = shallowRef<Stop | null>(null);
 
 const shown = new Map<HTMLElement, boolean>();
@@ -48,14 +50,21 @@ const MARGIN = 16;
 const leaderLength = (height: number) => Math.min(110, height * 0.12);
 
 const onScreen = new Vector3();
+/** Where `anchor` is on screen (px), or null if it's out of view. */
+const project = (anchor: Vector3, camera: PerspectiveCamera, width: number, height: number) => {
+  onScreen.copy(anchor).project(camera);
+  if (onScreen.z > 1 || Math.abs(onScreen.x) > 1 || Math.abs(onScreen.y) > 1) return null;
+  return [((onScreen.x + 1) / 2) * width, ((1 - onScreen.y) / 2) * height];
+};
+
 /**
  * Points `element`'s callout at `anchor`: the dot on the building, the leader up from it (or down, near the top
  * of the screen) and the card at its end, slid along to stay on screen. False if the building is out of view.
  */
 const point = (element: HTMLElement, anchor: Vector3, camera: PerspectiveCamera, width: number, height: number) => {
-  onScreen.copy(anchor).project(camera);
-  if (onScreen.z > 1 || Math.abs(onScreen.x) > 1 || Math.abs(onScreen.y) > 1) return false;
-  const [x, y] = [((onScreen.x + 1) / 2) * width, ((1 - onScreen.y) / 2) * height];
+  const at = project(anchor, camera, width, height);
+  if (!at) return false;
+  const [x, y] = at;
   const card = element.lastElementChild as HTMLElement;
   const [cardWidth, cardHeight] = [card.offsetWidth, card.offsetHeight];
   const leader = leaderLength(height);
@@ -68,88 +77,85 @@ const point = (element: HTMLElement, anchor: Vector3, camera: PerspectiveCamera,
 };
 
 let stop: (() => void) | undefined;
-let renderer: CSS3DRenderer | undefined;
 
 onMounted(() => {
-  renderer = new CSS3DRenderer();
-  root.value?.prepend(renderer.domElement);
-  const scene = new Scene();
-  const posterObject = new CSS3DObject(poster.value as HTMLElement);
-  posterObject.position.copy(POSTER.position);
-  posterObject.scale.setScalar(POSTER.scale);
-  scene.add(posterObject);
   let [width, height] = [0, 0];
 
   stop = onOverlayFrame((camera, progress) => {
-    const isShowing = !!root.value && isInBelfast(progress) && sceneState.cityReady && sceneState.exit < 1;
+    const isShowing = !!root.value && isInBelfast(progress) && sceneState.cityReady && route.mode === 'experience';
     if (root.value) root.value.style.visibility = isShowing ? 'visible' : 'hidden';
-    if (!isShowing || !root.value || !renderer) return;
-
-    if (root.value.clientWidth !== width || root.value.clientHeight !== height) {
-      [width, height] = [root.value.clientWidth, root.value.clientHeight];
-      renderer.setSize(width, height);
-    }
-
-    const isPosterUp = windowOpacity(progress, windows.skills) > 0.5;
-    toggle(posterObject.element, isPosterUp);
-    if (isPosterUp) {
-      // Turned about its upright to face the camera
-      posterObject.rotation.y = Math.atan2(camera.position.x - POSTER.position.x, camera.position.z - POSTER.position.z);
-      renderer.render(scene, camera);
-    }
+    if (!isShowing || !root.value) return;
+    [width, height] = [root.value.clientWidth, root.value.clientHeight];
+    const arriving = route.isArriving;
+    const isUp = (beat: EmployerBeat) => route.stop === beat && arriving;
 
     callouts.forEach(({ beat, anchor }) => {
       const element = calloutElements.get(beat);
       if (!element) return;
-      const isUp = windowOpacity(progress, windows[beat]) > 0.5;
+      const up = isUp(beat);
       // Up in the sky instead if the building's out of view (on a narrow screen, say)
-      const isPointing = isUp && point(element, anchor, camera, width, height);
-      if (isUp && !isPointing && !element.classList.contains('is-in-the-sky')) {
+      const isPointing = up && point(element, anchor, camera, width, height);
+      if (up && !isPointing && !element.classList.contains('is-in-the-sky')) {
         element.style.transform = '';
         (element.lastElementChild as HTMLElement).style.transform = '';
       }
-      element.classList.toggle('is-in-the-sky', isUp && !isPointing);
-      toggle(element, isUp);
+      element.classList.toggle('is-in-the-sky', up && !isPointing);
+      toggle(element, up);
     });
-    [...SKY_CARDS, ...scopeBeats].forEach(beat => {
+    SKY_CARDS.forEach(beat => {
       const element = calloutElements.get(beat);
-      if (element) toggle(element, windowOpacity(progress, windows[beat]) > 0.5);
+      if (element) toggle(element, isUp(beat));
+    });
+    scopeBeats.forEach(beat => {
+      const element = calloutElements.get(beat);
+      const { open, sight, whip } = cityState.scope;
+      if (element) toggle(element, isUp(beat) && open > 0.6 && sight === beat && Math.abs(whip) === 1);
+    });
+
+    const isOverview = route.stop === 'overview' && arriving;
+    pins.forEach(({ anchor }, i) => {
+      const element = pinElements[i];
+      if (!element) return;
+      const at = isOverview ? project(anchor, camera, width, height) : null;
+      if (at) {
+        element.style.transform = `translate3d(${at[0]}px, ${at[1]}px, 0)`;
+        // The label's kept on screen, even when its building's at the edge
+        const label = element.lastElementChild as HTMLElement;
+        const half = label.offsetWidth / 2 + 8;
+        const shift = Math.min(Math.max(at[0], half), width - half) - at[0];
+        label.style.transform = `translateX(calc(-50% + ${shift}px))`;
+      }
+      toggle(element, !!at);
     });
   });
 });
 
-onBeforeUnmount(() => {
-  stop?.();
-  renderer?.domElement.remove();
-});
+onBeforeUnmount(() => stop?.());
 </script>
 
 <template>
   <div ref="root" class="city-signs">
-    <!-- The renderer moves the poster into its own element -->
-    <div hidden>
-      <article ref="poster" class="sign poster">
-        <p class="venue">Live at the SSE Arena</p>
-        <p class="billing">Tonight</p>
-        <p class="headliners">
-          <span>TypeScript</span>
-          <span>Vue</span>
-          <span>React</span>
-        </p>
-        <p class="billing">With special guests</p>
-        <p class="support">Nuxt · Node · Three.js · GSAP</p>
-        <p class="billing">Doors open with</p>
-        <p class="openers">HTML · CSS · Tailwind · JavaScript</p>
-        <p class="small-print">All ages · Fully accessible venue</p>
-      </article>
-    </div>
+    <button
+      v-for="(pin, i) in pins"
+      :key="`pin-${pin.beat}`"
+      :ref="element => element && (pinElements[i] = element as HTMLElement)"
+      type="button"
+      class="pin sign"
+      @click="navigate('experience', pin.beat)"
+    >
+      <span class="dot" />
+      <span class="label">
+        <template v-if="pin.label">{{ pin.label }}</template>
+        <CompanyLogo v-else :stop="stops[pin.beat]" :size="16" />
+      </span>
+    </button>
 
     <div
       v-for="beat in [...callouts.map(callout => callout.beat), ...SKY_CARDS, ...scopeBeats]"
       :key="beat"
       :ref="element => element && calloutElements.set(beat, element as HTMLElement)"
       class="callout sign"
-      :class="{ 'is-in-the-sky': SKY_CARDS.includes(beat), 'is-in-the-scope': scopeBeats.includes(beat) }"
+      :class="{ 'is-in-the-sky': SKY_CARDS.includes(beat), 'is-in-the-scope': (scopeBeats as EmployerBeat[]).includes(beat) }"
     >
       <span class="dot" />
       <span class="leader" />
@@ -184,8 +190,8 @@ $blue: #88b8f2;
 }
 
 .sign {
-  // CSS3DObject makes its element take the pointer; only the buttons should, so the page still scrolls under it
-  pointer-events: none !important;
+  // Only the buttons take the pointer, so swiping over the rest still steps
+  pointer-events: none;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.5s ease, visibility 0s linear 0.5s;
@@ -198,64 +204,46 @@ $blue: #88b8f2;
   }
 }
 
-// A gig poster, pasted up by the arena
-.poster {
-  width: 320px;
-  padding: 26px 24px 20px;
-  text-align: center;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(255, 190, 90, 0.35), transparent 60%),
-    linear-gradient(170deg, #2a0f4a, #12052a 70%);
-  border: 3px solid #ffd27a;
-  box-shadow: 0 0 40px rgba(255, 190, 90, 0.35);
-  font-family: 'Funnel Display', Helvetica, Arial, sans-serif;
-  text-transform: uppercase;
+// A pin on a building in the overview, which flies to it
+.pin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  cursor: pointer;
 
-  .venue {
+  .dot {
+    position: absolute;
+    left: -5px;
+    top: -5px;
+    width: 10px;
+    height: 10px;
+    border: 2px solid white;
+    border-radius: 50%;
+    background: $blue;
+    box-shadow: 0 0 12px 3px rgba(136, 184, 242, 0.7);
+  }
+
+  .label {
+    position: absolute;
+    left: 0;
+    bottom: 12px;
+    transform: translateX(-50%);
+    display: block;
+    padding: 6px 9px;
+    border: 1px solid rgba(136, 184, 242, 0.55);
+    border-radius: 6px;
+    background: rgba(9, 1, 24, 0.72);
+    backdrop-filter: blur(4px);
     font-size: 11px;
-    letter-spacing: 0.3em;
-    color: #ffd27a;
+    white-space: nowrap;
+    transition: background 0.2s ease, border-color 0.2s ease;
   }
 
-  .billing {
-    margin-top: 14px;
-    font-size: 10px;
-    letter-spacing: 0.35em;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .headliners {
-    display: flex;
-    flex-direction: column;
-    margin-top: 4px;
-    font-size: 40px;
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -0.01em;
-
-    span:nth-child(2) {
-      color: #ffd27a;
-    }
-  }
-
-  .support {
-    margin-top: 4px;
-    font-size: 18px;
-    font-weight: 700;
-  }
-
-  .openers {
-    margin-top: 4px;
-    font-size: 13px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.85);
-  }
-
-  .small-print {
-    margin-top: 18px;
-    font-size: 8px;
-    letter-spacing: 0.25em;
-    color: rgba(255, 255, 255, 0.5);
+  &:hover .label,
+  &:focus-visible .label {
+    background: rgba(42, 35, 122, 0.9);
+    border-color: $blue;
   }
 }
 
@@ -321,7 +309,7 @@ $blue: #88b8f2;
   &.is-in-the-scope {
     left: 50%;
     top: auto;
-    bottom: max(3vh, 1rem);
+    bottom: calc(var(--chrome-bottom) + 1rem);
 
     .dot,
     .leader {

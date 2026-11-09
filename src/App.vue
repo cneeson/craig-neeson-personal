@@ -1,32 +1,23 @@
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ScrollSmoother } from 'gsap/ScrollSmoother';
+import { onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
 import { TresCanvas } from '@tresjs/core'
-import { differenceInYears } from 'date-fns';
 import PlanetScene from './components/PlanetScene.vue';
 import CityAttribution from './components/city-attribution.vue';
-import JourneyNav from './components/journey-nav.vue';
 import PlanetHud from './components/planet-hud.vue';
 import CitySigns from './components/city-signs.vue';
+import SkillSigns from './components/skill-signs.vue';
+import SiteMenu from './components/site-menu.vue';
+import HomePanel from './components/home-panel.vue';
+import AboutPanel from './components/about-panel.vue';
+import ExperienceTimeline from './components/experience-timeline.vue';
+import SkillsPanel from './components/skills-panel.vue';
+import ContactPanel from './components/contact-panel.vue';
 import Hero from './views/hero.vue'
-import Skills from './views/skills.vue';
-import Experience from './views/experience.vue';
-import Contact from './views/contact.vue';
-import Footer from './views/footer.vue';
-import { isMobile, prefersReducedMotion, quality } from './services/device';
-import { chapterAt, chapters, isInBelfast, letterboxAt, settleAt, windowOpacity, windows } from './scene/choreography';
-import { createCaption } from './scene/captions';
-import { sceneState } from './scene/state';
+import { quality } from './services/device';
+import { startNavigation } from './services/navigation';
+import { cityState, route } from './scene/director';
+import { onOverlayFrame } from './scene/overlay';
 import { camera } from './scene/camera';
-
-gsap.registerPlugin(ScrollTrigger, ScrollSmoother);
-// Mobile browsers resize the viewport as the address bar shows/hides; recalculating
-// every trigger mid-scroll is what causes jank there.
-ScrollTrigger.config({ ignoreMobileResize: true });
-
-const yearsExperience = differenceInYears(new Date(), new Date('2017-06-01'));
 
 const gl = {
   clearColor: '#090118',
@@ -36,121 +27,29 @@ const gl = {
 }
 
 const isSceneReady = ref(false);
-const activeChapter = ref(0);
+const letterbox = ref<HTMLElement>();
 
-const scrollToY = (y: number) => {
-  const smoother = ScrollSmoother.get();
-  if (smoother) smoother.scrollTo(y, true);
-  else window.scrollTo({ top: y, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
-};
+// The mode, for styles that depend on it (such as how much of the bottom of the screen is taken)
+watchEffect(() => {
+  document.documentElement.dataset.mode = route.mode;
+});
 
-/** Scrolls to a chapter of the journey (see choreography), or on to the content. */
-const navigate = (target: number | 'content') => {
-  const track = document.querySelector('.scene-track') as HTMLElement;
-  const content = document.querySelector('.content') as HTMLElement;
-  scrollToY(target === 'content'
-    ? content.offsetTop - innerHeight * 0.1
-    : chapters[target].at * (track.offsetHeight - innerHeight));
-};
-
-let isTouching = false;
-const onTouchStart = () => (isTouching = true);
-const onTouchEnd = () => (isTouching = false);
-
-let context: gsap.Context | undefined;
+let stopNavigation: (() => void) | undefined;
+let stopLetterbox: (() => void) | undefined;
 
 onMounted(() => {
-  window.addEventListener('touchstart', onTouchStart, { passive: true });
-  window.addEventListener('touchend', onTouchEnd, { passive: true });
-  window.addEventListener('touchcancel', onTouchEnd, { passive: true });
-
-  context = gsap.context(() => {
-    // Native scrolling is smoother than any JS smoothing on touch devices
-    if (!isMobile && !prefersReducedMotion) {
-      ScrollSmoother.create({
-        wrapper: '#smooth-wrapper',
-        content: '#smooth-content',
-        smooth: 1.5,
-      });
-    }
-
-    // Catch-up smoothing between the scroll position and the scene. ScrollSmoother already smooths desktop
-    // scrolling, so it needs little on top. On touch screens the scene stays with the finger, as the page
-    // does: any more lag and the same swipe moves it by more or less depending on how fast it was
-    const scrub = prefersReducedMotion ? true : isMobile ? 0.1 : 0.6;
-
-    // Captions are shown while their beat is mostly in view, in step with the markers
-    // (each is named after its beat in `windows`)
-    const captions = gsap.utils.toArray<HTMLElement>('[data-caption]').map(element => ({
-      window: windows[element.dataset.caption as keyof typeof windows],
-      ...createCaption(element),
-    }));
-    // Captions over the (bright, busy) city get a shade behind them
-    const captionsElement = document.querySelector('.captions') as HTMLElement;
-    const letterbox = document.querySelector('.letterbox') as HTMLElement;
-    const syncToJourney = (progress: number) => {
-      captionsElement.classList.toggle('is-over-city', isInBelfast(progress));
-      letterbox.style.setProperty('--amount', String(letterboxAt(progress)));
-      captions.forEach(caption => (windowOpacity(progress, caption.window) > 0.5 ? caption.show() : caption.hide()));
-      activeChapter.value = chapterAt(progress);
-    };
-
-    // Coming to rest while a caption is fading in eases it fully into view (see settleAt). Not
-    // ScrollTrigger's own `snap`: alongside ScrollSmoother that stops the page following jumps
-    // upwards. Nor its `scrollEnd` event, which doesn't always fire once smoothing finishes.
-    // Desktop only: on touch screens the page moving by itself after a swipe feels like it's fighting the finger.
-    const settle = gsap.delayedCall(0.25, () => {
-      const trigger = journey.scrollTrigger;
-      if (isTouching || !trigger?.isActive) return;
-      const target = settleAt(trigger.progress, trigger.direction);
-      if (target !== trigger.progress) scrollToY(trigger.start + target * (trigger.end - trigger.start));
-    }).pause();
-
-    // --- The 3D journey: one timeline, 0 → 1 across the scene track ---
-    const journey = gsap.timeline({
-      defaults: { ease: 'none' },
-      onUpdate: () => syncToJourney(journey.progress()),
-      scrollTrigger: {
-        trigger: '.scene-track',
-        start: 'top top',
-        end: 'bottom bottom',
-        scrub,
-        // Restarted on every scroll, so it only runs once scrolling (and smoothing) has stopped
-        onUpdate: () => prefersReducedMotion || isMobile || settle.restart(true),
-      },
-    });
-
-    journey.to(sceneState, { progress: 1, duration: 1 }, 0);
-
-    const [, heroEnd] = windows.hero;
-    journey.to('.hero-content', { autoAlpha: 0, filter: 'blur(16px)', y: -40, duration: heroEnd }, 0);
-
-    // --- Hand-off: the planet blurs into a backdrop as the content arrives ---
-    gsap.timeline({
-      defaults: { ease: 'none' },
-      scrollTrigger: { trigger: '.content', start: 'top bottom', end: 'top 15%', scrub },
-    })
-      .to(sceneState, { exit: 1, duration: 1 }, 0)
-      .to('.scene', { filter: `blur(${quality.canvasBlur}px)`, opacity: 0.75, yPercent: -20, duration: 1 }, 0)
-      .to('.journey-nav', { autoAlpha: 0, duration: 0.4 }, 0);
-
-    gsap.utils.toArray<HTMLElement>('[data-reveal]').forEach(element => {
-      gsap.from(element, {
-        autoAlpha: 0,
-        y: 40,
-        duration: 0.8,
-        ease: 'power2.out',
-        scrollTrigger: { trigger: element, start: 'top 88%', once: true },
-      });
-    });
+  stopNavigation = startNavigation();
+  let amount = -1;
+  stopLetterbox = onOverlayFrame(() => {
+    if (cityState.letterbox === amount) return;
+    amount = cityState.letterbox;
+    letterbox.value?.style.setProperty('--amount', String(amount));
   });
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('touchstart', onTouchStart);
-  window.removeEventListener('touchend', onTouchEnd);
-  window.removeEventListener('touchcancel', onTouchEnd);
-  context?.revert();
+  stopNavigation?.();
+  stopLetterbox?.();
 });
 </script>
 
@@ -163,57 +62,45 @@ onBeforeUnmount(() => {
     </TresCanvas>
   </div>
 
-  <div class="letterbox" aria-hidden="true" />
+  <SkillSigns />
+  <div ref="letterbox" class="letterbox" aria-hidden="true" />
   <PlanetHud />
   <CitySigns />
   <CityAttribution />
-  <JourneyNav :active="activeChapter" :ready="isSceneReady" @navigate="navigate" />
 
-  <!-- v-once: the captions are split into words for their entrance, so Vue mustn't re-render them -->
-  <div v-once class="captions" aria-live="polite">
-    <p class="caption is-long" data-caption="belfastIntro">
-      <span class="block mb-3">Hi, I'm <strong>Craig.</strong> 👋</span>
-      For <strong>{{ yearsExperience }} years</strong> I've been building the interfaces that bring ideas to life,
-      and help people get the most out of the products they use.
-    </p>
-    <p class="caption is-long" data-caption="craft">
-      My craft is <strong>UI:</strong> scalable component systems, accessible interactions, and motion that
-      gives a product its character.
-    </p>
-    <p class="caption" data-caption="rewind">
-      <span aria-hidden="true">⏪</span> <strong>Rewind.</strong> Let me walk you through how I got here.
-    </p>
-    <p class="caption" data-caption="reach">
-      Built in <strong>Belfast,</strong> shipped with teams across <strong>Ireland, Europe</strong> and the
-      <strong>US.</strong>
-    </p>
-    <p class="caption" data-caption="reveal">
-      Let's build <strong>something together.</strong>
-    </p>
-  </div>
-
-  <div id="smooth-wrapper">
-    <div id="smooth-content">
-      <section class="scene-track">
-        <Hero />
-      </section>
-
-      <main class="content">
-        <Skills data-reveal />
-        <Experience />
-        <Contact data-reveal />
-      </main>
-
-      <Footer />
-    </div>
-  </div>
+  <Hero />
+  <main>
+    <HomePanel />
+    <AboutPanel />
+    <ExperienceTimeline />
+    <SkillsPanel />
+    <ContactPanel />
+  </main>
+  <SiteMenu />
 </template>
 
 <style lang="scss">
+:root {
+  // How much of the bottom of the screen the menu takes (on phones), and that plus the timeline (in Experience)
+  --menu-bottom: 0px;
+  --chrome-bottom: var(--menu-bottom);
+
+  @media (max-width: 767px) {
+    --menu-bottom: calc(58px + env(safe-area-inset-bottom));
+  }
+}
+
+html[data-mode='experience'] {
+  --chrome-bottom: calc(var(--menu-bottom) + 76px);
+}
+
+// The scene is the whole site: nothing scrolls, apart from the panels that need to
 html, body {
   width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
   background: #090118;
-  overflow-x: hidden;
 }
 
 #app {
@@ -237,7 +124,7 @@ html, body {
   z-index: 0;
   opacity: 0;
   transition: opacity 1.2s ease;
-  will-change: transform, filter;
+  touch-action: none;
 
   &.is-ready {
     opacity: 1;
@@ -274,63 +161,90 @@ html, body {
   }
 }
 
-.captions {
-  @apply fixed inset-x-0 bottom-0 z-10 px-6 pb-12 lg:pb-20 pointer-events-none grid justify-items-center;
-}
+// --- Shared by the mode panels ---
 
-.captions::before {
-  content: '';
-  position: absolute;
-  inset: -10rem 0 0;
-  z-index: -1;
-  background: linear-gradient(to top, rgba(9, 1, 24, 0.6), rgba(9, 1, 24, 0.25) 55%, transparent);
+.panel-card {
+  @apply fixed z-30 p-5 lg:p-7 rounded-2xl;
+
+  left: 1rem;
+  right: 1rem;
+  bottom: calc(var(--menu-bottom) + 1rem);
+  max-height: calc(100dvh - var(--menu-bottom) - 2rem);
+  overflow-y: auto;
+  background: rgba(9, 1, 24, 0.72);
+  border: 1px solid rgba(136, 184, 242, 0.28);
+  box-shadow: 0 10px 40px rgba(9, 1, 24, 0.5), 0 0 30px rgba(136, 184, 242, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   opacity: 0;
-  transition: opacity 0.8s ease;
-}
-
-.captions.is-over-city::before {
-  opacity: 1;
-}
-
-.caption {
-  @apply text-xl leading-relaxed md:text-3xl lg:text-4xl lg:leading-snug max-w-[34ch];
-
-  // All captions share one grid cell so they cross-fade in place
-  grid-area: 1 / 1;
-
   visibility: hidden;
-  text-wrap: balance;
-  text-shadow: 0 2px 24px rgba(9, 1, 24, 0.85);
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease, visibility 0s linear 0.5s;
 
-  strong {
-    font-weight: 700;
+  &.is-shown {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition: opacity 0.6s ease 0.15s, transform 0.6s ease 0.15s;
   }
 
-  .word {
-    display: inline-block;
+  @media (min-width: 768px) {
+    left: 2rem;
+    right: auto;
+    bottom: 2rem;
+    width: 28rem;
   }
 
-  &.is-long {
-    @apply text-lg md:text-2xl lg:text-3xl max-w-[40ch];
+  @media (min-width: 1024px) {
+    left: 3rem;
+    bottom: 3rem;
+    width: 32rem;
+  }
+
+  .eyebrow {
+    @apply font-mono text-[11px] tracking-[0.18em] uppercase text-[#88b8f2];
+  }
+
+  .controls {
+    @apply mt-5 flex items-center gap-3;
+  }
+
+  .dots {
+    @apply flex gap-2 mr-auto;
+
+    button {
+      @apply block w-2.5 h-2.5 rounded-full transition;
+
+      background: rgba(255, 255, 255, 0.3);
+
+      &[aria-current] {
+        background: #88b8f2;
+        box-shadow: 0 0 10px rgba(136, 184, 242, 0.7);
+      }
+    }
   }
 }
 
-#smooth-wrapper {
-  position: relative;
-  z-index: 20;
+.pill-button {
+  @apply px-5 py-2.5 rounded-full text-sm lg:text-base font-semibold text-white transition;
+
+  background: linear-gradient(135deg, #2a237a, #191752);
+  border: 1px solid rgba(136, 184, 242, 0.5);
+  box-shadow: 0 0 18px rgba(136, 184, 242, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+
+  &:hover,
+  &:focus-visible {
+    box-shadow: 0 0 28px rgba(136, 184, 242, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+  }
 }
 
-// Each beat gets roughly a screen of scrolling (about 0.044 of the journey), so captions stay up long
-// enough to read, and the walk through Belfast gets most of it
-.scene-track {
-  height: 2370vh;
-}
+.text-button {
+  @apply px-2 py-2 text-sm lg:text-base text-white/75 underline-offset-4 transition;
 
-.content {
-  @apply mx-auto max-w-6xl px-5 md:px-8 flex flex-col gap-40 lg:gap-56 pb-40;
-
-  // Starts arriving just as the planet reveal finishes (windows.reveal), so the hand-off
-  // follows straight on from it
-  margin-top: -45vh;
+  &:hover,
+  &:focus-visible {
+    @apply text-white underline;
+  }
 }
 </style>

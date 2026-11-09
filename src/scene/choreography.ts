@@ -1,9 +1,9 @@
 import { clamp01, lerp, smoothstep } from '@/services/three';
 
 /**
- * The whole 3D journey is a pure function of scroll progress (0 → 1 across the scene track).
- * Keeping it stateless means scrubbing backwards, jumping (e.g. reload mid-page) and
- * resizing all land on exactly the same frame.
+ * The journey out on the planet is a pure function of its progress (0 → 1), which the director (director.ts)
+ * plays: the glide down from orbit into the clouds over Belfast as the site opens, and the climb back out of
+ * them to the arcs over Europe and the US. In between, over the city, the director moves the camera itself.
  */
 
 export interface SceneFrame {
@@ -17,8 +17,8 @@ type Track = keyof SceneFrame;
 const tracks: Track[] = ['earthRotationY', 'cameraZ', 'cameraRotationX', 'cameraRotationY'];
 
 /**
- * The beats of the journey as [start, end] progress ranges: where each one's words are fully readable (they
- * fade in just before and out just after). One screen of scrolling is about 0.044 (see the track's height in App.vue).
+ * The beats of the journey as [start, end] progress ranges: where each one's overlays are fully up (they fade
+ * in just before and out just after).
  */
 export const windows = {
     hero: [0, 0.026],
@@ -26,44 +26,15 @@ export const windows = {
     forecast: [0.044, 0.071],
     // The clouds part over Northern Ireland, its outline is traced and the display locks on to Belfast
     northernIreland: [0.088, 0.141],
-    // The flight over Belfast, between diving into the clouds and climbing back out of them
+    // Over Belfast, between diving into the clouds and climbing back out of them
     belfast: [0.185, 0.876],
-    // Out of the clouds under the H&W cranes: the introduction
-    belfastIntro: [0.205, 0.247],
-    // Backing away down the dock: what I do
-    craft: [0.26, 0.296],
-    // Over the SSE Arena: the skills, billed like a gig
-    skills: [0.319, 0.367],
-    // Rising over City Hall to look back up the coast
-    rewind: [0.395, 0.417],
-    // Through the telescope: Ulster University in Coleraine, then Nitec in Antrim
-    coleraine: [0.431, 0.466],
-    antrim: [0.475, 0.506],
-    // Down Adelaide Street, past Liberty IT then Flexera. The gaps between the jobs leave room for the camera to
-    // travel and turn between their buildings: any shorter and a flick of the thumb whips straight across
-    liberty: [0.544, 0.575],
-    flexera: [0.597, 0.628],
-    // Locate a Locum at the Gasworks, then Ankorstore, off towards Paris
-    locum: [0.67, 0.696],
-    ankorstore: [0.723, 0.749],
-    // Ocula, at Lanyon Place, as the train pulls out
-    ocula: [0.793, 0.841],
     // Climbed back out over the planet, with arcs out to where the work has reached
     reach: [0.894, 0.925],
     reveal: [0.943, 0.978],
 } as const;
 
-/** The employers, by the beat that shows each one. */
-export const employerBeats = ['coleraine', 'antrim', 'liberty', 'flexera', 'locum', 'ankorstore', 'ocula'] as const;
-export type EmployerBeat = typeof employerBeats[number];
-
 /** Beats with markers or overlays on the planet, which pull the bloom back so the map stays crisp. */
 const marked = [windows.northernIreland, windows.reach];
-/** Beats that scrolling settles onto: everything with words to read, apart from the hero. */
-const settled = [
-    windows.forecast, windows.northernIreland, windows.belfastIntro, windows.craft, windows.skills, windows.rewind,
-    ...employerBeats.map(beat => windows[beat]), windows.reach, windows.reveal,
-];
 
 /** How far either side of a readable window its caption and markers fade over. */
 export const FADE = 0.012;
@@ -179,9 +150,6 @@ const [diveFrom, cityFrom, cityTo, climbTo] = [
 
 export const isInBelfast = (progress: number) => progress >= cityFrom && progress < cityTo;
 
-/** 0 → 1 across the flight over Belfast. */
-export const flightProgressAt = (progress: number) => clamp01((progress - cityFrom) / (cityTo - cityFrom));
-
 /** 1 → 0 (steadily) as the camera climbs back out of the clouds after Belfast. PlanetScene eases the motion. */
 export const diveAt = (progress: number) => {
     if (progress < cityTo) return 1;
@@ -253,10 +221,6 @@ export const highlightAt = (progress: number) => {
     };
 };
 
-/** The letterbox bars (0 → 1) for the dolly zoom under the cranes, in as the clouds clear and out after it. */
-export const letterboxAt = (progress: number) =>
-    ramp(progress, cityFrom, windows.belfastIntro[0]) * (1 - ramp(progress, windows.belfastIntro[1], windows.craft[0]));
-
 /** The arcs out to where the work has reached: how far through drawing them (`amount`), and their `opacity`. */
 export const reachAt = (progress: number) => {
     const [start, end] = windows.reach;
@@ -275,46 +239,3 @@ export const bloomThresholdAt = (progress: number) => {
     const base = isInBelfast(progress) ? 1.2 : lerp(0.3, 0.9, focus);
     return lerp(base, 1.2, veilAt(progress));
 };
-
-/** How close to a beat a scroll has to come to rest before it's eased the rest of the way in. */
-const SETTLE_REACH = 0.07;
-
-/**
- * Where the journey should settle when scrolling stops. Coming to rest while a caption is still
- * fading in eases it the rest of the way, so it isn't left half-readable. Only in the direction
- * of travel: scrolling on past a caption never pulls the reader back to it.
- */
-export const settleAt = (progress: number, direction: number) => {
-    // Never left resting in the clouds: carry on through them the way the reader was going
-    if (direction !== 0 && veilAt(progress) > 0.05) {
-        let target = progress;
-        while (target > 0 && target < 1 && veilAt(target) > 0.02) target += 0.002 * Math.sign(direction);
-        return clamp01(target);
-    }
-    for (const [start, end] of settled) {
-        const [readFrom, readTo] = [start + 0.01, end - 0.01];
-        if (direction > 0 && progress > start - SETTLE_REACH && progress < readFrom) return readFrom;
-        if (direction < 0 && progress < end + SETTLE_REACH && progress > readTo) return readTo;
-    }
-    return progress;
-};
-
-const middle = ([start, end]: readonly [number, number]) => (start + end) / 2;
-
-/**
- * The beats as chapters, for the journey navigation: `from` is where each becomes the current
- * one, `at` is where jumping to it lands (the middle of its caption, if it has one).
- */
-export const chapters = [
-    { label: 'Hello', from: 0, at: 0 },
-    { label: 'Home', from: windows.forecast[0] - FADE, at: middle(windows.northernIreland) },
-    { label: 'Belfast', from: cityFrom - 0.03, at: windows.belfastIntro[0] + 0.005 },
-    { label: 'Skills', from: windows.craft[0] - FADE, at: windows.skills[0] + 0.005 },
-    { label: 'Experience', from: windows.rewind[0] - FADE, at: windows.rewind[0] + 0.005 },
-    { label: 'Now', from: windows.ocula[0] - FADE, at: windows.ocula[0] + 0.01 },
-    // Lands as the reveal completes, just before the content starts to arrive
-    { label: 'The world', from: windows.reach[0] - FADE, at: windows.reveal[1] },
-] as const;
-
-export const chapterAt = (progress: number) =>
-    chapters.reduce((current, chapter, index) => (progress >= chapter.from ? index : current), 0);

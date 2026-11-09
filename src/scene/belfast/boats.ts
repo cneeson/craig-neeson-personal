@@ -3,7 +3,6 @@ import {
     MathUtils, Mesh, Shape, ShaderMaterial, Vector2, Vector3,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { windows } from '@/scene/choreography';
 import { CLOUD_SHADE_GLSL, CLOUD_SHADOW_GLSL, cloudShadowUniforms, photoUniforms } from './photo-materials';
 
 const colored = (geometry: BufferGeometry, color: string) => {
@@ -173,9 +172,9 @@ const createWake = ({ bow, stern, size, length, height }: { bow: number, stern: 
 };
 
 /**
- * A boat with its wake, moved along `route` (a centripetal curve through x, z points at `waterline`) by the
- * scroll: `along(progress)` is how far along the route it is, in scene units, and `wakeAt(progress)` how strong its
- * wake is (0..1, for slowing down). Unlit apart from a little shading
+ * A boat with its wake, moved along `route` (a centripetal curve through x, z points at `waterline`) in time:
+ * `along(time)` is how far along the route it is, in scene units, and `wakeAt(time)` how strong its wake is
+ * (0..1, for slowing down). Unlit apart from a little shading
  * from the sun, like the tiles, and only drawn while it's on its route.
  */
 const createBoat = ({ geometry, route, waterline, scale = 1, wake, along, wakeAt = () => 1, sun }: {
@@ -184,8 +183,8 @@ const createBoat = ({ geometry, route, waterline, scale = 1, wake, along, wakeAt
     waterline: number,
     scale?: number,
     wake: Parameters<typeof createWake>[0],
-    along: (progress: number) => number,
-    wakeAt?: (progress: number) => number,
+    along: (time: number) => number,
+    wakeAt?: (time: number) => number,
     sun: IUniform<Vector3>,
 }) => {
     const curve = new CatmullRomCurve3(route.map(([x, z]) => new Vector3(x, waterline, z)), false, 'centripetal');
@@ -201,15 +200,15 @@ const createBoat = ({ geometry, route, waterline, scale = 1, wake, along, wakeAt
     return {
         object: group,
 
-        /** Every frame while the city is shown, with the journey's progress. */
-        update(progress: number) {
-            const u = along(progress) / length;
+        /** Every frame while the city is shown, with the time (s) on its own clock. */
+        update(time: number) {
+            const u = along(time) / length;
             group.visible = u >= 0 && u <= 1;
             if (!group.visible) return;
             curve.getPointAt(u, group.position);
             curve.getTangentAt(u, tangent);
             group.rotation.y = Math.atan2(-tangent.z, tangent.x);
-            (wakeMesh.material as ShaderMaterial).uniforms.uStrength.value = wakeAt(progress);
+            (wakeMesh.material as ShaderMaterial).uniforms.uStrength.value = wakeAt(time);
         },
 
         dispose() {
@@ -262,21 +261,21 @@ const createFerryGeometry = () => {
 };
 
 /**
- * When the ferry starts coming in and when it's tied up (journey progress): through the end of the intro and the
- * craft beat, when the reader's looking east past the cranes with the channel on the left of the view.
+ * When the ferry starts coming in and when it's tied up (seconds after the city's first shown), while the reader's
+ * looking about the docks.
  */
-const FERRY_ARRIVES = [windows.belfastIntro[1] - 0.01, windows.craft[1]];
+const FERRY_ARRIVES = [4, 40];
 
 /** How far it's come in, 0..1: steaming in at first, then slowing to a stop at its berth. */
-const ferryIn = (progress: number) => {
-    const t = MathUtils.clamp((progress - FERRY_ARRIVES[0]) / (FERRY_ARRIVES[1] - FERRY_ARRIVES[0]), 0, 1);
+const ferryIn = (time: number) => {
+    const t = MathUtils.clamp((time - FERRY_ARRIVES[0]) / (FERRY_ARRIVES[1] - FERRY_ARRIVES[0]), 0, 1);
     return 1 - (1 - t) ** 2;
 };
 
 /**
  * A ferry coming in to Belfast in Stena Line's colours: a hand-built Superfast-class ro-ro, navy hull, red band,
  * white superstructure and twin funnels, with a pale V of a wake and a churned trail behind it that die away as
- * it slows. It comes down Musgrave Channel to a berth by the scroll, on the left of the view past the cranes
+ * it slows. It comes down Musgrave Channel to a berth, on the left of the view past the cranes
  * (Stena's own terminal is out of sight, behind the dry dock). A little bigger than life, so it reads at the 2 km
  * or so it's seen from.
  */
@@ -288,8 +287,8 @@ export const createFerry = (sun: IUniform<Vector3>) => createBoat({
     waterline: 0.1,
     scale: 1.4,
     wake: { bow: FERRY_BOW, stern: FERRY_STERN, size: 1, length: 50, height: 0.05 },
-    along: progress => 100 * ferryIn(progress),
-    wakeAt: progress => 1 - ferryIn(progress),
+    along: time => 100 * ferryIn(time),
+    wakeAt: time => 1 - ferryIn(time),
     sun,
 });
 
@@ -316,17 +315,12 @@ const createRiverBoatGeometry = () => {
     return mergeGeometries(parts);
 };
 
-/**
- * Where it's sailing at the start of the Ocula beat, and how fast (scene units per unit of journey progress):
- * coming down the Lagan towards the reader, who's looking south up the river from Lanyon Place, and passing under
- * the camera, and the train on the railway bridge, as the beat ends.
- */
-const BOAT_AT_OCULA = 40;
-const BOAT_SPEED = 1000;
+/** How fast it sails down the Lagan (scene units a second): past Lanyon Place, under the railway bridge, to the weir. */
+const BOAT_SPEED = 2.5;
 
 /**
  * A tour boat coming down the Lagan: navy hull and a low glazed white saloon under a red roof, with its wake. Up
- * close in the Ocula beat, where the ferry is too far off to see. Moved by the scroll.
+ * close from Lanyon Place, where the ferry is too far off to see. Starts each trip at 0 s on its clock.
  */
 export const createRiverBoat = (sun: IUniform<Vector3>) => createBoat({
     geometry: createRiverBoatGeometry(),
@@ -338,6 +332,6 @@ export const createRiverBoat = (sun: IUniform<Vector3>) => createBoat({
     // On the water drawn over the river (water.ts)
     waterline: 0.1,
     wake: { bow: BOAT_BOW, stern: BOAT_STERN, size: 0.24, length: 10, height: 0.05 },
-    along: progress => BOAT_AT_OCULA + BOAT_SPEED * (progress - windows.ocula[0]),
+    along: time => BOAT_SPEED * time,
     sun,
 });

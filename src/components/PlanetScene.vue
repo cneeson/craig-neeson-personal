@@ -80,15 +80,16 @@ import BelfastPhoto from './belfast-photo.vue'
 import CloudVeil from './cloud-veil.vue'
 import { isMobile, prefersReducedMotion, quality } from '@/services/device';
 import {
-  approachAt, bloomThresholdAt, diveAt, flightProgressAt, frameAt, highlightAt, isInBelfast, reachAt, veilAt, windows,
+  approachAt, bloomThresholdAt, diveAt, frameAt, highlightAt, isInBelfast, reachAt, veilAt, windows,
 } from '@/scene/choreography';
+import { cityPoseAt, cityState, tickDirector } from '@/scene/director';
+import { CITY_ENDS, placeCamera } from '@/scene/shots';
 import { sceneState } from '@/scene/state';
 import { updateOverlays } from '@/scene/overlay';
 import { createHighlight } from '@/scene/planet/highlight';
 import { createArcs } from '@/scene/planet/arcs';
 import { EARTH_MESH_ROTATION, EARTH_POSITION, onEarth, PLACES } from '@/scene/planet/geo';
 import { patchClouds } from '@/scene/planet/clouds';
-import { cityFovAt, FLIGHT_ENDS, flightAt } from '@/scene/belfast/flight';
 import { createParisArc } from '@/scene/belfast/paris-arc';
 import { createOfficeHighlights } from '@/scene/belfast/offices';
 import { ATMOSPHERE_RADIUS, createAtmosphereMaterial, createEarthMaterial } from '@/scene/earth';
@@ -174,11 +175,6 @@ onBeforeUnmount(() => {
   offices.dispose()
 })
 
-// The scene is fully hidden behind the content once the exit transition completes, so
-// rendering stops there. One extra frame is drawn on the way out so the final blurred
-// backdrop matches where the camera ended up.
-let renderedFinalFrame = false
-
 // Belfast loads in the background from Google's tiles once the planet is up (if there's a key in the build).
 // If they can't load, it's dropped and the clouds stay over the flight.
 const isCityMounted = ref(false)
@@ -194,7 +190,6 @@ const setLens = (cam: PerspectiveCamera, fov: number, near: number) => {
 
 // Eases from 0 to 1 once the city has loaded, so if the clouds were holding for it they clear gently
 let cityReveal = 0
-const cityTarget = new Vector3()
 const marker = new Vector3()
 const surfaceUp = new Vector3()
 const north = new Vector3()
@@ -230,20 +225,19 @@ const glideFromOrbit = (cam: PerspectiveCamera, earthRotationY: number, progress
     .applyAxisAngle(UP, earthRotationY)
   cam.position.copy(EARTH_POSITION).addScaledVector(surfaceUp, 1 + height)
   const horizon = Math.acos(1 / (1 + height))
-  aim(cam, turn * (FLIGHT_ENDS.start.heading - APPROACH_BEARING), MathUtils.degToRad(aimAbove) - horizon)
+  aim(cam, turn * (CITY_ENDS.start.heading - APPROACH_BEARING), MathUtils.degToRad(aimAbove) - horizon)
   cam.quaternion.copy(lookQuaternion)
 }
 
 /**
- * Climbs from the clouds over Northern Ireland back out to the planet's framing by `dive` (1 → 0). It starts
- * from where the flight over the city finishes, so it carries on backwards and upwards, the way the flight
- * was going, out to the view of Europe.
+ * Climbs from the clouds over Northern Ireland back out to the planet's framing by `dive` (1 → 0). It sets off
+ * the way the camera climbs away from the city (CITY_ENDS), backwards and upwards, out to the view of Europe.
  */
 const climbFromHome = (cam: PerspectiveCamera, earthRotationY: number, dive: number) => {
   marker.copy(HOME_MARKER).applyAxisAngle(UP, earthRotationY).add(EARTH_POSITION)
   surfaceUp.copy(marker).sub(EARTH_POSITION).normalize()
   north.copy(UP).addScaledVector(surfaceUp, -surfaceUp.y).normalize()
-  const look = FLIGHT_ENDS.end
+  const look = CITY_ENDS.end
   aim(cam, look.heading, look.pitch)
   approach.copy(marker).addScaledVector(surfaceUp, CLIMB.height).addScaledVector(heading, -CLIMB.behind)
   // Closing a constant fraction of the remaining distance with each step, like a steady climb
@@ -256,10 +250,7 @@ const climbFromHome = (cam: PerspectiveCamera, earthRotationY: number, dive: num
 const { onLoop } = useRenderLoop()
 
 onLoop(({ delta, elapsed }) => {
-  const isHidden = sceneState.exit >= 1
-  if (isHidden && renderedFinalFrame) return
-  renderedFinalFrame = isHidden
-
+  tickDirector(delta)
   const progress = sceneState.progress
   const cam = camera.value as PerspectiveCamera | undefined
   if (!cam) return
@@ -274,16 +265,14 @@ onLoop(({ delta, elapsed }) => {
   cityReveal = sceneState.cityReady ? damp(cityReveal, 1, 3, delta) : 0
   const veil = isOverBelfast ? Math.max(veilAt(progress), 1 - cityReveal) : veilAt(progress)
   if (planetRef.value) planetRef.value.visible = !isInCity
-  parisArc.update(progress, isInCity)
-  offices.update(progress, elapsed, isInCity)
+  parisArc.update(cityState.paris.draw, cityState.paris.opacity, isInCity)
+  offices.update(cityState.offices, elapsed, isInCity)
 
   if (isInCity) {
-    const flight = flightProgressAt(progress)
-    flightAt(flight, cam.position, cityTarget)
-    cam.lookAt(cityTarget)
+    placeCamera(cam, cityPoseAt(), cam.aspect)
     cam.rotateY(-parallax.x * 0.04)
     cam.rotateX(-parallax.y * 0.025)
-    setLens(cam, cityFovAt(flight, cam.aspect), CITY_NEAR)
+    setLens(cam, cam.fov, CITY_NEAR)
   } else {
     const frame = frameAt(progress, portrait)
     if (progress < windows.belfast[1]) {
@@ -319,7 +308,7 @@ onLoop(({ delta, elapsed }) => {
     arcs.update(reach.amount, reach.opacity)
   }
 
-  // Scrolling streams the clouds past, and they drift a little on their own
+  // The journey streams the clouds past, and they drift a little on their own
   veilRef.value?.update(veil, progress * 24 + elapsed * 0.03, cam.aspect)
   if (bloomRef.value?.effect) bloomRef.value.effect.luminanceMaterial.threshold = bloomThresholdAt(progress)
   updateOverlays(cam, progress, elapsed)

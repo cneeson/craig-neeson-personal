@@ -3,7 +3,6 @@ import {
     PlaneGeometry, ShaderMaterial, Vector3,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { windows } from '@/scene/choreography';
 import { CLOUD_SHADE_GLSL, CLOUD_SHADOW_GLSL, cloudShadowUniforms, photoUniforms } from './photo-materials';
 
 /**
@@ -31,13 +30,12 @@ const ROLL = THRESHOLD_22.distanceTo(LIFT_OFF);
 const OVERHEAD = PATH.getLengths(1000)[700];
 
 /**
- * When it lifts off and when it's overhead (journey progress), so it's coming in across the sky as the craft beat
- * is read. It rolls from a standstill, behind the cranes in the intro, speeding up to its climbing speed by the
- * lift-off.
+ * When it lifts off and when it's overhead (seconds into each flight, see update), passing over the cranes. It
+ * rolls from a standstill, speeding up to its climbing speed by the lift-off.
  */
-const LIFTS_OFF = windows.craft[0] - 0.01;
-const PASSES_OVER = windows.craft[1];
-/** Scene units per unit of journey progress. */
+const LIFTS_OFF = 24;
+const PASSES_OVER = 40;
+/** Scene units a second. */
 const CLIMB_SPEED = (OVERHEAD - ROLL) / (PASSES_OVER - LIFTS_OFF);
 const ROLLS_FROM = LIFTS_OFF - (2 * ROLL) / CLIMB_SPEED;
 
@@ -153,10 +151,10 @@ const createAirliner = () => {
     return mergeGeometries(parts);
 };
 
-/** How far along the path it is at `progress`: speeding up evenly down the runway, then climbing steadily. */
-const distanceAt = (progress: number) => {
-    if (progress < LIFTS_OFF) return (CLIMB_SPEED * (progress - ROLLS_FROM) ** 2) / (2 * (LIFTS_OFF - ROLLS_FROM));
-    return ROLL + CLIMB_SPEED * (progress - LIFTS_OFF);
+/** How far along the path it is `time` seconds in: speeding up evenly down the runway, then climbing steadily. */
+const distanceAt = (time: number) => {
+    if (time < LIFTS_OFF) return (CLIMB_SPEED * (time - ROLLS_FROM) ** 2) / (2 * (LIFTS_OFF - ROLLS_FROM));
+    return ROLL + CLIMB_SPEED * (time - LIFTS_OFF);
 };
 
 /** How far it banks (radians) per radian of turn per unit of path, and the most it banks. */
@@ -241,11 +239,11 @@ export const createPlane = (sun: IUniform<Vector3>) => {
     return {
         object: mesh,
 
-        /** Every frame while the city is shown, with the journey's progress. */
-        update(progress: number) {
-            const distance = distanceAt(progress);
+        /** Every frame while the city is shown, with the seconds into this flight. */
+        update(time: number) {
+            const distance = distanceAt(time);
             // Waiting at the end of the runway, too far off to notice, until it rolls; gone once it's turned away
-            mesh.visible = progress > ROLLS_FROM && distance < PATH_LENGTH;
+            mesh.visible = time > ROLLS_FROM && distance < PATH_LENGTH;
             if (!mesh.visible) return;
             const u = distance / PATH_LENGTH;
             PATH.getPointAt(u, position);

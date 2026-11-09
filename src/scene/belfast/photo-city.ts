@@ -1,5 +1,5 @@
 import {
-    Group, MathUtils, Mesh, MeshBasicMaterial, PerspectiveCamera, Vector2, Vector3,
+    Group, MathUtils, Mesh, MeshBasicMaterial, PerspectiveCamera, Vector2,
     WebGLRenderer, WebGLRenderTarget,
 } from 'three';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
@@ -7,9 +7,8 @@ import { TilesRenderer } from '3d-tiles-renderer';
 import { GoogleCloudAuthPlugin } from '3d-tiles-renderer/core/plugins';
 import { GLTFExtensionsPlugin, ReorientationPlugin, TilesFadePlugin } from '3d-tiles-renderer/plugins';
 import { isMobile } from '@/services/device';
-import { clamp01 } from '@/services/three';
 import { ORIGIN, UNIT } from './geo';
-import { cityFovAt, flightAt } from './flight';
+import { placeCamera, type Pose } from '@/scene/shots';
 import { createTileMaterial } from './photo-materials';
 
 /** Height of the ground at ORIGIN above the ellipsoid (the tiles' datum), so street level sits at y = 0. */
@@ -18,14 +17,14 @@ const GROUND_HEIGHT = 58;
 const MEGABYTE = 2 ** 20;
 
 // Phones load coarser tiles and keep less in memory (iOS kills tabs that use too much). Low over the city the
-// reader's view plus one lookahead view take most of the cache; more views than that and the cache fills, the
+// reader's view plus one view ahead take most of the cache; more views than that and the cache fills, the
 // reader's view gets refused the detail it needs, and the city flickers between levels of detail.
 const settings = isMobile
-    ? { errorTarget: 32, lookahead: [0, 0.06], minBytes: 150 * MEGABYTE, maxBytes: 240 * MEGABYTE }
-    : { errorTarget: 20, lookahead: [0, 0.05], minBytes: 450 * MEGABYTE, maxBytes: 700 * MEGABYTE };
+    ? { errorTarget: 32, minBytes: 150 * MEGABYTE, maxBytes: 240 * MEGABYTE }
+    : { errorTarget: 20, minBytes: 450 * MEGABYTE, maxBytes: 700 * MEGABYTE };
 
-/** How many points along the flight are visited to fetch its tiles in the background (then the extra views). */
-const PREFETCH_STEPS = 16;
+/** At most this many views ahead of the reader at once. */
+const AHEAD_VIEWS = 2;
 
 /** Frames with nothing left to load before the views count as loaded. */
 const SETTLE_FRAMES = 10;
@@ -38,14 +37,14 @@ const MAX_WAIT = { partial: 6, nothing: 12 };
 
 /**
  * Belfast from Google's photorealistic 3D tiles. The tiles renderer loads whatever its cameras need, so
- * extra cameras placed along the flight load it ahead of the reader:
+ * extra cameras placed at the director's shots (shots.ts) load it ahead of the reader:
  *
- * - Lookahead views cover the next stretch of the flight: its start (or end, coming back) while the
- *   reader is on the planet, then just ahead of them as they fly. Once the start has loaded, it's drawn
- *   off screen to upload it to the GPU and the city is `isReady`.
- * - Then a prefetch view walks the rest of the flight, one point at a time. The whole flight decoded
- *   is far more than fits in memory, so older tiles are dropped as it goes, but their downloads stay in
- *   the browser's cache (Google allows four hours), so the lookahead decodes them again quickly.
+ * - Views ahead cover where the reader's going: where the glide from orbit comes out of the clouds while
+ *   they're still on the planet, then the end of each move as the camera flies there. Once the first have
+ *   loaded, they're drawn off screen to upload them to the GPU and the city is `isReady`.
+ * - Then, while the camera's held at a stop, a prefetch view visits the other shots, one at a time. All of
+ *   them decoded is far more than fits in memory, so older tiles are dropped as it goes, but their downloads
+ *   stay in the browser's cache (Google allows four hours), so they decode again quickly when they're needed.
  * - `extraViews` (the telescope's, looking out of the city) are visited last by the prefetch, then load
  *   again while the reader is near them (`update`'s `activeViews`).
  */
@@ -114,37 +113,31 @@ export const createPhotoCity = (
         if (!tiles.root) fail(new Error('Timed out loading the tileset'));
     }, 20000);
 
-    const target = new Vector3();
     const resolution = new Vector2();
     const createView = () => new PerspectiveCamera(50, 1, 0.3, 1000);
-    /** Points a view along the flight at `t`, with the real camera's lens, and has the tiles load for it. */
-    const useView = (view: PerspectiveCamera, t: number, aspect: number) => {
-        const fov = cityFovAt(t, aspect);
-        if (view.aspect !== aspect || view.fov !== fov) {
-            [view.aspect, view.fov] = [aspect, fov];
-            view.updateProjectionMatrix();
-        }
-        flightAt(t, view.position, target);
-        view.lookAt(target);
+    /** Puts a view at `pose`, with the real camera's lens, and has the tiles load for it. */
+    const useView = (view: PerspectiveCamera, pose: Pose, aspect: number) => {
+        placeCamera(view, pose, aspect);
         view.updateMatrixWorld();
         tiles.setCamera(view);
         tiles.setResolution(view, resolution);
     };
 
-    const lookaheadViews = settings.lookahead.map(createView);
+    const aheadViews = Array.from({ length: AHEAD_VIEWS }, createView);
     const prefetchView = createView();
     let prefetchStep = 0;
+    let aheadCount = 0;
 
     let isReady = false;
     let settledFrames = 0;
     let waited = 0;
 
-    /** Draws what the lookahead views see into a tiny target, uploading it all to the GPU. */
-    const warmUp = () => {
+    /** Draws what the views ahead see into a tiny target, uploading it all to the GPU. */
+    const warmUp = (count: number) => {
         const renderTarget = new WebGLRenderTarget(16, 16);
         const previous = renderer.getRenderTarget();
         renderer.setRenderTarget(renderTarget);
-        lookaheadViews.forEach(view => renderer.render(group, view));
+        aheadViews.slice(0, count).forEach(view => renderer.render(group, view));
         renderer.setRenderTarget(previous);
         renderTarget.dispose();
     };
@@ -156,33 +149,37 @@ export const createPhotoCity = (
         },
 
         /**
-         * Every frame. `flight` is how far along the flight the reader is (0 before it, 1 after it),
-         * `direction` which way they're heading through it, and `activeViews` the extra views to load for.
+         * Every frame. `isInCity` is whether the reader's looking at it, `ahead` the shots to load before they get
+         * there, `prefetch` the shots to visit in the background while the camera's held still (`isMoving` false),
+         * and `activeViews` the extra views to load for.
          */
-        update(camera: PerspectiveCamera, isFlying: boolean, flight: number, direction: number, delta: number, activeViews: PerspectiveCamera[] = []) {
+        update(
+            camera: PerspectiveCamera, isInCity: boolean, delta: number,
+            { ahead, prefetch, isMoving, activeViews = [] }: { ahead: Pose[], prefetch: Pose[], isMoving: boolean, activeViews?: PerspectiveCamera[] },
+        ) {
             if (hasFailed) return;
             group.updateMatrixWorld();
             // Detail is chosen for the screen's size in CSS pixels, however sharp the display
             renderer.getSize(resolution);
+            aheadCount = Math.min(ahead.length, AHEAD_VIEWS);
 
-            lookaheadViews.forEach((view, i) => {
-                const offset = settings.lookahead[i];
-                // While flying, the reader's own view covers where they are
-                if (isFlying && offset === 0) tiles.deleteCamera(view);
-                else useView(view, clamp01(flight + offset * direction), camera.aspect);
+            aheadViews.forEach((view, i) => {
+                if (ahead[i]) useView(view, ahead[i], camera.aspect);
+                else tiles.deleteCamera(view);
             });
-            if (isFlying) {
+            if (isInCity) {
                 camera.updateMatrixWorld();
                 tiles.setCamera(camera);
                 tiles.setResolution(camera, resolution);
             } else {
                 tiles.deleteCamera(camera);
             }
-            // Fetching the rest of the flight waits until the start is ready, and gives way to the reader flying
-            const isPrefetching = isReady && !isFlying && prefetchStep < PREFETCH_STEPS + extraViews.cameras.length;
-            if (isPrefetching && prefetchStep < PREFETCH_STEPS) useView(prefetchView, prefetchStep / (PREFETCH_STEPS - 1), camera.aspect);
+            // Fetching the rest waits until the start is ready, and gives way to the camera moving
+            const steps = prefetch.length + extraViews.cameras.length;
+            const isPrefetching = isReady && !isMoving && prefetchStep < steps;
+            if (isPrefetching && prefetchStep < prefetch.length) useView(prefetchView, prefetch[prefetchStep], camera.aspect);
             else tiles.deleteCamera(prefetchView);
-            const prefetchingView = isPrefetching ? extraViews.cameras[prefetchStep - PREFETCH_STEPS] : undefined;
+            const prefetchingView = isPrefetching ? extraViews.cameras[prefetchStep - prefetch.length] : undefined;
             extraViews.cameras.forEach(view => {
                 if (view !== prefetchingView && !activeViews.includes(view)) {
                     tiles.deleteCamera(view);
@@ -196,10 +193,12 @@ export const createPhotoCity = (
                 tiles.setResolution(view, extraViews.resolution.lengthSq() ? extraViews.resolution : resolution);
             });
 
+            // Nothing to load for (out over the planet, with nothing ahead)
+            if (!tiles.cameras.length) return;
             tiles.update();
 
             const hasTiles = tiles.visibleTiles.size > 0;
-            if (!isReady && isFlying) {
+            if (!isReady && isInCity) {
                 waited += delta;
                 if (waited > MAX_WAIT.nothing && !hasTiles) fail(new Error('Nothing loaded in time'));
                 if (waited > MAX_WAIT.partial && hasTiles) isReady = true;
@@ -211,7 +210,7 @@ export const createPhotoCity = (
             settledFrames = 0;
             if (!isReady) {
                 clearTimeout(timeout);
-                warmUp();
+                warmUp(aheadCount);
                 isReady = true;
             } else if (isPrefetching) {
                 prefetchStep++;

@@ -14,7 +14,20 @@ const logo = `${process.env.BASE_URL}belfast/google-logo.png`;
 
 <style lang="scss" scoped>
 .city-attribution {
-  @apply fixed left-3 bottom-2 z-10 flex items-center gap-2 pointer-events-none;
+  @apply fixed z-10 flex items-center gap-2 pointer-events-none;
+
+  // Clear of the panels: along the top on phones, bottom right on wider screens
+  left: 0.75rem;
+  top: calc(env(safe-area-inset-top) + 0.5rem);
+
+  @media (min-width: 768px) {
+    left: auto;
+    top: auto;
+    right: 0.75rem;
+    bottom: calc(var(--chrome-bottom) + 0.5rem);
+    flex-direction: row-reverse;
+    text-align: right;
+  }
 
   opacity: 0;
   transition: opacity 0.4s ease;

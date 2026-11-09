@@ -17,7 +17,9 @@ import { createFerry, createRiverBoat } from '@/scene/belfast/boats';
 import { createTraffic } from '@/scene/belfast/traffic';
 import { attribution } from '@/scene/belfast/attribution';
 import { sceneState } from '@/scene/state';
-import { flightProgressAt, isInBelfast, windows } from '@/scene/choreography';
+import { isInBelfast } from '@/scene/choreography';
+import { cityDestination, cityState, firstShot, route } from '@/scene/director';
+import { poseOf, shots, type ShotName } from '@/scene/shots';
 import { camera } from '@/scene/camera';
 
 const emit = defineEmits<{
@@ -26,9 +28,9 @@ const emit = defineEmits<{
 }>();
 
 /**
- * Belfast by day, from Google's photorealistic 3D tiles, for the flythrough. Mounted once the planet is
- * up, so the start of the flight loads in the background while the reader is still on the opening beats,
- * then the rest (see photo-city.ts).
+ * Belfast by day, from Google's photorealistic 3D tiles. Mounted once the planet is up, so where the glide from
+ * orbit comes out of the clouds loads in the background while the reader is still on the planet, then the rest
+ * (see photo-city.ts).
  */
 const { renderer } = useTresContext();
 
@@ -56,6 +58,18 @@ const traffic = createTraffic(skyMaterial.uniforms.uSun);
 root.add(sky, photoCity.group, water.mesh, starlings.object, train.object, plane.object, ferry.object,
   riverBoat.object, traffic.object, telescope.overlay);
 
+/** Loaded before the city's shown: out of the clouds under the cranes, and where it goes on to (see firstShot). */
+const ARRIVAL = poseOf(shots.arrival, 0, 0);
+/** Visited in the background once it's shown, in about the order a reader would go. */
+const PREFETCH = (['hello', 'craft', 'overview', 'coleraine', 'liberty', 'flexera', 'locum', 'ankorstore', 'ocula', 'docks', 'arena', 'lagan'] as ShotName[])
+  .map(name => poseOf(shots[name], 0, 0));
+
+/** Seconds between the plane's take-offs, and the tour boat's trips down the Lagan. */
+const PLANE_EVERY = 90;
+const BOAT_EVERY = 110;
+/** How long the city's been shown (s), for the ferry coming in. */
+let shownFor = 0;
+
 let frame = 0;
 const showAttribution = (isShown: boolean) => {
   if (!attribution.element) return;
@@ -82,29 +96,34 @@ onBeforeUnmount(() => {
 
 const { onLoop } = useRenderLoop();
 onLoop(({ delta, elapsed }) => {
-  const { progress } = sceneState;
-  const isFlying = isInBelfast(progress);
-  // Past the flight, the reader would come back into it from the end
-  const direction = progress >= windows.belfast[1] ? -1 : 1;
-  photoCity.update(
-    camera as PerspectiveCamera, isFlying, flightProgressAt(progress), direction, delta,
-    telescope.camerasAt(progress),
-  );
+  const isFlying = isInBelfast(sceneState.progress);
+  const destination = cityDestination();
+  const { scope } = cityState;
+  // The telescope's views load while it's up (both while it whips from one to the other)
+  const stop = route.mode === 'experience' ? route.stop : null;
+  const sights = stop === 'coleraine' || stop === 'antrim' ? [...new Set([stop, scope.sight])] : [];
+  photoCity.update(camera as PerspectiveCamera, isFlying, delta, {
+    ahead: photoCity.isReady ? (destination ? [destination] : []) : [ARRIVAL, poseOf(firstShot(), 0, 0)],
+    prefetch: PREFETCH,
+    isMoving: !!destination,
+    activeViews: telescope.camerasFor(sights),
+  });
   sceneState.cityReady = photoCity.isReady;
 
   const isActive = isFlying && photoCity.isReady;
   root.visible = isActive;
   showAttribution(isActive);
   if (!isActive) return;
+  shownFor += delta;
   sky.position.copy(camera.position);
   cloudShadowUniforms.uCloudTime.value = elapsed;
   water.update(elapsed);
   starlings.update(elapsed, camera as PerspectiveCamera, renderer.value);
-  train.update(progress);
-  plane.update(progress);
-  ferry.update(progress);
-  riverBoat.update(progress);
+  train.update(cityState.trainAway);
+  plane.update(elapsed % PLANE_EVERY);
+  ferry.update(shownFor);
+  riverBoat.update((elapsed + 40) % BOAT_EVERY);
   traffic.update(elapsed, camera as PerspectiveCamera, renderer.value, photoCity.group);
-  telescope.update(progress, elapsed, (camera as PerspectiveCamera).aspect, sky, photoCity.group);
+  telescope.update(scope, elapsed, (camera as PerspectiveCamera).aspect, sky, photoCity.group);
 });
 </script>

@@ -1,4 +1,4 @@
-import type { EmployerBeat } from '@/scene/choreography';
+import type { EmployerBeat } from '@/scene/director';
 import { jobs, type Job } from './jobs';
 
 export interface Stop {

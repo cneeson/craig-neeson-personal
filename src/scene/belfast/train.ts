@@ -2,7 +2,6 @@ import {
     BoxGeometry, BufferAttribute, BufferGeometry, Color, Group, IUniform, Mesh, Quaternion, ShaderMaterial, Vector3,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { windows } from '@/scene/choreography';
 import { CLOUD_SHADE_GLSL, CLOUD_SHADOW_GLSL, cloudShadowUniforms, photoUniforms } from './photo-materials';
 
 /**
@@ -41,10 +40,9 @@ const trackAt = (arc: number, target: Vector3) => {
 const AT_THE_STATION = 4;
 
 /**
- * It sets off as the Ocula beat starts, pulling away (along the track, scene units, as the square of how far
- * through the rest of the flight the reader is), and is over the middle of the river as the beat is read.
+ * How far it's pulled away when `away` (see update) reaches 1, along the track in scene units: it gathers speed as
+ * the square of `away`, and is over the middle of the river about a third of the way.
  */
-const DEPARTS = windows.ocula[0];
 const PULLS_AWAY = 250;
 
 // A three-car NIR Class 4000 (CAF), in scene units: cars about 23 m long, 2.8 m wide and 3.8 m tall
@@ -208,9 +206,8 @@ export const createTrain = (sun: IUniform<Vector3>) => {
     return {
         object: group,
 
-        /** Every frame while the city is shown, with the journey's progress. */
-        update(progress: number) {
-            const away = Math.max(0, (progress - DEPARTS) / (windows.belfast[1] - DEPARTS));
+        /** Every frame while the city is shown, with how far it's pulled away from the station (0 → 1, and on). */
+        update(away: number) {
             const arc = AT_THE_STATION + away * away * PULLS_AWAY;
             // Only on the line, before its end
             group.visible = arc < TRACK_LENGTH - halfTrain;

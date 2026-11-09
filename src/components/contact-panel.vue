@@ -1,6 +1,11 @@
 <script lang="ts" setup>
-import Divider from '../components/divider.vue';
-import Heading from './heading.vue';
+import { computed, ref } from 'vue';
+import { route } from '@/scene/director';
+import AttributionsModal from './attributions-modal.vue';
+
+/** Contact, hovering over Belfast: how to get in touch, the CV, and the credits. */
+const isShown = computed(() => route.isIntroDone && route.mode === 'contact');
+const isAttributionsOpen = ref(false);
 
 const links = [
   {
@@ -22,67 +27,53 @@ const links = [
 </script>
 
 <template>
-  <section class="contact">
-    <div class="intro">
-      <Heading>Contact</Heading>
-      <p>
-        I am currently open to hybrid Senior Frontend Developer roles based in Dublin and Belfast. I'd love to hear from you.
-      </p>
-      <p>
-        Please feel free to take a copy of my CV with you.
-      </p>
-      <a class="cv-button" href="docs/craig-neeson-cv.pdf" download>
-        Download my CV
-        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14" />
-        </svg>
-      </a>
-    </div>
-
-    <Divider class="hidden md:block" />
-
+  <section class="contact panel-card" :class="{ 'is-shown': isShown }" aria-label="Contact" data-scrolls>
+    <p class="eyebrow">Contact</p>
+    <h2 class="title">Let's build something together.</h2>
+    <p class="text">
+      I'm currently open to hybrid Senior Frontend Developer roles based in Dublin and Belfast. I'd love to hear from you,
+      and please feel free to take a copy of my CV with you.
+    </p>
+    <a class="pill-button cv" href="docs/craig-neeson-cv.pdf" download>
+      Download my CV
+      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14" />
+      </svg>
+    </a>
     <ul class="links">
       <li v-for="link in links" :key="link.label">
         <a :href="link.href" target="_blank" rel="noopener" class="link">
-          <svg viewBox="0 0 24 24" class="w-9 h-9 lg:w-11 lg:h-11" fill="currentColor" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="w-7 h-7" fill="currentColor" aria-hidden="true">
             <path :d="link.path" />
           </svg>
           <span>{{ link.label }}</span>
         </a>
       </li>
     </ul>
+    <button type="button" class="credits" @click="isAttributionsOpen = true">Credits & attributions</button>
   </section>
+  <AttributionsModal :is-open="isAttributionsOpen" @close="isAttributionsOpen = false" />
 </template>
 
 <style lang="scss" scoped>
-.contact {
-  @apply flex flex-col md:flex-row gap-12 lg:gap-16 md:items-center;
+.title {
+  @apply text-2xl lg:text-3xl font-extrabold tracking-tight mt-1;
 }
 
-.intro {
-  @apply flex-1 flex flex-col gap-4 items-start text-base lg:text-lg leading-relaxed text-slate-100;
+.text {
+  @apply mt-3 text-sm lg:text-base text-white/85 leading-relaxed;
 }
 
-.cv-button {
-  @apply mt-6 inline-flex items-center gap-3 rounded-full px-7 py-4 text-lg font-semibold text-white transition;
-
-  background: linear-gradient(135deg, #2a237a, #191752);
-  border: 1px solid rgba(136, 184, 242, 0.5);
-  box-shadow: 0 0 24px rgba(136, 184, 242, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-
-  &:hover,
-  &:focus-visible {
-    box-shadow: 0 0 36px rgba(136, 184, 242, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
-  }
+.cv {
+  @apply mt-5 inline-flex items-center gap-3;
 }
 
 .links {
-  @apply flex-1 flex justify-around gap-6;
+  @apply mt-6 flex gap-6;
 }
 
 .link {
-  @apply flex flex-col items-center gap-3 text-sm text-slate-300 transition;
+  @apply flex flex-col items-center gap-2 text-xs text-slate-300 transition;
 
   svg {
     @apply text-white transition-transform;
@@ -96,6 +87,15 @@ const links = [
       transform: scale(1.12);
       filter: drop-shadow(0 0 12px rgba(136, 184, 242, 0.7));
     }
+  }
+}
+
+.credits {
+  @apply mt-6 block text-xs text-white/60 underline underline-offset-4;
+
+  &:hover,
+  &:focus-visible {
+    @apply text-white;
   }
 }
 </style>

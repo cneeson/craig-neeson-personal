@@ -75,12 +75,11 @@ onMounted(() => {
   stop = onOverlayFrame((camera, progress) => {
     const width = root.value?.clientWidth ?? 0;
     const height = root.value?.clientHeight ?? 0;
-    const isOnPlanet = sceneState.exit < 1;
 
-    toggle(forecast.value, isOnPlanet && windowOpacity(progress, windows.forecast) > 0.5);
+    toggle(forecast.value, windowOpacity(progress, windows.forecast) > 0.5);
 
     const isLocked = pin(lockOn.value, BELFAST, camera, width, height);
-    if (toggle(lockOn.value, isOnPlanet && isLocked && windowOpacity(progress, windows.northernIreland, FADE) > 0.5)) {
+    if (toggle(lockOn.value, isLocked && windowOpacity(progress, windows.northernIreland, FADE) > 0.5)) {
       countCoordinates();
     }
 
@@ -88,7 +87,7 @@ onMounted(() => {
     ENDS.forEach((end, i) => {
       const label = labels.value[i];
       const isLanded = progress > windows.reach[0] + (windows.reach[1] - windows.reach[0]) * (end.delay + 0.45);
-      toggle(label, isOnPlanet && pin(label, end.at, camera, width, height) && isLanded && reach > 0.5);
+      toggle(label, pin(label, end.at, camera, width, height) && isLanded && reach > 0.5);
     });
   });
 });
