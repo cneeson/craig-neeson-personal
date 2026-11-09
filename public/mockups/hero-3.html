@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hero entrance · Craig Neeson</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<style>
+  :root {
+    --ink: #f4efe6;
+    --peach: #f6b98a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #090118; }
+  body { color: white; font-family: 'Satoshi', sans-serif; -webkit-font-smoothing: antialiased; }
+
+  .scene { position: fixed; inset: 0; background: url(hero.png) center / cover no-repeat; }
+
+  .hero { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: center; padding-left: 7vw; }
+  .name { margin: 0; font-family: 'Fraunces', serif; font-size: 8vw; line-height: 0.92; font-weight: 400; color: var(--ink);
+    text-shadow: 0 0.04em 0.3em rgba(9, 1, 24, 0.45); }
+  .name .first { font-variation-settings: 'opsz' 144, 'wght' 700; }
+  .name .last { font-style: italic; font-variation-settings: 'opsz' 144, 'wght' 300; }
+  .name .char { display: inline-block; will-change: transform, filter, opacity; }
+  /* For the masked rise: each part sits in a window it rises up through, padded for the descenders and the italic's lean */
+  .clip { display: inline-block; overflow: clip; padding: 0.1em 0.12em 0.22em; margin: -0.1em -0.12em -0.22em; vertical-align: bottom; }
+  /* The optional line the text rises from: drawn in, then withdrawn once the words are up */
+  .name, .role { position: relative; width: max-content; }
+  .rule { position: absolute; left: 0; right: 0; height: 1px; background: rgba(244, 239, 230, 0.7); transform: scaleX(0); pointer-events: none; }
+  .name .rule { bottom: -0.12em; }
+  .role .rule { bottom: -0.2em; }
+  .role { margin-top: 2vw; font-size: 2.2vw; color: #cbd5e1; }
+  .role .word { display: inline-block; }
+  .role .clip { padding: 0.1em 0.1em 0.25em; margin: -0.1em -0.1em -0.25em; }
+  .role i { font-family: 'Instrument Serif', serif; font-size: 1.15em; color: white; }
+  .enter { margin-top: 2.6vw; width: max-content; padding: 0.9vw 2.8vw; border-radius: 999px; font-weight: 600; font-size: 1.4vw;
+    border: 1px solid rgba(136, 184, 242, 0.4); background: rgba(9, 1, 24, 0.6); }
+
+  /* The marker note: one mask over the whole line, swept on letter by letter at a hand's pace. Padded well
+     past the glyphs, so Caveat's loops and the halo behind the ink aren't cut off */
+  .note {
+    --p: 0px;
+    position: absolute; left: 41%; top: 12%; padding: 0.5em; margin: -0.5em;
+    font-family: 'Caveat', cursive; font-weight: 600; font-size: 2.6vw; color: var(--peach); white-space: nowrap;
+    transform: rotate(-6deg); transform-origin: left bottom;
+    text-shadow: 0 0 0.04em rgba(246, 185, 138, 0.6), 0 0 0.35em rgba(9, 1, 24, 0.9);
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(var(--p) - 0.3em), transparent var(--p));
+    mask-image: linear-gradient(90deg, #000 calc(var(--p) - 0.3em), transparent var(--p));
+  }
+  .note span { display: inline-block; white-space: pre; }
+  .arrow { position: absolute; left: 55%; top: 16%; width: 18vw; height: 10.8vw; overflow: visible; }
+  .arrow path { fill: none; stroke: var(--peach); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
+    filter: drop-shadow(0 0 1px rgba(246, 185, 138, 0.6)); }
+
+  .controls { position: fixed; right: 20px; bottom: 20px; display: flex; gap: 8px; }
+  .controls button { padding: 10px 18px; border-radius: 999px; font: 600 14px 'Satoshi', sans-serif; color: white; cursor: pointer;
+    background: rgba(9, 1, 24, 0.8); border: 1px solid rgba(136, 184, 242, 0.4); }
+  .controls button[aria-pressed='true'] { background: rgba(136, 184, 242, 0.25); }
+</style>
+</head>
+<body>
+<div class="scene"></div>
+
+<section class="hero">
+  <h1 class="name" aria-label="Craig Neeson"><span class="clip" aria-hidden="true"><span class="first">Craig</span></span> <span class="clip" aria-hidden="true"><span class="last">Neeson</span></span><span class="rule" aria-hidden="true"></span></h1>
+  <p class="role"><span class="clip"><span class="word">Senior</span></span> <span class="clip"><i class="word">Frontend</i></span> <span class="clip"><span class="word">Engineer</span></span><span class="rule" aria-hidden="true"></span></p>
+  <div class="enter">Enter</div>
+
+  <span class="note" aria-label="based in Belfast"></span>
+  <svg class="arrow" viewBox="0 0 150 90" aria-hidden="true">
+    <path class="shaft" d="M6 8 C 40 4, 92 14, 128 66"/>
+    <path class="head" d="M112 60 L 129 68 L 131 49"/>
+  </svg>
+</section>
+
+<div class="controls">
+  <button type="button" data-variant="rise" aria-pressed="true">Masked rise</button>
+  <button type="button" data-variant="blur" aria-pressed="false">Blur fade</button>
+  <button type="button" data-line aria-pressed="false">Drawn line</button>
+  <button type="button" data-slow aria-pressed="false">Slow-mo</button>
+  <button type="button" data-replay>Replay</button>
+</div>
+
+<script>
+  const splitChars = element => {
+    const text = element.textContent;
+    element.textContent = '';
+    return [...text].map(character => {
+      const span = document.createElement('span');
+      span.className = 'char';
+      span.textContent = character;
+      element.append(span);
+      return span;
+    });
+  };
+  const firstChars = splitChars(document.querySelector('.name .first'));
+  const lastChars = splitChars(document.querySelector('.name .last'));
+  const words = document.querySelectorAll('.role .word');
+
+  // The note's letters are spans only so we know where each one ends; the mask sweeps over the whole line
+  const note = document.querySelector('.note');
+  const letters = [...'based in Belfast'].map(character => {
+    const span = document.createElement('span');
+    span.setAttribute('aria-hidden', 'true');
+    span.textContent = character;
+    note.append(span);
+    return span;
+  });
+
+  const shaft = document.querySelector('.arrow .shaft');
+  const head = document.querySelector('.arrow .head');
+  // A gap longer than the stroke, and the dash pushed past its round cap, so nothing shows before it's drawn
+  for (const path of [shaft, head]) path.style.strokeDasharray = `${path.getTotalLength()} ${path.getTotalLength() + 10}`;
+
+  // Writing by hand, quickly and unevenly: each word starts careful and runs on faster, every letter is a bit
+  // quicker or slower than the last, the pen now and then hesitates (most before the capital), and the gaps
+  // between words aren't the same. Different every time it plays
+  const writeNote = () => {
+    const timeline = gsap.timeline();
+    const em = parseFloat(getComputedStyle(note).fontSize);
+    timeline.set(note, { '--p': `${0.5 * em}px` });
+    let indexInWord = 0;
+    for (const span of letters) {
+      const end = span.offsetLeft + span.offsetWidth + 0.3 * em;
+      if (span.textContent === ' ') {
+        timeline.set(note, { '--p': `${end}px` }, `>+${gsap.utils.random(0.05, 0.16)}`);
+        indexInWord = 0;
+        continue;
+      }
+      const runOn = Math.max(0.6, 1.3 - indexInWord * 0.12);
+      const duration = gsap.utils.clamp(0.025, 0.12, (span.offsetWidth / em) * 0.12) * runOn * gsap.utils.random(0.6, 1.5);
+      const hesitation = span.textContent === 'B' ? gsap.utils.random(0.06, 0.12)
+        : Math.random() < 0.15 ? gsap.utils.random(0.03, 0.08) : -duration * 0.2;
+      timeline.to(note, { '--p': `${end}px`, duration, ease: gsap.utils.random(['none', 'power1.in', 'power1.out']) },
+        `>${hesitation >= 0 ? '+' : '-'}${Math.abs(hesitation)}`);
+      indexInWord += 1;
+    }
+    timeline.set(note, { '--p': `${note.offsetWidth + em}px` });
+    return timeline;
+  };
+
+  const entrances = {
+    // Sharp letters rising through a line, like a magazine cover
+    rise(timeline) {
+      timeline.fromTo(firstChars, { yPercent: 115, rotate: 8 },
+        { yPercent: 0, rotate: 0, duration: 1.1, stagger: 0.05, ease: 'expo.out' }, 0);
+      timeline.fromTo(lastChars,
+        { yPercent: 115, rotate: 8, fontVariationSettings: "'opsz' 144, 'wght' 700" },
+        { yPercent: 0, rotate: 0, duration: 1.1, stagger: 0.045, ease: 'expo.out' }, 0.4);
+      timeline.fromTo(words, { yPercent: 120 },
+        { yPercent: 0, duration: 0.9, stagger: 0.1, ease: 'expo.out' }, 1.45);
+    },
+    // What the site uses today
+    blur(timeline) {
+      timeline.fromTo(firstChars, { autoAlpha: 0, yPercent: 40, rotate: 4, filter: 'blur(10px)' },
+        { autoAlpha: 1, yPercent: 0, rotate: 0, filter: 'blur(0px)', duration: 1, stagger: 0.06, ease: 'power3.out' }, 0);
+      timeline.fromTo(lastChars,
+        { autoAlpha: 0, yPercent: 40, filter: 'blur(10px)', fontVariationSettings: "'opsz' 144, 'wght' 700" },
+        { autoAlpha: 1, yPercent: 0, filter: 'blur(0px)', duration: 0.9, stagger: 0.05, ease: 'power3.out' }, 0.45);
+      timeline.fromTo(words, { autoAlpha: 0, y: '0.5em', filter: 'blur(8px)' },
+        { autoAlpha: 1, y: 0, filter: 'blur(0px)', duration: 0.8, stagger: 0.12, ease: 'power2.out' }, 1.4);
+    },
+  };
+
+  const rules = document.querySelectorAll('.rule');
+  let withLine = false;
+  let variant = 'rise';
+  let speed = 1;
+  let timeline;
+
+  const play = () => {
+    timeline?.progress(1).kill();
+    // Back to the start: nothing written, nothing drawn
+    gsap.set([...firstChars, ...lastChars, ...words], { clearProps: 'all' });
+    gsap.set([shaft, head], { strokeDashoffset: (index, path) => path.getTotalLength() + 5 });
+    gsap.set(note, { '--p': '0px' });
+    gsap.set(rules, { scaleX: 0, transformOrigin: 'left center' });
+    document.querySelectorAll('.clip').forEach(clip => { clip.style.overflow = variant === 'rise' ? 'clip' : 'visible'; });
+
+    timeline = gsap.timeline({ delay: 0.4 });
+    const sequence = gsap.timeline();
+    entrances[variant](sequence);
+    // The surname lets go of the bold into its light italic, after it lands
+    sequence.to(lastChars, {
+      fontVariationSettings: "'opsz' 144, 'wght' 300", duration: 1.3, stagger: 0.04, ease: 'power2.inOut',
+    }, 1.05);
+    // The note is scribbled once the role is in, then the arrow: the shaft in one stroke, a pause, the head
+    sequence.add(writeNote(), 2.35);
+    sequence.to(shaft, { strokeDashoffset: 0, duration: 0.55, ease: 'power1.in' }, '>+0.12');
+    sequence.to(head, { strokeDashoffset: 0, duration: 0.22, ease: 'power1.out' }, '>+0.08');
+    sequence.fromTo('.enter', { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.8, ease: 'power2.out' }, '>-0.2');
+    // Each line's rule draws across just ahead of its words, then pulls away to the right once they're up
+    const lead = withLine && variant === 'rise' ? 0.35 : 0;
+    if (lead) {
+      timeline.to(rules[0], { scaleX: 1, duration: 0.5, ease: 'power3.inOut' }, 0);
+      timeline.to(rules[0], { scaleX: 0, transformOrigin: 'right center', duration: 0.6, ease: 'power3.inOut' }, lead + 1.2);
+      timeline.to(rules[1], { scaleX: 1, duration: 0.45, ease: 'power3.inOut' }, lead + 1.15);
+      timeline.to(rules[1], { scaleX: 0, transformOrigin: 'right center', duration: 0.5, ease: 'power3.inOut' }, lead + 2.0);
+    }
+    timeline.add(sequence, lead);
+    timeline.timeScale(speed);
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) timeline.progress(1);
+  };
+
+  document.fonts.ready.then(play);
+
+  document.querySelector('[data-replay]').addEventListener('click', play);
+  document.querySelectorAll('[data-variant]').forEach(button => button.addEventListener('click', () => {
+    variant = button.dataset.variant;
+    document.querySelectorAll('[data-variant]').forEach(other => other.setAttribute('aria-pressed', String(other === button)));
+    play();
+  }));
+  const line = document.querySelector('[data-line]');
+  line.addEventListener('click', () => {
+    withLine = !withLine;
+    line.setAttribute('aria-pressed', String(withLine));
+    play();
+  });
+  const slow = document.querySelector('[data-slow]');
+  slow.addEventListener('click', () => {
+    speed = speed === 1 ? 0.4 : 1;
+    slow.setAttribute('aria-pressed', String(speed !== 1));
+    timeline.timeScale(speed);
+  });
+</script>
+</body>
+</html>

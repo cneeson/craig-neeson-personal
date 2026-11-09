@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Typography mock-ups, round 2 · Craig Neeson</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Caveat:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap">
+<style>
+  :root {
+    --bg: #090118;
+    --ink: #f4efe6;
+    --blue: #88b8f2;
+    --peach: #f6b98a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: white; font-family: 'Satoshi', sans-serif; -webkit-font-smoothing: antialiased; }
+  header.page, section.idea { max-width: 1200px; margin: 0 auto; padding: 40px 32px; }
+  header.page { padding-top: 64px; padding-bottom: 8px; }
+  header.page h1 { font: 600 44px/1.05 'Fraunces', serif; font-variation-settings: 'opsz' 144, 'SOFT' 50; margin: 0 0 10px; letter-spacing: -0.02em; }
+  header.page h1 i { font-weight: 300; }
+  header.page p, p.note { color: #b8b4c8; max-width: 760px; line-height: 1.55; margin: 0; }
+  p.note { margin-bottom: 22px; }
+  .label { font: 11px ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: 0.18em; text-transform: uppercase; color: var(--blue); }
+  section.idea > h2 { font-size: 28px; margin: 6px 0; letter-spacing: -0.01em; }
+  .replay { position: fixed; right: 20px; bottom: 20px; z-index: 10; padding: 10px 20px; border-radius: 999px;
+    font: 600 14px 'Satoshi', sans-serif; color: white; background: rgba(9, 1, 24, 0.8); border: 1px solid rgba(136, 184, 242, 0.4); cursor: pointer; }
+
+  .stage { position: relative; aspect-ratio: 16 / 9; border-radius: 18px; overflow: hidden; container-type: inline-size;
+    background: var(--bg) center / cover no-repeat; border: 1px solid rgba(255, 255, 255, 0.08); }
+  .stage.hero { background-image: url(hero.png); }
+  .stage.half { aspect-ratio: 3 / 2; background-position: 85% 50%; }
+  .stage.city { background-image: url(city.png); }
+  .stage.flexera { background-image: url(flexera.png); }
+  .stage .content { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; padding-left: 7%; }
+  .stage.half .content { padding-left: 8%; }
+  .grid { display: grid; gap: 22px; grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)); }
+  figure { margin: 0; }
+  figcaption { color: #8f8aa3; font-size: 13px; margin-top: 8px; line-height: 1.45; }
+  figcaption b { color: white; font-weight: 600; }
+  figcaption code { font-size: 12px; color: #cfc8e6; }
+
+  /* Name: first and second set apart */
+  .name { margin: 0; line-height: 0.92; color: var(--ink); font-weight: 400; text-shadow: 0 0.04em 0.3em rgba(9, 1, 24, 0.45); }
+  .half .name { font-size: 11cqw; }
+  .hero:not(.half) .name { font-size: 8cqw; }
+  .name .first, .name .last { display: inline-block; }
+  .stack .first, .stack .last { display: block; }
+  .stack .last { padding-left: 0.55em; }
+
+  .fr { font-family: 'Fraunces', serif; }
+  .is { font-family: 'Instrument Serif', serif; }
+  .cv { font-family: 'Caveat', cursive; }
+  .sa { font-family: 'Satoshi', sans-serif; }
+
+  .sub { margin-top: 3cqw; font-size: 3.4cqw; color: #cbd5e1; }
+  .hero:not(.half) .sub { font-size: 2.2cqw; margin-top: 2cqw; }
+  .sub i { font-family: 'Instrument Serif', serif; font-size: 1.15em; color: white; }
+
+  .gradient {
+    background: linear-gradient(100deg, var(--peach), var(--ink) 50%, var(--blue));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  /* The surname relaxes: Fraunces' weight and softness are variable */
+  .relax .last {
+    animation: relax 2.4s cubic-bezier(.5, 0, .2, 1) 1s both;
+  }
+  @keyframes relax {
+    from { font-variation-settings: 'opsz' 144, 'wght' 800, 'SOFT' 0, 'WONK' 0; color: var(--ink); }
+    to { font-variation-settings: 'opsz' 144, 'wght' 260, 'SOFT' 100, 'WONK' 1; color: #d9d2e6; }
+  }
+  .relax .first { font-variation-settings: 'opsz' 144, 'wght' 800, 'SOFT' 0; }
+
+  /* Caveat as the human voice */
+  .aside { font-family: 'Caveat', cursive; color: var(--peach); font-weight: 500; display: inline-block; transform: rotate(-4deg); }
+  .arrow { position: absolute; overflow: visible; }
+  .arrow path, .marked path {
+    fill: none; stroke: var(--peach); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 400; stroke-dashoffset: 400; animation: draw 1s ease-out 1.4s forwards;
+  }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .write { display: inline-block; clip-path: inset(0 100% 0 0); animation: write-in 1.4s steps(18) 0.8s forwards; }
+  @keyframes write-in { to { clip-path: inset(0 -10% 0 0); } }
+
+  .panel {
+    position: absolute; left: 3.5%; bottom: 6%; width: 40cqw; padding: 2.2cqw 2.4cqw; border-radius: 1.6cqw;
+    background: rgba(9, 1, 24, 0.72); border: 1px solid rgba(136, 184, 242, 0.28);
+    box-shadow: 0 10px 40px rgba(9, 1, 24, 0.5), 0 0 30px rgba(136, 184, 242, 0.12); backdrop-filter: blur(10px);
+  }
+  .panel .label { display: block; font-size: 0.95cqw; margin-bottom: 0.8cqw; }
+  .panel .hello { font-size: 3cqw; line-height: 1; margin: 0 0 1.2cqw; }
+  .panel p { font-size: 1.75cqw; line-height: 1.45; margin: 0; }
+  .panel h3 { font-size: 3cqw; line-height: 1.05; margin: 0 0 0.9cqw; font-weight: 400; }
+  .panel .body { font-size: 1.4cqw; color: #d4d0e0; line-height: 1.5; }
+  .marked { position: relative; white-space: nowrap; font-weight: 700; }
+  .marked svg { position: absolute; left: -12%; top: -0.35em; width: 124%; height: 1.7em; overflow: visible; }
+
+  /* The menu bar, at real size */
+  .bar { display: flex; align-items: center; justify-content: space-between; padding: 0 2.5cqw; height: 6cqw;
+    background: linear-gradient(rgba(9, 1, 24, 0.55), transparent); }
+  .bar .logo { font-size: 2cqw; color: white; text-shadow: 0 2px 12px rgba(9, 1, 24, 0.8); }
+  .bar nav { display: flex; gap: 2.4cqw; font-size: 1.15cqw; color: #e6e2f0; }
+  .bars { display: grid; gap: 14px; }
+  .bars .stage { aspect-ratio: 16 / 2.2; background-position: 50% 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0s !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="page">
+  <div class="label">Mock-ups, round 2 · not on the site</div>
+  <h1>Craig <i>Neeson</i>, set apart</h1>
+  <p>Caveat, Fraunces and Instrument Serif, with the surname a different voice from the first name: lighter, italic,
+    or a different face. All three fonts are free on Google Fonts. Fraunces is variable (weight, optical size, and
+    "soft" and "wonky" settings), so its weight can move.</p>
+</header>
+
+<!-- 1. Pairings -->
+<section class="idea">
+  <div class="label">1</div>
+  <h2>Name pairings</h2>
+  <p class="note">Same frame each time, so they compare like for like.</p>
+  <div class="grid">
+    <figure>
+      <div class="stage hero half"><div class="content">
+        <h3 class="name fr"><span class="first" style="font-weight: 700; font-variation-settings: 'opsz' 144;">Craig</span> <span class="last" style="font-weight: 300; font-style: italic; font-variation-settings: 'opsz' 144;">Neeson</span></h3>
+        <div class="sub">Senior Frontend Engineer</div>
+      </div></div>
+      <figcaption><b>A · Fraunces bold, Fraunces light italic.</b> The classic editorial contrast, one family.</figcaption>
+    </figure>
+    <figure>
+      <div class="stage hero half"><div class="content">
+        <h3 class="name fr"><span class="first" style="font-variation-settings: 'opsz' 144, 'wght' 800, 'SOFT' 100;">Craig</span> <span class="last" style="font-style: italic; font-variation-settings: 'opsz' 144, 'wght' 200, 'SOFT' 100, 'WONK' 1;">Neeson</span></h3>
+        <div class="sub">Senior Frontend Engineer</div>
+      </div></div>
+      <figcaption><b>B · Fraunces, softened.</b> Rounder corners (<code>SOFT 100</code>) and the wonky italic: warmer and friendlier.</figcaption>
+    </figure>
+    <figure>
+      <div class="stage hero half"><div class="content">
+        <h3 class="name is" style="font-size: 13cqw;"><span class="first">Craig</span> <span class="last" style="font-style: italic; opacity: 0.72;">Neeson</span></h3>
+        <div class="sub">Senior Frontend Engineer</div>
+      </div></div>
+      <figcaption><b>C · Instrument Serif, roman and italic.</b> Only one weight exists, so the surname steps back in italic and tone instead.</figcaption>
+    </figure>
+    <figure>
+      <div class="stage hero half"><div class="content">
+        <h3 class="name"><span class="first fr" style="font-variation-settings: 'opsz' 144, 'wght' 700;">Craig</span> <span class="last is" style="font-style: italic; font-size: 1.12em; color: #d9d2e6;">Neeson</span></h3>
+        <div class="sub">Senior Frontend Engineer</div>
+      </div></div>
+      <figcaption><b>D · Fraunces bold, Instrument Serif italic.</b> Two serifs: a sturdy first name, a slim, fast surname.</figcaption>
+    </figure>
+    <figure>
+      <div class="stage hero half"><div class="content">
+        <h3 class="name"><span class="first cv" style="font-weight: 700; font-size: 1.2em; transform: rotate(-4deg) translateY(0.04em);">Craig</span> <span class="last fr" style="font-style: italic; font-variation-settings: 'opsz' 144, 'wght' 300;">Neeson</span></h3>
+        <div class="sub">Senior Frontend Engineer</div>
+      </div></div>
+      <figcaption><b>E · Caveat first name, Fraunces light italic surname.</b> The first name handwritten, as you'd sign a note.</figcaption>
+    </figure>
+    <figure>
+      <div class="stage hero half"><div class="content">
+        <h3 class="name"><span class="first sa" style="font-weight: 700; letter-spacing: -0.04em;">Craig</span> <span class="last is" style="font-style: italic; font-size: 1.15em; color: #d9d2e6;">Neeson</span></h3>
+        <div class="sub">Senior Frontend Engineer</div>
+      </div></div>
+      <figcaption><b>F · Sans bold, Instrument Serif italic.</b> Satoshi for the first name: the most modern of the set.</figcaption>
+    </figure>
+    <figure>
+      <div class="stage hero half"><div class="content">
+        <h3 class="name stack is" style="font-size: 13cqw; line-height: 0.85;"><span class="first">Craig</span><span class="last" style="font-style: italic; color: #d9d2e6;">Neeson</span></h3>
+        <div class="sub">Senior Frontend Engineer</div>
+      </div></div>
+      <figcaption><b>G · Stacked, surname indented.</b> Instrument Serif on two lines, like a magazine cover.</figcaption>
+    </figure>
+    <figure>
+      <div class="stage hero half"><div class="content">
+        <h3 class="name fr"><span class="first" style="font-variation-settings: 'opsz' 144, 'wght' 700;">Craig</span> <span class="last gradient" style="font-style: italic; font-variation-settings: 'opsz' 144, 'wght' 300;">Neeson</span></h3>
+        <div class="sub">Senior Frontend Engineer</div>
+      </div></div>
+      <figcaption><b>H · Fraunces, surname in gradient ink.</b> Peach to off-white to the site's blue: picks up the planet's gold and blue rim.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- 2. The surname relaxes -->
+<section class="idea">
+  <div class="label">2</div>
+  <h2>The surname relaxes</h2>
+  <p class="note">Both names arrive in bold, then the surname eases down to a light, soft, wonky weight while the
+    first name holds. Only possible with a variable font like Fraunces, and nearly free to run. Press Replay to see it again.</p>
+  <div class="stage hero"><div class="content">
+    <h3 class="name fr relax"><span class="first">Craig</span> <span class="last">Neeson</span></h3>
+    <div class="sub">Senior Frontend Engineer</div>
+  </div></div>
+</section>
+
+<!-- 3. Caveat as the human voice -->
+<section class="idea">
+  <div class="label">3</div>
+  <h2>Caveat as the human voice</h2>
+  <p class="note">The name stays in a serif and Caveat writes the asides around it, as if you'd scribbled on the
+    page: notes, arrows, circles. It keeps the handwriting personal without asking it to carry the name.</p>
+  <div class="stage hero" style="margin-bottom: 22px;"><div class="content">
+    <h3 class="name fr" style="font-size: 8cqw;"><span class="first" style="font-variation-settings: 'opsz' 144, 'wght' 700;">Craig</span> <span class="last" style="font-style: italic; font-variation-settings: 'opsz' 144, 'wght' 300;">Neeson</span></h3>
+    <div class="sub">Senior <i>Frontend</i> Engineer <span class="aside write" style="font-size: 1.25em; margin-left: 0.4em;">(with a designer's eye)</span></div>
+    <span class="aside write" style="position: absolute; left: 52%; top: 20%; font-size: 2.6cqw; transform: rotate(-6deg);">home's down there</span>
+    <svg class="arrow" style="left: 55%; top: 26%; width: 12cqw; height: 12cqw;" viewBox="0 0 100 100">
+      <path d="M8 6 C 30 10, 52 30, 62 62 M 62 62 L 50 54 M 62 62 L 66 48"/>
+    </svg>
+  </div></div>
+
+  <div style="display: grid; gap: 22px;">
+    <figure>
+      <div class="stage city">
+        <div class="panel" style="width: 44cqw;">
+          <p class="hello"><span class="fr" style="font-variation-settings: 'opsz' 144, 'wght' 300; font-style: italic;">Hi, I'm</span> <span class="fr" style="font-variation-settings: 'opsz' 144, 'wght' 700;">Craig.</span> <span class="aside" style="font-size: 0.75em;">hello!</span></p>
+          <p>For <span class="marked">9 years<svg viewBox="0 0 120 50" preserveAspectRatio="none"><path d="M60 4 C 18 3, 3 15, 6 27 C 9 42, 50 48, 86 44 C 118 40, 122 18, 98 9 C 80 3, 50 4, 30 9"/></svg></span>
+            I've been building the interfaces that bring ideas to life, and help people get the most out of the products they use.</p>
+        </div>
+      </div>
+      <figcaption><b>About:</b> the greeting in the name's two weights, a Caveat "hello!" and a circled detail.</figcaption>
+    </figure>
+    <figure>
+      <div class="stage flexera">
+        <div class="panel" style="width: 44cqw;">
+          <span class="label">Adelaide Street · 2018 – 2019</span>
+          <h3><span class="fr" style="font-variation-settings: 'opsz' 144, 'wght' 650;">Flexera</span> <span class="is" style="font-style: italic; color: #d9d2e6;">UI Engineer</span></h3>
+          <p class="body">Its first component library: accessible UIs for 8 products used by the Fortune 50.
+            <span class="aside" style="font-size: 1.45em;">still proud of this one</span></p>
+        </div>
+      </div>
+      <figcaption><b>Employer card:</b> the same pairing for company and role, with a Caveat aside.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- 4. Small sizes -->
+<section class="idea">
+  <div class="label">4</div>
+  <h2>At the size of the menu</h2>
+  <p class="note">The name also has to work small, top left on every screen. The real menu at this frame's scale.</p>
+  <div class="bars">
+    <div class="stage city"><div class="bar">
+      <span class="logo fr"><span style="font-variation-settings: 'opsz' 48, 'wght' 700;">Craig</span> <i style="font-variation-settings: 'opsz' 48, 'wght' 300;">Neeson</i></span>
+      <nav><span>About</span><span>Experience</span><span>Skills</span><span>Contact</span></nav>
+    </div></div>
+    <div class="stage city"><div class="bar">
+      <span class="logo"><span class="fr" style="font-variation-settings: 'opsz' 48, 'wght' 700;">Craig</span> <i class="is" style="font-size: 1.1em; color: #e3dcef;">Neeson</i></span>
+      <nav><span>About</span><span>Experience</span><span>Skills</span><span>Contact</span></nav>
+    </div></div>
+    <div class="stage city"><div class="bar">
+      <span class="logo"><span class="cv" style="font-weight: 700; font-size: 1.25em;">Craig</span> <i class="fr" style="font-variation-settings: 'opsz' 48, 'wght' 300;">Neeson</i></span>
+      <nav><span>About</span><span>Experience</span><span>Skills</span><span>Contact</span></nav>
+    </div></div>
+    <div class="stage city"><div class="bar">
+      <span class="logo is" style="font-size: 2.3cqw;">Craig <i style="color: #e3dcef;">Neeson</i></span>
+      <nav><span>About</span><span>Experience</span><span>Skills</span><span>Contact</span></nav>
+    </div></div>
+  </div>
+  <p class="note" style="margin-top: 10px;">Top to bottom: A, D, E, C.</p>
+</section>
+
+<button class="replay" type="button" onclick="location.reload()">Replay animations</button>
+</body>
+</html>
