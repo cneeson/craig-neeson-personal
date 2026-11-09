@@ -1,13 +1,14 @@
 # craig-neeson-personal
 
-Craig Neeson's personal site: a single page built around a scroll-driven 3D planet scene, followed
-by plain content sections (skills, experience, contact). Live at https://craigneeson.co.uk.
+Craig Neeson's personal site: one full-screen 3D scene and nothing that scrolls. It opens on the planet, glides
+down through the clouds to a hover over Belfast (home), and a menu (About, Experience, Skills, Contact) flies the
+camera between stops over the city, with a panel for each. Live at https://craigneeson.co.uk.
 
 ## Stack
 
 - Vue 3 (`<script setup>`, TypeScript) on **Vue CLI 5 / webpack**, not Vite
 - TresJS 4 (`@tresjs/core`, `@tresjs/cientos`, `@tresjs/post-processing`) over three.js
-- GSAP 3 with ScrollTrigger and ScrollSmoother (bundled in the public `gsap` package)
+- GSAP 3 (tweens and timelines for the camera moves and the intro; ScrollTrigger and ScrollSmoother are no longer used)
 - Tailwind 3 plus scoped SCSS (Dart Sass)
 
 ## Commands
@@ -26,7 +27,7 @@ There are no tests. Verify changes by running the site and looking at it (see Ve
 
 The city needs `VUE_APP_GOOGLE_MAPS_API_KEY` (Map Tiles API). Locally it goes in `.env.local`
 (gitignored, never commit it); CI reads the `GOOGLE_MAPS_API_KEY` repo secret. There's no fallback city: without a
-key, or if the tiles fail, the city isn't mounted and the flight stays in the clouds.
+key, or if the tiles fail, the city isn't mounted and the camera stays in the clouds (the panels still work).
 Each visit that reaches the city starts a billable root-tileset session.
 
 ## Deployment
@@ -37,19 +38,39 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 
 ## Layout
 
-- `src/App.vue`: page shell. Sets up the fixed `.scene` canvas, the captions, the journey nav, and all
-  GSAP/ScrollTrigger timelines (the journey across `.scene-track`, settling onto captions, the hand-off
-  blur as `.content` arrives, and section reveals).
+- `src/App.vue`: page shell. The fixed `.scene` canvas, the overlays, the letterbox, the hero, the mode panels and
+  the menu, and the shared panel styles. `html[data-mode]` carries the mode; `--menu-bottom` (the bottom menu on
+  phones) and `--chrome-bottom` (plus the timeline in Experience) say how much of the bottom of the screen is taken.
+- `src/scene/director.ts`: **what's on screen is driven by the director, not scroll.** `modes` lists each mode's
+  stops (home; about: hello, craft, reach; experience: overview then the employers; skills: docks, arena, lagan;
+  contact). `go(mode, step)` flies the city camera from wherever it is to the stop's shot (a Bézier lifted with the
+  distance, so long hops rise over the roofs; a click mid-flight redirects it), or for `reach` climbs out to the
+  planet by tweening `sceneState.progress` through the choreography and back. `route` (reactive) says where it is and
+  whether the camera's arriving; `cityState` (plain, read every frame) holds what's eased in time: the offices'
+  highlights, the Paris arc, the telescope, the letterbox, the train. `startIntro` plays the hero and the glide; a
+  stop asked for during it (a deep link, a click) waits in `pending` until the city has loaded.
+- `src/scene/shots.ts`: the city framings (`{ x, y, z, pitch, heading, zoom }`, scene units and degrees), each with an
+  optional `drift` while held, or a time-based `at` (the home hover's slow sweep). `placeCamera` puts a camera at a
+  pose (and tilts portrait screens down, so the city fills the space above the panels). Place shots from the tiles,
+  not OSM: the cranes move along their dock.
+- `src/services/navigation.ts`: the address (`#experience/ankorstore`; a mode change pushes history, stepping
+  replaces it), and the input: wheel (one step per flick), swipe, arrows/PageUp/PageDown/Space, Escape/Home to go
+  home. Stepping carries on into the next mode at the ends. `[data-scrolls]` and open dialogs scroll instead.
+- `src/components/site-menu.vue` (top bar; a bottom icon bar on phones), `home-panel.vue`, `about-panel.vue` (the
+  captions, written in word by word), `experience-timeline.vue` (the intro card and the strip of employers along the
+  bottom), `skills-panel.vue`, `contact-panel.vue` (with the attributions dialog). `src/views/hero.vue` is the title
+  over the planet.
 - `src/components/PlanetScene.vue`: the Tres scene (earth, clouds, atmosphere, stars, markers, bloom + SMAA) and
   the render loop. Must stay inside `<Suspense>` because it awaits textures.
 - `src/scene/earth.ts`: the earth's material (the day map plus NASA Black Marble city lights where the scene's sun
   doesn't reach, coming on through dusk, and a haze towards the disc's edge) and the atmosphere shell, which glows
   by how close each line of sight passes to the ground, so it works from orbit and from just above the clouds.
-- `src/components/belfast-photo.vue`: the Belfast flythrough by day, from Google Photorealistic 3D Tiles
+- `src/components/belfast-photo.vue`: Belfast by day, from Google Photorealistic 3D Tiles
   (`src/scene/belfast/photo-city.ts`, via `3d-tiles-renderer`). Mounted 1.5s after the planet. Extra cameras
-  along the flight (`setCamera`) load it ahead of the reader: the start of the flight first (then it's drawn
-  off screen to warm the GPU and `sceneState.cityReady` is set), then a prefetch camera walks the rest. The
-  whole flight doesn't fit in the tile cache, so evicted tiles come back from the browser's HTTP cache. Keep the
+  at the shots (`setCamera`) load it ahead of the reader: the arrival and the first stop (`firstShot`) first (then
+  it's drawn off screen to warm the GPU and `sceneState.cityReady` is set), the destination of each move while
+  flying, and a prefetch camera walks the other shots while it's held still. The
+  whole city doesn't fit in the tile cache, so evicted tiles come back from the browser's HTTP cache. Keep the
   views few and the cache well above what they need: once it's full, tiles the reader's view needs are refused
   and the city flickers between levels of detail. The tile shader is swapped in by a plugin (`processTileModel`)
   so `TilesFadePlugin` can cross-fade levels; it needs `#include <dithering_fragment>` in that shader. Google's
@@ -60,59 +81,50 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - `src/components/planet-hud.vue`: DOM overlays pinned to the planet (the forecast, the lock-on to Belfast, the
   labels where the reach arcs land). Positioned every frame through `onOverlayFrame` (`src/scene/overlay.ts`), which
   the render loop calls with the camera; shown and hidden in time by class.
-- `src/components/city-signs.vue`: the text over Belfast. The skills gig poster stands by the SSE Arena (a CSS3DRenderer
-  following the city camera, turned to face it); each employer gets a callout flat to the screen, with a dot on its
-  building and a leader up to a card kept inside the viewport (in the sky instead if the building's out of view, as on
-  narrow screens, and always for Ankorstore). The cards' buttons open `employer-dialog.vue` with the role's key points
-  from `src/data/journey.ts` (the stops) and `jobs.ts`. Only the buttons take the pointer, so the page still scrolls.
+- `src/components/city-signs.vue`: Experience's text over Belfast. Each employer gets a callout flat to the screen,
+  with a dot on its building and a leader up to a card kept inside the viewport (in the sky instead if the building's
+  out of view, as on narrow screens, and always for Ankorstore); the telescope stops' cards wait for the eyepieces. The
+  overview has a pin on each building that flies to it. The cards' buttons open `employer-dialog.vue` with the role's
+  key points from `src/data/journey.ts` (the stops) and `jobs.ts`. Only the buttons take the pointer, so swipes over
+  the rest still step.
+- `src/components/skill-signs.vue`: the skills (`src/data/skills.ts`), each a logo and name over a landmark, and the gig
+  poster by the SSE Arena, in a CSS3DRenderer following the city camera, turned to face it. Offsets on a CSS3D
+  object's own element are applied outside its matrix, in unscaled world units, so put them on a child.
 - `src/scene/belfast/offices.ts`: the employers' buildings (OSM footprints, rough heights), outlined in light while
-  their beat is up, and the callouts' anchors. Frame each beat's camera on its building in `flight.ts`.
+  their stop is up (faintly, all of them, in the overview), and the callouts' anchors. Frame each stop's shot on its
+  building in `shots.ts`.
   `paris-arc.ts` draws the arc from Ormeau Business Park in the Gasworks towards Paris for Ankorstore.
 - `src/scene/belfast/telescope.ts`: the coin-op telescope over City Hall. A camera of its own about a
   kilometre short of each place (Coleraine, then Antrim) renders into a texture, shown through the eyepieces by a
   screen-space lens shader (distortion, fringes, wobble, iris, a whip across between them, a reticle on the target).
-  Its cameras are extra views for the tiles (`photo-city.ts` `extraViews`): prefetched after the flight, then loaded
-  only near their beats, mostly one at a time. Coleraine is outside the photorealistic coverage (terrain and aerial
+  Its cameras are extra views for the tiles (`photo-city.ts` `extraViews`): prefetched after the shots, then loaded
+  only at their stops. Coleraine is outside the photorealistic coverage (terrain and aerial
   photos only), so it's seen from further off. The ground there is ~45 units down, with the earth's curve.
 - `src/scene/planet/`: the effects on the planet. `clouds.ts` patches the cloud layer to gather over Northern Ireland
   and part over it (the centre must be turned into the cloud mesh's spinning space); `highlight.ts` traces the
   outline (`northern-ireland.ts`, from Natural Earth) and scans the land; `arcs.ts` draws the arcs to the HQs.
   `geo.ts` converts lat/lon to the earth group's space (`onEarth`) and holds `EARTH_POSITION`.
-- `src/scene/choreography.ts`: **the whole journey is a pure function of scroll progress (0..1)**.
-  It holds:
-  - the beat `windows` (where each caption is fully readable; captions in App.vue are named after them with
-    `data-caption`, and neighbouring text beats need a gap of at least 0.012 so they don't overlap);
-  - camera/earth keyframes, with optional portrait overrides, joined by monotone cubic splines so the
-    camera never stops dead or reverses between keyframes;
-  - `settleAt` (easing onto a nearby caption when scrolling stops);
-  - the nav `chapters`;
-  - the dive into Belfast (`diveAt`, `veilAt`, `isInBelfast`, `flightProgressAt`).
-
-  Tune the motion here. Keep keyframes on the window edges so the camera arrives as the caption does.
-- `src/scene/captions.ts`: word-by-word caption entrances. They play in time rather than being
-  scrubbed, so a caption always finishes revealing.
-- `src/components/journey-nav.vue`: the chapter rail on the right (md and up).
-- `src/scene/state.ts`: plain mutable `{ progress, exit }`, written by GSAP and read every frame by
+- `src/scene/choreography.ts`: the planet's part, as a pure function of the journey's progress (0..1), which the
+  director tweens (the intro's glide, the climb out to `reach` and back). It holds the `windows` (hero, forecast,
+  Northern Ireland, Belfast, reach, reveal), the camera/earth keyframes (with optional portrait overrides, joined by
+  monotone cubic splines so the camera never stops dead or reverses), and the dive into Belfast (`diveAt`, `veilAt`,
+  `isInBelfast`). Progress inside the Belfast window means the city is on screen.
+- `src/scene/captions.ts`: word-by-word caption entrances, played in time.
+- `src/scene/state.ts`: plain mutable `{ progress, cityReady }`, written by GSAP and the city and read every frame by
   the render loop. Deliberately not reactive.
 - `src/scene/camera.ts`: the camera instance handed to `<TresCanvas>` (see gotchas).
 - `src/services/device.ts`: mobile detection (`pointer: coarse`) and the quality tiers (DPR cap,
   textures, star counts, blur).
-- `src/scene/belfast/`: the city. `geo.ts` (origin and bounds; must match the build script),
-  `flight.ts` (waypoints timed to the beats with `at`, each with an optional `heading` (else looking back along
-  the path) and `zoom` (the dolly zoom under the cranes): out of the clouds under the H&W cranes, the SSE Arena, over
-  City Hall looking NW (the telescope), down Adelaide Street, the Gasworks, north along the Lagan to Lanyon Place,
-  then up. Place waypoints from the tiles, not OSM: the cranes move along their dock; the letterbox bars in App.vue
-  (`letterboxAt`) go with the dolly zoom). The glide from
+- `src/scene/belfast/`: the city. `geo.ts` (origin and bounds; must match the build script). The glide from
   orbit (`approachAt` in choreography, `glideFromOrbit` in PlanetScene) starts far north looking on past the pole,
-  backs south past Northern Ireland still looking north, and sinks onto it, turning to the flight's starting
-  heading; it runs along a great circle that passes beside the pole, as the planet's texture pinches at it. The
-  climb out carries on along the flight's end heading (`climbFromHome`, `FLIGHT_ENDS`). `water.ts`, `starlings.ts`,
-  `train.ts`, `plane.ts` and `boats.ts` animate the city; all but the water and starlings are moved by the scroll,
-  timed to beats. The train leaves Lanyon Place in the Ocula beat and crosses the Lagan Railway Bridge as it's read,
-  then heads east along the Bangor line. The plane takes off from Belfast City Airport and passes over the reader in
-  the craft beat. A ferry comes in down Musgrave Channel past the cranes, and a tour boat comes down the Lagan under
-  the train in the Ocula beat. The plane and boats are bigger, and fly or sail closer, than they would in life, so
-  they read. `traffic.ts` drives cars along the main roads near the flight (plus a few named streets it passes),
+  backs south past Northern Ireland still looking north, and sinks onto it, turning to the arrival shot's heading
+  (under the H&W cranes); it runs along a great circle that passes beside the pole, as the planet's texture pinches
+  at it. The climb out carries on along `CITY_ENDS.end` (`climbFromHome`). `water.ts`, `starlings.ts`, `train.ts`,
+  `plane.ts` and `boats.ts` animate the city, in time. The train leaves Lanyon Place when the Ocula stop is reached
+  and crosses the Lagan Railway Bridge, then heads east along the Bangor line. The plane takes off from Belfast City
+  Airport and passes over the cranes every 90 s. A ferry comes in down Musgrave Channel past the cranes, and a tour
+  boat comes down the Lagan. The plane and boats are bigger, and fly or sail closer, than they would in life, so
+  they read. `traffic.ts` drives cars along the main roads near the shots (plus a few named streets they show),
   all on the GPU in two draw calls (models and points): the roads are points in a texture and each car's place is
   worked out from the time. Within 100 units they're little models (bigger than life close up); further off, points, fading out by 400. They sit
   on a top-down height render of the tiles around the camera, refreshed every second, in the browser only, like the
@@ -122,7 +134,8 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   `scripts/belfast/traffic.mjs` → `public/belfast/traffic.bin` (the traffic's roads, layout in the script header). The
   data, like the office footprints in `offices.ts`, is © OpenStreetMap contributors (credited in the attributions
   dialog); keep that credit.
-- `src/data/jobs.ts`: experience content. Other copy lives in the `src/views/*` components.
+- `src/data/jobs.ts`: experience content; `src/data/skills.ts` the skills and their landmarks. Other copy lives in the
+  panels.
 - `public/textures/earth/` (desktop) and `public/textures/earth/low-res/` (mobile). `night-lights.jpg` is NASA's
   Black Marble 2016, credited in the attributions dialog.
 
@@ -140,27 +153,23 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   return nothing, so the bump map travels as `displacementMap` and the clouds as `alphaMap`.
 - In `<script setup>` with top-level `await`, call `defineExpose` (and anything the parent needs
   immediately) **before** the first await.
-- Rendering is `render-mode="on-demand"`. The loop calls `invalidate()` every frame while the scene is
-  visible, and stops once `sceneState.exit >= 1` (the scene is hidden behind the content).
-- **Don't use ScrollTrigger's `snap` (or its `scrollEnd` event) for the journey.** With ScrollSmoother
-  running, `snap` stops the smoothed content following any jump upwards (Home key, nav clicks), and
-  `scrollEnd` doesn't always fire once smoothing finishes. Settling is a `delayedCall` that the
-  journey trigger restarts on every update. It skips while a touch is down.
+- Rendering is `render-mode="on-demand"`; the loop calls `invalidate()` every frame.
 - The captions are rendered `v-once` because `createCaption` splits their text into word spans. A Vue
   re-render would fight that.
 - The stars are tiny and rely on bloom to be visible. If they vanish, check the composer first.
 - City scale is 1 unit = 10 m, at the world origin. The planet group is hidden while in the city (and vice versa),
   and the camera's fov/near change on the switch (`setLens`), which happens under full cloud cover.
 - City shaders output linear colour (write constants via `lin()`).
-- ScrollSmoother is desktop only. Touch devices use native scrolling, and the scene is sized in
-  `100lvh` so mobile address-bar changes don't resize the canvas.
+- The page doesn't scroll (`overflow: hidden`, and touchmove is cancelled outside `[data-scrolls]`). The scene is
+  sized in `100lvh` so mobile address-bar changes don't resize the canvas.
 
 ## Verifying visually
 
-Run the site (or `npm run build` and serve `dist/`) and screenshot several scroll positions with
-headless Chrome via Playwright, at desktop size (e.g. 1440×900) and at a phone size with touch and
+Run the site (or `npm run build` and serve `dist/`) and screenshot the stops (set `location.hash`, e.g.
+`#experience/flexera`, and wait for the move) with headless Chrome via Playwright, at desktop size (e.g. 1440×900) and at a phone size with touch and
 coarse pointer (e.g. 390×844). Use real GPU flags (`--use-angle=metal --ignore-gpu-blocklist` on macOS)
-or WebGL falls back to software. Check at least: the hero, the Northern Ireland marker, the dive into the clouds, the
-Belfast flight (the intro caption, under both cranes, City Hall), all five Europe markers in frame (portrait is the tight
-case), the planet reveal, and the content hand-off. Settling moves the scroll after it stops, so dispatch a
-`touchstart` on window first to capture exact positions. Also test slow tile loads (`page.route` on `tile.googleapis.com`): the clouds should hold, then clear.
+or WebGL falls back to software. Check at least: the hero, the Northern Ireland marker, the glide into the clouds,
+home, each About step (the arcs at `reach` in frame; portrait is the tight case), the overview and every employer
+(cards, dialog, the telescope), each skills stop (labels clear of the panel), contact, a deep link, stepping with the
+wheel, keys and a swipe, and redirecting a move mid-flight. Also test slow tile loads (`page.route` on
+`tile.googleapis.com`): the clouds should hold, then clear.
