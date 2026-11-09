@@ -3,7 +3,7 @@ import { windowOpacity, windows } from '@/scene/choreography';
 import { clamp01 } from '@/services/three';
 
 /** Ormeau Business Park in the Gasworks, where Locate a Locum was, and the way to Paris from Belfast (about 140°, so south-east). */
-const FROM = new Vector3(-56, 1, 158);
+const FROM = new Vector3(-61.2, 1.2, 159.7);
 const TOWARDS = new Vector3(Math.sin(2.44), 0, -Math.cos(2.44));
 
 const along = (distance: number, height: number) => FROM.clone().addScaledVector(TOWARDS, distance).setY(height);

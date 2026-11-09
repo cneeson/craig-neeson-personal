@@ -22,13 +22,8 @@ const OFFICES: Office[] = [
     },
     // Flax House, 83–91 Adelaide Street (way 1549697622)
     { beat: 'flexera', height: 3, footprint: [[-85.8, 120.6], [-85.9, 119.3], [-89.4, 119.5], [-89.3, 120.8], [-87, 120.7]] },
-    // Ormeau Business Park, 8 Cromac Avenue, in the Gasworks (way 140812842)
-    {
-        beat: 'locum',
-        height: 1,
-        footprint: [[-55.1, 157.2], [-55.4, 155.9], [-54.3, 155.7], [-53.4, 158.9], [-57.4, 159.9], [-57, 161.4],
-            [-58.4, 161.7], [-59.7, 156.8], [-57.7, 156.2], [-57.1, 158.3], [-55.6, 158], [-55.4, 157.3]],
-    },
+    // Ormeau Business Park, 8 Cromac Avenue, in the Gasworks: the western block, where Locate a Locum's unit was (way 363937763)
+    { beat: 'locum', height: 1.2, footprint: [[-61.2, 155.7], [-59.2, 163.3], [-61.1, 163.8], [-63.1, 156.2]] },
     // Meadow House, 22 East Bridge Street, by Lanyon station: Formation Works (way 292885433)
     {
         beat: 'ocula',

@@ -114,7 +114,7 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   the train in the Ocula beat. The plane and boats are bigger, and fly or sail closer, than they would in life, so
   they read. `traffic.ts` drives cars along the main roads near the flight (plus a few named streets it passes),
   all on the GPU in two draw calls (models and points): the roads are points in a texture and each car's place is
-  worked out from the time. Within 140 units they're little models; further off, points, fading out by 400. They sit
+  worked out from the time. Within 100 units they're little models (bigger than life close up); further off, points, fading out by 400. They sit
   on a top-down height render of the tiles around the camera, refreshed every second, in the browser only, like the
   tiles. `photo-materials.ts` holds the tile shader (haze and drifting cloud shadows, shared with the overlays) and
   the day sky.

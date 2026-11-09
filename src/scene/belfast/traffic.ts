@@ -223,11 +223,10 @@ const ON_ROAD_GLSL = /* glsl */ `
         }
         position = vec3(xz.x, ground, xz.y);
         // Where the road runs along or under a building in the map, the car can end up on its roof: hidden if the
-        // ground to one side is four storeys or so lower. Up to 80 m out, as the coarse tiles further off lump whole
-        // blocks together, roads and all. Bridges are lower than that; the motorways' flyovers (the fast lanes,
-        // from their speed) aren't, and are left alone.
+        // ground to one side is four storeys or so lower. Bridges are lower than that; the motorways' flyovers
+        // (the fast lanes, from their speed) aren't, and are left alone.
         float side = 1000.0;
-        for (int k = 1; k <= 4; k++) {
+        for (int k = 1; k <= 2; k++) {
             float across = 2.0 * float(k);
             side = min(side, min(surfaceAt(xz + left * across), surfaceAt(xz - left * across)));
         }
@@ -308,7 +307,8 @@ export const createTraffic = (sun: IUniform<Vector3>) => {
                     vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
                     float sunlit = cloudShadow(vWorld.xz);
                     float light = 0.7 + 0.35 * max(dot(n, uSun), 0.0) * sunlit + 0.1 * n.y;
-                    color = (vPart > 0.5 ? vec3(0.03, 0.04, 0.05) : vColor) * light
+                    // Glass round the cabin, but its roof the car's colour, as it's mostly seen from above
+                    color = (vPart > 0.5 && n.y < 0.7 ? vec3(0.03, 0.04, 0.05) : vColor) * light
                         * mix(${CLOUD_SHADE_GLSL}, vec3(1.0), sunlit);
                 }
                 gl_FragColor = vec4(hazed(color, vWorld), 1.0);
@@ -397,6 +397,9 @@ export const createTraffic = (sun: IUniform<Vector3>) => {
         heightScene.add(tiles);
         renderer.setRenderTarget(heightTarget);
         renderer.setClearColor(0x000000, 0);
+        // Cleared by hand: the effect composer turns autoClear off, and without it the first heights (from the
+        // coarse tiles still loading, which lie above the finer ones) would win the depth test for good
+        renderer.clear();
         renderer.render(heightScene, heightCamera);
         renderer.setRenderTarget(previousTarget);
         renderer.setClearColor(clearColor, previousAlpha);

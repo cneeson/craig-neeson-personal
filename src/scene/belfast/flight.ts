@@ -55,8 +55,8 @@ const waypoints: Waypoint[] = [
     { at: between('flexera', 'locum'), x: -78, z: 145, y: 10, pitch: -10, heading: 65 },
     // Over the Gasworks, looking down at Ormeau Business Park (Locate a Locum), then back from it as the arc
     // to Paris (Ankorstore) sets off south-east, already drifting north, the way it goes next
-    { at: windows.locum[0], x: -70, z: 143, y: 7, pitch: -12, heading: 127 },
-    { at: windows.locum[1], x: -69, z: 142, y: 8, pitch: -12, heading: 134 },
+    { at: windows.locum[0], x: -75, z: 145, y: 7, pitch: -12, heading: 127 },
+    { at: windows.locum[1], x: -74, z: 144, y: 8, pitch: -12, heading: 134 },
     { at: windows.ankorstore[0], x: -80, z: 152, y: 11, pitch: 3, heading: 104 },
     { at: windows.ankorstore[1], x: -79, z: 148, y: 14, pitch: 4, heading: 116 },
     // Up and away north along the Lagan, turning to look down it, so the kilometre to Lanyon Place passes
