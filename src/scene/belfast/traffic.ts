@@ -5,35 +5,40 @@ import {
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { isMobile } from '@/services/device';
-import { poseOf, shots } from '@/scene/shots';
+import { HOVER_PERIOD, poseOf, shots } from '@/scene/shots';
 import { CLOUD_SHADE_GLSL, CLOUD_SHADOW_GLSL, cloudShadowUniforms, photoUniforms } from './photo-materials';
 
 /** traffic.bin stores half-metres; the scene works in 10 m units. */
 const HALF_METRE = 0.05;
 
 /** Only roads this close to the camera's shots (scene units) get cars, and only cars this far from the camera are drawn. */
-const NEAR_ROUTE = 150;
+const NEAR_ROUTE = 260;
 /** Closer than this a car is a model; further, a point; beyond the last, nothing. */
 const MODEL_RANGE = 100;
-const POINT_RANGE = 400;
+const POINT_RANGE = 650;
 /**
- * Bigger than life close up, like the plane and the boats, or they'd hardly be seen from the flight; back to life
- * size by the time they're this far off (scene units), where they'd otherwise stand out against the haze.
+ * The models' size close up, shrinking to the second by the time they're LIFE_SIZE_AT off (scene units), where they'd
+ * otherwise stand out against the haze. Small enough to stay inside their lanes on the tiles.
  */
-const CAR_SCALE = 1.6;
+const CAR_SCALE = 0.8;
+const FAR_SCALE = 0.5;
 const LIFE_SIZE_AT = 80;
 
 /** The roads are resampled at this spacing (scene units) into a texture, one point per texel, for the shader. */
 const SPACING = 1;
 const ROAD_TEXTURE_WIDTH = 1024;
 /** Lanes are 3.5 m wide, and cars keep left. */
-const LANE_WIDTH = 0.35 * CAR_SCALE;
+const LANE_WIDTH = 0.35;
 /** Bumper to bumper, roughly (scene units): fewer on phones. */
-const GAP = (isMobile ? [9, 14] : [4.5, 7]).map(gap => gap * CAR_SCALE);
+const GAP = isMobile ? [12.8, 19.2] : [6.1, 9.6];
 
-/** The heights under the cars come from a top-down render of the tiles this wide (scene units), this many texels. */
-const HEIGHT_AREA = 600;
-const HEIGHT_SIZE = isMobile ? 512 : 1024;
+/**
+ * The heights under the cars come from a top-down render of the tiles this wide (scene units), this many texels (about
+ * 6 m a texel), centred this far ahead of the camera (a share of the width), so it reaches out as far as the points.
+ */
+const HEIGHT_AREA = 1000;
+const HEIGHT_SIZE = isMobile ? 896 : 1792;
+const HEIGHT_AHEAD = 0.3;
 /** The heights are packed into 16 bits over this range (scene units). */
 const HEIGHT_RANGE = [-10, 50];
 
@@ -110,7 +115,7 @@ const layOut = (roads: Road[]) => {
         const { x, z } = poseOf(shot, held, 0);
         return [x, z] as [number, number];
     }));
-    for (let time = 0; time < 140; time += 5) {
+    for (let time = 0; time < HOVER_PERIOD; time += 5) {
         const { x, z } = poseOf(shots.home, 0, time);
         route.push([x, z]);
     }
@@ -203,8 +208,16 @@ const ON_ROAD_GLSL = /* glsl */ `
         return mix(${HEIGHT_RANGE[0].toFixed(1)}, ${HEIGHT_RANGE[1].toFixed(1)}, packed.r + packed.g / 255.0);
     }
 
-    // The car's position on the road, the way it's heading (x, z) and how much of it is shown (0..1)
-    void onRoad(out vec3 position, out vec2 heading, out float shown) {
+    // How far inside the area the heights cover (0 at its edge, 0.5 in the middle)
+    float insideHeights(vec2 xz) {
+        vec2 uv = vec2((xz.x - uHeightArea.x) / uHeightArea.z + 0.5, 0.5 - (xz.y - uHeightArea.y) / uHeightArea.z);
+        return min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+    }
+
+    // The car's position on the road, the way it's heading (x, z) and how much of it is shown (0..1, the models
+    // shrinking away at once); and \`fade\` (0..1), the points' slower fade out towards the ends of the road and the
+    // edge of the heights, so in the distance they fade away rather than blinking out
+    void onRoad(out vec3 position, out vec2 heading, out float shown, out float fade) {
         float length = aRoad.z;
         float travelled = mod(aMotion.x + uTime * aMotion.y, length);
         float along = (aLane.x > 0.0 ? travelled : length - travelled) / ${SPACING.toFixed(1)};
@@ -235,8 +248,10 @@ const ON_ROAD_GLSL = /* glsl */ `
         }
         bool isOnRoof = !isFast && side > -100.0 && ground - side > 1.2;
         // Shrunk away at the ends of its road, and wherever the ground isn't known
-        shown = smoothstep(0.0, 3.0, travelled) * smoothstep(0.0, 3.0, length - travelled) * step(-100.0, ground)
-            * (isOnRoof ? 0.0 : 1.0);
+        float isOnGround = step(-100.0, ground) * (isOnRoof ? 0.0 : 1.0);
+        shown = smoothstep(0.0, 3.0, travelled) * smoothstep(0.0, 3.0, length - travelled) * isOnGround;
+        fade = smoothstep(0.0, 20.0, travelled) * smoothstep(0.0, 20.0, length - travelled)
+            * smoothstep(0.0, 0.08, insideHeights(xz)) * isOnGround;
     }
 `;
 
@@ -253,7 +268,7 @@ const HAZE_GLSL = /* glsl */ `
  * Traffic on the main roads near the flight, for the day city, all moved on the GPU: each car's road is a run of
  * points in a texture and it drives along it at its lane's speed, keeping left. Close up the cars are little models
  * (buses now and then), all in one draw call; further off, points in another, tinted by a glint of their headlights
- * towards the camera or tail lights going away. They're bigger than life, like the plane and boats. They sit on the tiles, whose heights come from a top-down render of
+ * towards the camera or tail lights going away. They sit on the tiles, whose heights come from a top-down render of
  * them every so often around the camera (`update`), only ever in the browser, like the tiles themselves.
  */
 export const createTraffic = (sun: IUniform<Vector3>) => {
@@ -281,10 +296,11 @@ export const createTraffic = (sun: IUniform<Vector3>) => {
                 vec3 base;
                 vec2 heading;
                 float shown;
-                onRoad(base, heading, shown);
+                float fade;
+                onRoad(base, heading, shown, fade);
                 float distance = length(cameraPosition - base);
                 shown *= step(distance, ${MODEL_RANGE.toFixed(1)});
-                float scale = mix(${CAR_SCALE.toFixed(1)}, 1.0, smoothstep(${(LIFE_SIZE_AT * 0.3).toFixed(1)}, ${LIFE_SIZE_AT.toFixed(1)}, distance));
+                float scale = mix(${CAR_SCALE.toFixed(1)}, ${FAR_SCALE.toFixed(1)}, smoothstep(${(LIFE_SIZE_AT * 0.3).toFixed(1)}, ${LIFE_SIZE_AT.toFixed(1)}, distance));
                 // Buses are longer, and taller
                 vec3 local = position * vec3(aSize, aSize > 1.5 ? 1.9 : 1.0, aSize > 1.5 ? 1.15 : 1.0) * scale * shown;
                 vec3 forward = vec3(heading.x, 0.0, heading.y);
@@ -331,15 +347,16 @@ export const createTraffic = (sun: IUniform<Vector3>) => {
                 vec3 base;
                 vec2 heading;
                 float shown;
-                onRoad(base, heading, shown);
+                float fade;
+                onRoad(base, heading, shown, fade);
                 float distance = length(cameraPosition - base);
-                shown *= step(${MODEL_RANGE.toFixed(1)}, distance) * step(distance, ${POINT_RANGE.toFixed(1)});
-                vWorld = base + vec3(0.0, 0.1 * ${CAR_SCALE.toFixed(1)}, 0.0);
+                shown = step(${MODEL_RANGE.toFixed(1)}, distance) * step(distance, ${POINT_RANGE.toFixed(1)});
+                vWorld = base + vec3(0.0, 0.16, 0.0);
                 gl_Position = projectionMatrix * viewMatrix * vec4(vWorld, 1.0);
                 // About as wide as the car, but never less than a pixel and a half; fading out towards the range
                 gl_PointSize = max(0.2 * sqrt(aSize) * uPointScale / gl_Position.w, 1.5);
-                vFade = 1.0 - smoothstep(${(POINT_RANGE * 0.6).toFixed(1)}, ${POINT_RANGE.toFixed(1)}, distance);
-                if (shown < 0.5) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+                vFade = fade * (1.0 - smoothstep(${(POINT_RANGE * 0.5).toFixed(1)}, ${POINT_RANGE.toFixed(1)}, distance));
+                if (shown < 0.5 || vFade < 0.01) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
                 // A glint of its headlights from ahead, its tail lights from behind (it's daytime: kept under the
                 // bloom's threshold)
                 float facing = dot(heading, normalize(cameraPosition.xz - base.xz));
@@ -453,7 +470,7 @@ export const createTraffic = (sun: IUniform<Vector3>) => {
             uniforms.uTime.value = elapsed;
             uniforms.uPointScale.value = renderer.domElement.height / (2 * Math.tan((view.fov * Math.PI) / 360));
             view.getWorldDirection(forward).setY(0).normalize();
-            centre.copy(view.position).addScaledVector(forward, HEIGHT_AREA * 0.25).setY(0);
+            centre.copy(view.position).addScaledVector(forward, HEIGHT_AREA * HEIGHT_AHEAD).setY(0);
             const since = elapsed - lastCapture;
             if ((since > 0.5 && centre.distanceTo(lastCentre) > 4) || since > 1) {
                 capture(renderer, tiles);

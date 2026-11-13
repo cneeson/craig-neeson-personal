@@ -8,7 +8,7 @@ const HAZE = lin(0.78, 0.84, 0.9);
 
 export const photoUniforms = {
     uFogColor: { value: HAZE },
-    uFogDensity: { value: 0.0025 },
+    uFogDensity: { value: 0.0017 },
 };
 
 /** Drives the cloud shadows drifting over the city; the city's render loop keeps it up to date. */

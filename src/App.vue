@@ -7,6 +7,10 @@ import PlanetHud from './components/planet-hud.vue';
 import CitySigns from './components/city-signs.vue';
 import SkillSigns from './components/skill-signs.vue';
 import SiteMenu from './components/site-menu.vue';
+import CityLoading from './components/city-loading.vue';
+// Tools for checking the scene
+import DebugSlowMo from './components/debug-slow-mo.vue';
+import DebugCamera from './components/debug-camera.vue';
 import HomePanel from './components/home-panel.vue';
 import AboutPanel from './components/about-panel.vue';
 import ExperienceTimeline from './components/experience-timeline.vue';
@@ -18,6 +22,9 @@ import { startNavigation } from './services/navigation';
 import { cityState, route } from './scene/director';
 import { onOverlayFrame } from './scene/overlay';
 import { camera } from './scene/camera';
+
+/** The tools for checking the scene (descent speed, a hand-held camera), only with `?debug` in the address. */
+const isDebug = new URLSearchParams(window.location.search).has('debug');
 
 const gl = {
   clearColor: '#090118',
@@ -76,7 +83,12 @@ onBeforeUnmount(() => {
     <SkillsPanel />
     <ContactPanel />
   </main>
+  <CityLoading />
   <SiteMenu />
+  <template v-if="isDebug">
+    <DebugSlowMo />
+    <DebugCamera />
+  </template>
 </template>
 
 <style lang="scss">

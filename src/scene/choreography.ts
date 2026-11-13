@@ -210,7 +210,7 @@ export const veilAt = (progress: number) => Math.max(
 const ramp = (progress: number, from: number, to: number) => smoothstep(clamp01((progress - from) / (to - from)));
 
 /** How long the planet's first appearance takes, in seconds, and how far through it it's risen into view. */
-export const ENTRANCE_DURATION = 6;
+export const ENTRANCE_DURATION = 4.5;
 export const RISEN = 0.62;
 
 /**
@@ -220,28 +220,99 @@ export const RISEN = 0.62;
  */
 export const entranceAt = (entrance: number) => ({
     /** Up into the frame from below (0 → 1), after a moment of just the stars. */
-    rise: 1 - (1 - clamp01((entrance - 0.06) / (RISEN - 0.06))) ** 3,
+    rise: 1 - (1 - clamp01((entrance - 0.06) / (RISEN - 0.06))) ** 4,
     /** The light on the planet swinging round from behind it to where it shines (0 → 1). */
     sunrise: ramp(entrance, 0.08, 0.7),
 });
 
 /**
- * Northern Ireland picked out from orbit. Thick cloud gathers over it as the descent sets off (`cover`), and parts
- * over it as the camera comes down (`hole`), its outline is traced (`draw`), the land is tinted (`fill`) and scanned
- * (`scan`), and it all fades (`opacity`) as the camera goes into the clouds for the city.
+ * Belfast's sign, hung over it on the way down: where the camera passes through it (`SIGN_PASS`), how far it's drawn on
+ * (`enter`, 0 → 1, as the descent gets going) and its `opacity` (gone once the camera's through).
  */
-export const highlightAt = (progress: number) => {
-    const [start, end] = windows.northernIreland;
+export const SIGN_PASS = windows.northernIreland[0] + 0.046;
+export const signAt = (progress: number) => ({
+    enter: clamp01((progress - 0.035) / 0.055),
+    opacity: 1 - ramp(progress, SIGN_PASS, SIGN_PASS + 0.01),
+});
+
+/**
+ * How much of the cloud deck over Belfast is showing (0 → 1): fading in slowly from as the sign starts drawing on
+ * until the camera's well past it, and gone
+ * under the clouds over the switch to the city, so it's only on the way down.
+ */
+export const deckAt = (progress: number) => progress >= cityFrom + 0.01
+    ? 0
+    : ramp(progress, 0.075, SIGN_PASS + 0.025) * (1 - ramp(progress, cityFrom, cityFrom + 0.01));
+
+/**
+ * The descent's pace: one sweep from the title down to the clouds (to `windows.belfast[0]`), gathering pace (as
+ * progress = t^1.5), but easing off a little while Belfast's sign reads, from its name being written on to the camera
+ * reaching it. `descentEase` is the tween's ease, over `DESCENT_DURATION` seconds.
+ */
+const DESCENT_BASE = 4.6;
+/** How much of a running start the descent gets (as a share of it): more, and it sets off faster. */
+const DESCENT_HEAD_START = 0.012;
+/**
+ * How much slower it goes at most while the sign reads (0.45 = 55% of the speed), and when (progress): it eases off
+ * gently over a long run-in before the sign, holds while the name's written on, and picks up again past it.
+ */
+const [SIGN_EASE_OFF, SIGN_READ] = [0.45, [0.06, 0.1, SIGN_PASS - 0.006, SIGN_PASS + 0.022]] as const;
+/** Like smoothstep, but flat to the second derivative at both ends, so the change of pace has no corner to feel. */
+const smootherstep = (t: number) => t * t * t * (t * (6 * t - 15) + 10);
+const descent = (() => {
+    const steps = 2000;
+    const end = windows.belfast[0];
+    // Time to each step: (2/3)x^(-1/3) per unit of x = progress / end without the easing off, over the slower speed.
+    // x is nudged on there by DESCENT_HEAD_START, so it leaves at a speed the moment Enter's pressed rather than from rest
+    const times = [0];
+    for (let i = 1; i <= steps; i++) {
+        const x = (i - 0.5) / steps;
+        const progress = x * end;
+        const reading = smootherstep(clamp01((progress - SIGN_READ[0]) / (SIGN_READ[1] - SIGN_READ[0])))
+            * (1 - smootherstep(clamp01((progress - SIGN_READ[2]) / (SIGN_READ[3] - SIGN_READ[2]))));
+        const speed = 1 - SIGN_EASE_OFF * reading;
+        times.push(times[i - 1] + ((2 / 3) * (x + DESCENT_HEAD_START) ** (-1 / 3)) / speed / steps);
+    }
+    return { times, total: times[steps] };
+})();
+export const DESCENT_DURATION = DESCENT_BASE * descent.total;
+export const descentEase = (t: number) => {
+    const { times, total } = descent;
+    const time = clamp01(t) * total;
+    let [low, high] = [0, times.length - 1];
+    while (high - low > 1) {
+        const middle = (low + high) >> 1;
+        if (times[middle] <= time) low = middle;
+        else high = middle;
+    }
+    const along = (time - times[low]) / (times[high] - times[low] || 1);
+    return (low + along) / (times.length - 1);
+};
+
+/** How brightly the land's lit on the way down, kept low so the thinning clouds round it don't glare. */
+const DESCENT_FILL = 0.06;
+
+/**
+ * Northern Ireland picked out on the planet. As the planet rises into view (`entrance`) the clouds part a little over
+ * it (`hole`); once the hero's arrow has reached it its border's traced (`traced`, into `draw`), dimmed (`dim`), and
+ * the land's lit a little (`fill`), so it can be found from orbit, under the title. Then thick cloud gathers round it
+ * as the descent sets off (`cover`) and parts all the way as the camera comes down, the border brightens, the land's
+ * light drops back and it's scanned (`scan`), before it all fades (`opacity`) as the camera goes into the clouds for
+ * the city.
+ */
+export const highlightAt = (progress: number, entrance = 1, traced = 1) => {
+    const [start] = windows.northernIreland;
+    const descent = ramp(progress, 0.004, start - 0.01);
     return {
-        // Gathering over it as the descent sets off, so it isn't singled out under the title
         cover: progress < cityTo ? ramp(progress, 0, 0.03) : 0,
-        // In step with the descent: opening as soon as it sets off, and right open by the time it's over the country.
-        // The outline's traced well before, so it can be read on the way down.
-        hole: ramp(progress, 0.004, start - 0.01),
-        draw: ramp(progress, start - 0.042, start - 0.015),
-        fill: ramp(progress, start - 0.025, start - 0.008),
+        // Closing in a little again as the camera comes down to the clouds
+        hole: Math.max(ramp(entrance, 0.4, 0.9) * 0.8, descent) * (1 - 0.5 * ramp(progress, SIGN_PASS - 0.02, cityFrom)),
+        draw: Math.max(traced, ramp(progress, start - 0.042, start - 0.015)),
+        fill: Math.max(ramp(traced, 0.6, 1) * lerp(1, DESCENT_FILL, descent), ramp(progress, start - 0.025, start - 0.008) * DESCENT_FILL),
         scan: clamp01((progress - start + 0.02) / 0.03),
-        opacity: 1 - ramp(progress, end, end + 0.012),
+        dim: lerp(0.3, 1, descent),
+        // The outline (and its tint) fades as the camera closes on Belfast's sign, leaving it the one thing to read
+        opacity: 1 - ramp(progress, SIGN_PASS - 0.04, SIGN_PASS - 0.012),
     };
 };
 
@@ -260,6 +331,10 @@ export const reachAt = (progress: number) => {
  */
 export const bloomThresholdAt = (progress: number) => {
     const focus = Math.max(...marked.map(window => windowOpacity(progress, window, FADE * 2)));
-    const base = isInBelfast(progress) ? 1.2 : lerp(0.3, 0.9, focus);
+    // Held back from the moment the descent sets off, or the clouds gathering over Northern Ireland glare
+    const descending = progress < cityFrom ? ramp(progress, 0.001, 0.03) : 0;
+    // and off altogether as it comes down to the clouds, which would glow white
+    const intoClouds = progress < cityFrom ? ramp(progress, SIGN_PASS - 0.04, SIGN_PASS) : 0;
+    const base = isInBelfast(progress) ? 1.2 : lerp(lerp(0.3, 0.9, Math.max(focus, descending)), 1.3, intoClouds);
     return lerp(base, 1.2, veilAt(progress));
 };

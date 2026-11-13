@@ -1,10 +1,10 @@
 <script setup lang="ts">
 /**
- * The site's buttons: words and an arrow, no box. The main action on a screen (`ring`) holds its arrow in a ring that
- * fills with ink on hover, the arrow slipping out through one side and back in through the other; the rest are just
- * the words, the arrow nudging on. Either way the words underline on hover. A link with `href`, otherwise a button.
+ * The site's buttons. Most are just words and an arrow: the words underline on hover and the arrow nudges on. The main
+ * action on a screen (`primary`) is a cream capsule with the arrow in a dark disc at its end, and on hover a ring of
+ * cream and a glow grow out from its edge. A link with `href`, otherwise a button.
  */
-withDefaults(defineProps<{ href?: string, ring?: boolean, icon?: 'arrow' | 'download' }>(), { icon: 'arrow' });
+withDefaults(defineProps<{ href?: string, primary?: boolean, icon?: 'arrow' | 'download' }>(), { icon: 'arrow' });
 
 const paths = {
   arrow: 'M4 12h15M13 6l6 6-6 6',
@@ -18,17 +18,18 @@ const paths = {
     :href="href"
     :type="href ? undefined : 'button'"
     class="action-link"
-    :class="[{ 'is-ring': ring }, `is-${icon}`]"
+    :class="[{ 'is-primary': primary }, `is-${icon}`]"
   >
     <span class="label"><slot /></span>
     <span class="mark" aria-hidden="true">
-      <svg v-for="copy in ring ? 2 : 1" :key="copy" viewBox="0 0 24 24"><path :d="paths[icon]" /></svg>
+      <svg viewBox="0 0 24 24"><path :d="paths[icon]" /></svg>
     </span>
   </component>
 </template>
 
 <style lang="scss" scoped>
 $ink: #f4efe6;
+$night: #090118;
 $ease: cubic-bezier(0.65, 0, 0.35, 1);
 
 .action-link {
@@ -65,7 +66,6 @@ $ease: cubic-bezier(0.65, 0, 0.35, 1);
   place-items: center;
 
   svg {
-    grid-area: 1 / 1;
     width: 1.1em;
     height: 1.1em;
     fill: none;
@@ -77,79 +77,61 @@ $ease: cubic-bezier(0.65, 0, 0.35, 1);
   }
 }
 
-.action-link:hover,
-.action-link:focus-visible {
-  .label::after {
-    transform: scaleX(1);
-    transform-origin: left;
-  }
+.action-link:not(.is-primary) {
+  &:hover,
+  &:focus-visible {
+    .label::after {
+      transform: scaleX(1);
+      transform-origin: left;
+    }
 
-  .mark svg {
-    transform: translateX(0.25em);
-  }
-}
-
-.is-download:hover .mark svg,
-.is-download:focus-visible .mark svg {
-  transform: translateY(0.15em);
-}
-
-// The main action: the arrow in a ring
-.is-ring {
-  @apply gap-3 lg:gap-4;
-
-  .mark {
-    position: relative;
-    // At least a thumb's width on phones
-    width: max(2.9em, 44px);
-    height: max(2.9em, 44px);
-    border-radius: 50%;
-    border: 1px solid rgba($ink, 0.45);
-    overflow: hidden;
-    transition: background-color 0.35s, border-color 0.35s, color 0.35s;
-
-    svg + svg {
-      transform: translateX(-180%);
+    .mark svg {
+      transform: translateX(0.25em);
     }
   }
 
-  &.is-download .mark svg + svg {
-    transform: translateY(-180%);
+  &.is-download:hover .mark svg,
+  &.is-download:focus-visible .mark svg {
+    transform: translateY(0.15em);
+  }
+
+  &:focus-visible .label {
+    outline: 2px solid rgba($ink, 0.6);
+    outline-offset: 2px;
+  }
+}
+
+// The main action: a cream capsule, the arrow in a dark disc with a rim of cream round it
+.is-primary {
+  --height: 64px;
+
+  gap: 0.85em;
+  height: var(--height);
+  padding: 5px 5px 5px 1.5em;
+  border-radius: 999px;
+  background: $ink;
+  color: $night;
+  font-weight: 600;
+  text-shadow: none;
+  // At rest the halo's shadows at nothing, so on hover they grow out from the edge rather than fade in
+  box-shadow: 0 0 0 0 rgba($ink, 0.38), 0 0 0 0 rgba($ink, 0.5), 0 0 0 0 rgba($ink, 0.22);
+  transition: box-shadow 0.45s cubic-bezier(0.33, 1, 0.68, 1);
+
+  @media (max-width: 767px) {
+    --height: 56px;
+  }
+
+  .mark {
+    width: calc(var(--height) - 10px);
+    height: calc(var(--height) - 10px);
+    border-radius: 50%;
+    background: $night;
+    color: $ink;
   }
 
   &:hover,
   &:focus-visible {
-    .mark {
-      background: $ink;
-      border-color: $ink;
-      color: #090118;
-    }
-
-    .mark svg:first-child {
-      transform: translateX(180%);
-    }
-
-    .mark svg + svg {
-      transform: translateX(0);
-    }
-
-    &.is-download .mark svg:first-child {
-      transform: translateY(180%);
-    }
-
-    &.is-download .mark svg + svg {
-      transform: translateY(0);
-    }
+    box-shadow: 0 0 0 6px rgba($ink, 0.38), 0 0 28px 4px rgba($ink, 0.5), 0 0 70px rgba($ink, 0.22);
   }
-
-  &:focus-visible .mark {
-    outline: 2px solid rgba($ink, 0.6);
-    outline-offset: 3px;
-  }
-}
-
-.action-link:not(.is-ring):focus-visible .label {
-  outline: 2px solid rgba($ink, 0.6);
-  outline-offset: 2px;
 }
 </style>

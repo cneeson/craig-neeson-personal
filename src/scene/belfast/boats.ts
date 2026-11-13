@@ -39,17 +39,26 @@ const hull = (plan: number[][], y0: number, y1: number, { deck, bowStart, rake }
     return geometry;
 };
 
-/** How much of the haze the boats take on: less than the tiles, so they stand out a little from the distance. */
-const CLARITY = 0.6;
+/** How much of the haze the boats take on: all of it, like the tiles, so they sit in the same air. */
+const CLARITY = 1;
 
-const createBoatMaterial = (sun: IUniform<Vector3>) => new ShaderMaterial({
-    uniforms: { uSun: sun, uClarity: { value: CLARITY }, ...photoUniforms, ...cloudShadowUniforms },
+/**
+ * The boats are drawn flat, in their paint, but the city round them is photographed: soft, a little grey and grimy,
+ * darker in the shadow low down. So their colours are greyed and toned down towards the photos', they darken towards
+ * the waterline (over `shadeHeight` above it, scene units on the model) and they're mottled with grime.
+ */
+const createBoatMaterial = (sun: IUniform<Vector3>, shadeHeight: number) => new ShaderMaterial({
+    uniforms: {
+        uSun: sun, uClarity: { value: CLARITY }, uShadeHeight: { value: shadeHeight }, ...photoUniforms, ...cloudShadowUniforms,
+    },
     vertexShader: /* glsl */ `
         attribute vec3 color;
         varying vec3 vColor;
         varying vec3 vWorld;
+        varying float vHeight;
         void main() {
             vColor = color;
+            vHeight = position.y;
             vec4 world = modelMatrix * vec4(position, 1.0);
             vWorld = world.xyz;
             gl_Position = projectionMatrix * viewMatrix * world;
@@ -58,16 +67,35 @@ const createBoatMaterial = (sun: IUniform<Vector3>) => new ShaderMaterial({
     fragmentShader: /* glsl */ `
         uniform vec3 uSun;
         uniform float uClarity;
+        uniform float uShadeHeight;
         uniform vec3 uFogColor;
         uniform float uFogDensity;
         varying vec3 vColor;
         varying vec3 vWorld;
+        varying float vHeight;
         ${CLOUD_SHADOW_GLSL}
+        float grimeHash(vec3 p) {
+            return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
+        }
+        float grimeNoise(vec3 p) {
+            vec3 i = floor(p);
+            vec3 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+                mix(mix(grimeHash(i), grimeHash(i + vec3(1, 0, 0)), f.x), mix(grimeHash(i + vec3(0, 1, 0)), grimeHash(i + vec3(1, 1, 0)), f.x), f.y),
+                mix(mix(grimeHash(i + vec3(0, 0, 1)), grimeHash(i + vec3(1, 0, 1)), f.x), mix(grimeHash(i + vec3(0, 1, 1)), grimeHash(i + vec3(1, 1, 1)), f.x), f.y),
+                f.z);
+        }
         void main() {
             vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
             float sunlit = cloudShadow(vWorld.xz);
-            float light = 0.75 + 0.35 * max(dot(n, uSun), 0.0) * sunlit + 0.1 * n.y;
-            vec3 color = vColor * light * mix(${CLOUD_SHADE_GLSL}, vec3(1.0), sunlit);
+            float light = 0.72 + 0.3 * max(dot(n, uSun), 0.0) * sunlit + 0.08 * n.y;
+            // Greyed and toned down towards the photographed city's colours
+            vec3 paint = mix(vColor, vec3(dot(vColor, vec3(0.2126, 0.7152, 0.0722))), 0.35) * 0.82;
+            // Darker low down, in the shadow of itself and the water's edge, and mottled
+            float low = mix(0.6, 1.0, smoothstep(-0.1 * uShadeHeight, uShadeHeight, vHeight));
+            float grime = mix(0.88, 1.06, grimeNoise(vWorld * 6.0) * 0.6 + grimeNoise(vWorld * 1.7 + 3.0) * 0.4);
+            vec3 color = paint * low * grime * light * mix(${CLOUD_SHADE_GLSL}, vec3(1.0), sunlit);
             float distance = length(cameraPosition - vWorld);
             float haze = 1.0 - exp(-pow(distance * uFogDensity, 2.0));
             gl_FragColor = vec4(mix(color, uFogColor, haze * uClarity), 1.0);
@@ -177,8 +205,9 @@ const createWake = ({ bow, stern, size, length, height }: { bow: number, stern: 
  * (0..1, for slowing down). Unlit apart from a little shading
  * from the sun, like the tiles, and only drawn while it's on its route.
  */
-const createBoat = ({ geometry, route, waterline, scale = 1, wake, along, wakeAt = () => 1, sun }: {
+const createBoat = ({ geometry, shadeHeight, route, waterline, scale = 1, wake, along, wakeAt = () => 1, sun }: {
     geometry: BufferGeometry,
+    shadeHeight: number,
     route: number[][],
     waterline: number,
     scale?: number,
@@ -189,7 +218,7 @@ const createBoat = ({ geometry, route, waterline, scale = 1, wake, along, wakeAt
 }) => {
     const curve = new CatmullRomCurve3(route.map(([x, z]) => new Vector3(x, waterline, z)), false, 'centripetal');
     const length = curve.getLength();
-    const material = createBoatMaterial(sun);
+    const material = createBoatMaterial(sun, shadeHeight);
     const wakeMesh = createWake(wake);
     const group = new Group();
     group.add(new Mesh(geometry, material), wakeMesh);
@@ -276,16 +305,17 @@ const ferryIn = (time: number) => {
  * A ferry coming in to Belfast in Stena Line's colours: a hand-built Superfast-class ro-ro, navy hull, red band,
  * white superstructure and twin funnels, with a pale V of a wake and a churned trail behind it that die away as
  * it slows. It comes down Musgrave Channel to a berth, on the left of the view past the cranes
- * (Stena's own terminal is out of sight, behind the dry dock). A little bigger than life, so it reads at the 2 km
- * or so it's seen from.
+ * (Stena's own terminal is out of sight, behind the dry dock). Only just bigger than life, so it reads at the 2 km
+ * or so it's seen from without standing out.
  */
 export const createFerry = (sun: IUniform<Vector3>) => createBoat({
     geometry: createFerryGeometry(),
+    shadeHeight: FERRY_DECK,
     // Down the middle of Musgrave Channel, from the water mask
     route: [[171.5, -230], [171, -200], [170.6, -170], [169, -155], [168.3, -140], [166, -128], [161, -116]],
     // On the water drawn over the docks (water.ts)
     waterline: 0.1,
-    scale: 1.4,
+    scale: 1.05,
     wake: { bow: FERRY_BOW, stern: FERRY_STERN, size: 1, length: 50, height: 0.05 },
     along: time => 100 * ferryIn(time),
     wakeAt: time => 1 - ferryIn(time),
@@ -324,6 +354,7 @@ const BOAT_SPEED = 2.5;
  */
 export const createRiverBoat = (sun: IUniform<Vector3>) => createBoat({
     geometry: createRiverBoatGeometry(),
+    shadeHeight: BOAT_HULL.deck,
     // Down the middle of the river from the Ormeau Embankment, past Lanyon Place, to the weir; from the water mask
     route: [
         [-4.3, 117], [3, 109.5], [9.7, 102], [11.3, 95], [11.5, 87.5], [5.6, 80], [-8, 73], [-24, 65.5],
@@ -331,6 +362,7 @@ export const createRiverBoat = (sun: IUniform<Vector3>) => createBoat({
     ],
     // On the water drawn over the river (water.ts)
     waterline: 0.1,
+    scale: 0.85,
     wake: { bow: BOAT_BOW, stern: BOAT_STERN, size: 0.24, length: 10, height: 0.05 },
     along: time => BOAT_SPEED * time,
     sun,

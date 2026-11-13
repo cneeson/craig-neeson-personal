@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import gsap from 'gsap';
+import { ref, shallowRef } from 'vue';
 import { route, type Mode } from '@/scene/director';
-import { navigate } from '@/services/navigation';
+import { prefersReducedMotion } from '@/services/device';
+import { goToOrbit, navigate } from '@/services/navigation';
 
 /** The menu: along the top on wider screens, and along the bottom, in reach of a thumb, on phones. */
 const items: { mode: Mode, label: string, icon: string }[] = [
@@ -10,11 +13,78 @@ const items: { mode: Mode, label: string, icon: string }[] = [
   { mode: 'skills', label: 'Skills', icon: 'M8 6 2 12l6 6 1.4-1.4L4.8 12l4.6-4.6zm8 0-1.4 1.4 4.6 4.6-4.6 4.6L16 18l6-6z' },
   { mode: 'contact', label: 'Contact', icon: 'M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2.4V17h16V7.4l-8 5.3z' },
 ];
+
+// The name letter by letter, so each can lift off in turn on hover
+const first = [...'Craig'];
+const last = [...'Neeson'];
+
+// The logo's hover, played from script so that it winds down rather than stopping dead when the pointer leaves:
+// each letter's hop plays out (they then ease back to the line by CSS), and the moon slows to a stop as it fades
+const brandRef = shallowRef<HTMLButtonElement>();
+const isLit = ref(false);
+const HOP: Keyframe[] = [
+  { transform: 'none' },
+  { transform: 'translateY(-0.32em) rotate(-4deg)', offset: 0.4 },
+  { transform: 'translateY(0.03em)', offset: 0.75 },
+  { transform: 'none' },
+];
+const hops = new Map<Element, Animation>();
+let orbitSpeed: gsap.core.Tween | undefined;
+
+const orbitOf = () => brandRef.value?.querySelector('.moon')?.getAnimations()[0];
+
+const light = () => {
+  if (isLit.value) return;
+  isLit.value = true;
+  if (prefersReducedMotion || !brandRef.value) return;
+  brandRef.value.querySelectorAll<HTMLElement>('.letter').forEach(letter => {
+    if (hops.get(letter)?.playState === 'running') return;
+    const delay = Number(letter.style.getPropertyValue('--i')) * 35;
+    hops.set(letter, letter.animate(HOP, { duration: 550, delay, easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)' }));
+  });
+  const orbit = orbitOf();
+  if (!orbit) return;
+  orbitSpeed?.kill();
+  if (orbit.playState !== 'running') orbit.playbackRate = 0.3;
+  orbit.play();
+  orbitSpeed = gsap.to(orbit, { playbackRate: 1, duration: 0.4, ease: 'power1.out' });
+};
+
+const dim = () => {
+  if (!isLit.value) return;
+  isLit.value = false;
+  const orbit = orbitOf();
+  if (!orbit || orbit.playState !== 'running') return;
+  orbitSpeed?.kill();
+  orbitSpeed = gsap.to(orbit, { playbackRate: 0, duration: 1, ease: 'power2.out', onComplete: () => orbit.pause() });
+};
+
+// Keyboard focus lights it too, but not the focus a click leaves behind
+const onFocus = (event: FocusEvent) => (event.target as Element).matches(':focus-visible') && light();
 </script>
 
 <template>
   <nav class="site-menu" :class="{ 'is-shown': route.isIntroDone }" aria-label="Site">
-    <button type="button" class="brand" aria-label="Craig Neeson, home" @click="navigate('home')">Craig <i>Neeson</i></button>
+    <!-- Back up to orbit. On hover the letters lift off one after another, and a little moon swings round the name -->
+    <button
+      ref="brandRef"
+      type="button"
+      class="brand"
+      :class="{ 'is-lit': isLit }"
+      aria-label="Craig Neeson, back to orbit"
+      @click="goToOrbit"
+      @pointerenter="light"
+      @pointerleave="dim"
+      @focus="onFocus"
+      @blur="dim"
+    >
+      <span class="name" aria-hidden="true">
+        <span v-for="(letter, i) in first" :key="`f${i}`" class="letter" :style="{ '--i': i }">{{ letter }}</span>
+        {{ ' ' }}
+        <i><span v-for="(letter, i) in last" :key="`l${i}`" class="letter" :style="{ '--i': i + first.length + 1 }">{{ letter }}</span></i>
+      </span>
+      <span class="orbit" aria-hidden="true"><span class="moon" /></span>
+    </button>
     <ul>
       <li v-for="item in items" :key="item.mode" :class="{ 'is-home': item.mode === 'home' }">
         <button
@@ -32,6 +102,8 @@ const items: { mode: Mode, label: string, icon: string }[] = [
 </template>
 
 <style lang="scss" scoped>
+@use "sass:math";
+
 $ink: #f4efe6;
 
 .site-menu {
@@ -59,9 +131,95 @@ $ink: #f4efe6;
   color: $ink;
   text-shadow: 0 2px 12px rgba(9, 1, 24, 0.8);
 
+  position: relative;
+  isolation: isolate;
+
   // The surname set apart, as in the title
   i {
     font-variation-settings: 'opsz' 144, 'wght' 300;
+  }
+
+  .name {
+    position: relative;
+    z-index: 1;
+  }
+
+  // Raised by `translate` while lit, so the hops (on `transform`, from script) add to it
+  .letter {
+    display: inline-block;
+    transition: translate 0.6s cubic-bezier(0.3, 0.7, 0.4, 1);
+  }
+
+  // The moon's orbit: a tilted ellipse round the name, passing behind the letters on its far side
+  .orbit {
+    position: absolute;
+    inset: -0.2em -0.45em;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+
+  .moon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0.24em;
+    height: 0.24em;
+    margin: -0.12em 0 0 -0.12em;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff 0%, #f4c9a8 55%, #c98a6a 100%);
+    box-shadow: 0 0 8px rgba(255, 214, 180, 0.8);
+    // Played and slowed from script
+    animation: moon-orbit 2.4s linear infinite paused;
+  }
+
+  &.is-lit {
+    .letter {
+      translate: 0 -0.07em;
+      transition-delay: calc(var(--i) * 35ms + 0.4s);
+    }
+
+    .orbit {
+      opacity: 1;
+      transition-duration: 0.3s;
+    }
+  }
+
+  &:focus-visible {
+    outline: none;
+
+    .name {
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.25em;
+    }
+  }
+
+  &:active .letter {
+    translate: 0 -0.25em;
+    transition-duration: 0.12s;
+    transition-delay: 0s;
+  }
+}
+
+// Round an ellipse half the name's width across and a little tilted: in front along the bottom, behind along the top
+@keyframes moon-orbit {
+  @for $step from 0 through 24 {
+    $angle: calc(360deg * $step / 24);
+    #{percentage(calc($step / 24))} {
+      $x: math.cos($angle) * 2.75em;
+      $y: math.sin($angle) * 0.55em + math.cos($angle) * -0.18em;
+      $scale: 0.8 + math.sin($angle) * 0.25;
+      transform: translate($x, $y) scale($scale);
+      z-index: if(math.sin($angle) > 0, 2, 0);
+    }
+  }
+}
+
+// Reduced motion: no hops (see light), and the moon sits still beside the name
+@media (prefers-reduced-motion: reduce) {
+  .brand .letter {
+    transition: none;
   }
 }
 

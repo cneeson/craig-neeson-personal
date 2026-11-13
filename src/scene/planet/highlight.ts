@@ -1,27 +1,34 @@
 import {
-    AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, Group, Mesh, ShaderMaterial, ShapeUtils, Vector2, Vector3,
+    AdditiveBlending, NormalBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, Group, Mesh, ShaderMaterial, ShapeUtils, Vector2, Vector3,
 } from 'three';
 import { NORTHERN_IRELAND } from './northern-ireland';
 import { onEarth } from './geo';
 
 const COLOR = new Color('#88b8f2');
+/** The border's colour: a cool white, kept under the bloom's threshold on the way down so it stays a crisp line. */
+const OUTLINE_COLOR = new Color('#e4ecf6');
 
 /** Just above the land and below the clouds (at 1.01), so the clouds can roll back over it. */
 const OUTLINE_RADIUS = 1.0025;
 const FILL_RADIUS = 1.002;
-/** Half the outline's width, in earth radii: a few pixels from where the camera looks at it. */
-const HALF_WIDTH = 0.0007;
+/**
+ * Half the outline's width: a steady width on screen (in earth radii per unit of distance from the camera), but no
+ * thinner than `MIN_HALF_WIDTH` (earth radii) close up.
+ */
+const HALF_WIDTH_PER_DISTANCE = 0.0003;
+const MIN_HALF_WIDTH = 0.0007;
 
 const points = NORTHERN_IRELAND.map(([lon, lat]) => onEarth(lat, lon));
 
 /**
  * The outline as a ribbon lying on the surface, with how far round it each vertex is (0 → 1) so it can be
- * traced on.
+ * traced on. Both edges start on the line, with the way out to their side (`side`); the shader sets the width.
  */
 const createOutlineGeometry = () => {
     const count = points.length + 1;
     const positions = new Float32Array(count * 2 * 3);
     const along = new Float32Array(count * 2);
+    const sides = new Float32Array(count * 2 * 3);
     const lengths = points.map((point, i) => point.distanceTo(points[(i + 1) % points.length]));
     const total = lengths.reduce((sum, length) => sum + length, 0);
     const [tangent, side] = [new Vector3(), new Vector3()];
@@ -29,10 +36,10 @@ const createOutlineGeometry = () => {
     for (let i = 0; i < count; i++) {
         const point = points[i % points.length];
         tangent.subVectors(points[(i + 1) % points.length], points[(i - 1 + points.length) % points.length]);
-        side.crossVectors(tangent, point).normalize().multiplyScalar(HALF_WIDTH);
+        side.crossVectors(tangent, point).normalize();
         [1, -1].forEach((sign, j) => {
-            const vertex = point.clone().multiplyScalar(OUTLINE_RADIUS).addScaledVector(side, sign);
-            vertex.toArray(positions, (i * 2 + j) * 3);
+            point.clone().multiplyScalar(OUTLINE_RADIUS).toArray(positions, (i * 2 + j) * 3);
+            side.clone().multiplyScalar(sign).toArray(sides, (i * 2 + j) * 3);
             along[i * 2 + j] = travelled / total;
         });
         if (i < points.length) travelled += lengths[i];
@@ -42,6 +49,7 @@ const createOutlineGeometry = () => {
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new BufferAttribute(positions, 3));
     geometry.setAttribute('along', new BufferAttribute(along, 1));
+    geometry.setAttribute('side', new BufferAttribute(sides, 3));
     geometry.setIndex(index);
     return geometry;
 };
@@ -67,35 +75,42 @@ const createFillGeometry = () => {
 };
 
 /**
- * Northern Ireland picked out on the planet: its outline traced on in light, with a bright head, then the
+ * Northern Ireland picked out on the planet: its outline faded in as a solid line of white, then the
  * land inside tinted as a scan passes over it from north to south. Driven by `update`.
  */
 export const createHighlight = () => {
     const outlineMaterial = new ShaderMaterial({
-        uniforms: { uColor: { value: COLOR }, uDraw: { value: 0 }, uOpacity: { value: 0 } },
+        uniforms: { uColor: { value: OUTLINE_COLOR }, uDraw: { value: 0 }, uErase: { value: 0 }, uDim: { value: 1 } },
         vertexShader: /* glsl */ `
             attribute float along;
+            attribute vec3 side;
             varying float vAlong;
             void main() {
                 vAlong = along;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                // As wide on screen from orbit as on the way down: in the mesh's units, by how far off the camera is
+                float scale = length(modelMatrix[0].xyz);
+                float distance = length((modelMatrix * vec4(position, 1.0)).xyz - cameraPosition) / scale;
+                float halfWidth = max(${MIN_HALF_WIDTH}, distance * ${HALF_WIDTH_PER_DISTANCE});
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position + side * halfWidth, 1.0);
             }
         `,
         fragmentShader: /* glsl */ `
             uniform vec3 uColor;
             uniform float uDraw;
-            uniform float uOpacity;
-            varying float vAlong;
+            uniform float uErase;
+            uniform float uDim;
             void main() {
-                if (vAlong > uDraw) discard;
-                // Brighter towards the head as it's traced, settling once it's complete
-                float head = exp(-(uDraw - vAlong) * 30.0) * (1.0 - smoothstep(0.97, 1.0, uDraw));
-                gl_FragColor = vec4(uColor * (1.4 + head * 3.0), uOpacity);
+                // The whole outline fades in (uDraw) and out (uErase), rather than being traced along its length
+                float alpha = smoothstep(0.0, 1.0, uDraw) * (1.0 - uErase);
+                if (alpha < 0.002) discard;
+                // Dimmed by darkening rather than fading, so it stays solid (and under the bloom from orbit)
+                gl_FragColor = vec4(uColor * 0.9 * uDim, alpha);
             }
         `,
         transparent: true,
         depthWrite: false,
-        blending: AdditiveBlending,
+        // Laid over the land rather than added to it, so it reads as a solid line
+        blending: NormalBlending,
         // The triangulation and ribbon don't promise a winding
         side: DoubleSide,
     });
@@ -116,7 +131,7 @@ export const createHighlight = () => {
             varying float vSweep;
             void main() {
                 float scan = exp(-pow((vSweep - uScan) * 9.0, 2.0));
-                gl_FragColor = vec4(uColor, uOpacity * (0.16 + scan * 0.5));
+                gl_FragColor = vec4(uColor, uOpacity * (0.1 + scan * 0.24));
             }
         `,
         transparent: true,
@@ -136,11 +151,15 @@ export const createHighlight = () => {
 
     return {
         object,
-        /** `draw` traces the outline (0 → 1), `fill` tints the land, `scan` passes over it (0 → 1), all faded by `opacity`. */
-        update(draw: number, fillAmount: number, scan: number, opacity: number) {
-            object.visible = opacity > 0.001 && draw > 0;
+        /**
+         * `draw` fades the outline in (0 → 1), `fill` tints the land, `scan` passes over it (0 → 1), and `opacity` fades
+         * it all away; `dim` darkens the outline alone.
+         */
+        update(draw: number, fillAmount: number, scan: number, opacity: number, dim = 1) {
+            object.visible = opacity > 0.001 && (draw > 0 || fillAmount > 0);
             outlineMaterial.uniforms.uDraw.value = draw;
-            outlineMaterial.uniforms.uOpacity.value = opacity;
+            outlineMaterial.uniforms.uErase.value = 1 - opacity;
+            outlineMaterial.uniforms.uDim.value = dim;
             fillMaterial.uniforms.uOpacity.value = opacity * fillAmount;
             fillMaterial.uniforms.uScan.value = scan * 1.3 - 0.15;
         },

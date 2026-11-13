@@ -76,6 +76,14 @@ export const patchClouds = () => {
                         // Broad lobes give the gap its shape, finer noise frays its edge
                         float shape = cloudFbm(sphere * 8.0 + 3.1);
                         float detail = cloudFbm(sphere * 42.0 + 7.3);
+                        // Round the poles the map pinches to a point, in streaks: there, clouds of 3D noise instead,
+                        // which has no seam, crossfaded in from about 62° north or south
+                        float polar = smoothstep(0.88, 0.97, abs(sphere.y));
+                        if (polar > 0.0) {
+                            vec3 swirl = vec3(cloudFbm(sphere * 3.0 + 1.7), cloudFbm(sphere * 3.0 + 5.3), cloudFbm(sphere * 3.0 + 9.1));
+                            float puffs = cloudFbm(sphere * 9.0 + swirl * 2.2) * 0.75 + detail * 0.35;
+                            diffuseColor.a = mix(diffuseColor.a, opacity * smoothstep(0.42, 0.72, puffs), polar);
+                        }
                         float warp = (shape - 0.5) * ${r * 1.6} + (detail - 0.5) * ${r * 0.55};
                         // Gathered thickly over and around the country, keeping the texture's structure
                         float region = 1.0 - smoothstep(${r * 1.7}, ${r * 3.4}, away + warp * 1.3);
@@ -91,7 +99,7 @@ export const patchClouds = () => {
                         float rim = exp(-pow((edge - open - ${r * 0.45}) / ${r * 0.4}, 2.0));
                         diffuseColor.a *= parted * (1.0 + rim * 0.35 * uHole * region);
                         // Lit by the sun: grey through dusk and all but gone on the night side
-                        diffuseColor.rgb *= mix(0.05, 1.0, smoothstep(-0.2, 0.3, dot(normalize(vUp), uSunDirection)));`);
+                        diffuseColor.rgb *= mix(0.02, 1.0, smoothstep(-0.35, 0.45, dot(normalize(vUp), uSunDirection)));`);
             };
             material.needsUpdate = true;
         },

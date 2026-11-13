@@ -61,14 +61,16 @@ const material = new ShaderMaterial({
       }
 
       // The thickest cloud shows first and the gaps between fill in last, spread across the whole of uVeil
-      // so the clouds build up gradually rather than all at once. The edges get a head start.
+      // so the clouds build up gradually rather than all at once. They rise from the bottom of the screen and round
+      // the edges, below the horizon, as the camera sinks into them, never over the sky first.
       float threshold = mix(0.75, -0.2, uVeil);
-      float edges = (r - 0.45) * 0.6 * smoothstep(0.0, 0.3, uVeil) * (1.0 - uVeil);
-      float cover = density - threshold + edges;
+      float rising = ((0.45 - vUv.y) * 1.6 + (r - 0.5) * 0.3) * smoothstep(0.0, 0.3, uVeil) * sqrt(1.0 - uVeil);
+      float cover = density - threshold + rising;
       float alpha = clamp(cover * 3.0, 0.0, 1.0);
-      vec3 shadow = pow(vec3(0.58, 0.63, 0.72), vec3(2.2));
-      vec3 lit = pow(vec3(0.97, 0.97, 0.99), vec3(2.2));
-      vec3 color = mix(shadow, lit, smoothstep(0.35, 0.85, density));
+      // Shaded where it's thin and coming in; bright all through once inside, lit from above
+      vec3 shadow = pow(mix(vec3(0.4, 0.44, 0.5), vec3(0.54, 0.57, 0.62), smoothstep(0.4, 1.0, uVeil)), vec3(2.2));
+      vec3 lit = pow(vec3(0.68, 0.7, 0.73), vec3(2.2));
+      vec3 color = mix(shadow, lit, smoothstep(0.35, 0.85, density)) * mix(0.9, 1.04, vUv.y);
       gl_FragColor = vec4(color, alpha);
     }
   `,

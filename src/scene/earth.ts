@@ -25,6 +25,8 @@ const AIR_COLOR_GLSL = /* glsl */ `
     vec3 airColor(vec3 up) {
         float sun = dot(up, uSunDirection);
         vec3 color = mix(uNightBlue, uSkyBlue, smoothstep(-0.25, 0.35, sun));
+        // All but gone deep on the night side, so the planet's far edge melts into the sky
+        color *= mix(0.15, 1.0, smoothstep(-0.75, -0.15, sun));
         return color + uDusk * exp(-pow(sun / 0.22, 2.0)) * 0.8;
     }
 `;
@@ -63,6 +65,8 @@ export const createEarthMaterial = (textures: { map: Texture, bumpMap: Texture, 
                 vec3 up = normalize(vUp);
                 // City lights on the night side, coming on through dusk. The map's faint, moonlit ground is cut away.
                 float sun = dot(up, uSunDirection);
+                // The ground darkening gradually on into the night side (the fill light's faint blue with it)
+                diffuseColor.rgb *= 1.0 - 0.6 * smoothstep(0.3, -0.7, sun);
                 float night = smoothstep(0.1, -0.15, sun) + 0.35 * smoothstep(0.45, 0.1, sun);
                 vec3 lights = max(texture2D(uLightsMap, vMapUv).rgb - 0.012, 0.0);
                 totalEmissiveRadiance += lights * vec3(1.6, 1.25, 0.85) * night * uLights;
@@ -85,6 +89,8 @@ export const createAtmosphereMaterial = (centre: Vector3) => new ShaderMaterial(
         uCentre: { value: centre },
         uTop: { value: ATMOSPHERE_HEIGHT },
         uScaleHeight: { value: SCALE_HEIGHT },
+        uGlint: { value: 0 },
+        uGlintDirection: { value: new Vector3(0, 1, 0) },
     },
     vertexShader: /* glsl */ `
         varying vec3 vWorld;
@@ -98,6 +104,8 @@ export const createAtmosphereMaterial = (centre: Vector3) => new ShaderMaterial(
         uniform vec3 uCentre;
         uniform float uTop;
         uniform float uScaleHeight;
+        uniform float uGlint;
+        uniform vec3 uGlintDirection;
         varying vec3 vWorld;
         ${AIR_COLOR_GLSL}
         void main() {
@@ -107,7 +115,11 @@ export const createAtmosphereMaterial = (centre: Vector3) => new ShaderMaterial(
             vec3 lowest = cameraPosition + direction * along - uCentre;
             float height = max(length(lowest) - 1.0, 0.0);
             float glow = exp(-height / uScaleHeight) * (1.0 - smoothstep(uTop * 0.6, uTop, height));
-            gl_FragColor = vec4(airColor(normalize(lowest)) * glow * 0.55, 1.0);
+            vec3 color = airColor(normalize(lowest)) * glow * 0.55;
+            // The sun clearing the limb: a flare of warm light along the rim nearest it (uGlint, 0 → 1 → 0)
+            float towards = max(dot(normalize(lowest), uGlintDirection), 0.0);
+            color += vec3(1.0, 0.86, 0.68) * uGlint * glow * pow(towards, 6.0) * 3.0;
+            gl_FragColor = vec4(color, 1.0);
         }
     `,
     side: BackSide,

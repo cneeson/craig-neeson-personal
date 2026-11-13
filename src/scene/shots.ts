@@ -57,14 +57,17 @@ export const poseOf = (shot: Shot, held: number, time: number): Pose => {
 
 /**
  * The hover over the city: high over the south of the centre, looking north across it to the docks and the
- * lough, sweeping slowly from side to side rather than circling, so the tiles it needs barely change.
+ * lough, swaying slowly a few degrees from side to side: enough to feel alive, little enough that the tiles in view (and
+ * their detail) barely change, so it doesn't keep loading more of the city as it goes.
  */
-const HOVER = { centre: new Vector3(-30, 0, 20), radius: 130, height: 62, bearing: 205, sweep: 26, period: 140 };
+const HOVER = { centre: new Vector3(-46, 0, 20), radius: 140, height: 31.6, bearing: 209.3, sweep: 6, period: 180 };
+/** How long (s) the hover takes to sway there and back. */
+export const HOVER_PERIOD = HOVER.period;
 const hoverAt = (time: number): Pose => {
     const bearing = HOVER.bearing + HOVER.sweep * Math.sin((time / HOVER.period) * Math.PI * 2);
     const radians = MathUtils.degToRad(bearing);
     const [x, z] = [HOVER.centre.x + Math.sin(radians) * HOVER.radius, HOVER.centre.z - Math.cos(radians) * HOVER.radius];
-    return { x, y: HOVER.height, z, pitch: -19, heading: MathUtils.euclideanModulo(bearing + 180, 360), zoom: 1 };
+    return { x, y: HOVER.height, z, pitch: -23, heading: MathUtils.euclideanModulo(bearing + 180, 360), zoom: 1 };
 };
 
 export const shots = {

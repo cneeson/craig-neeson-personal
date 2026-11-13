@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enter capsule · Craig Neeson</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Instrument+Serif:ital@1&display=swap">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap">
+<style>
+  :root { --ink: #f4efe6; --peach: #f6b98a; --night: #090118; --ease: cubic-bezier(0.65, 0, 0.35, 1); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--night); }
+  body { color: white; font-family: 'Satoshi', sans-serif; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+  .scene { position: fixed; inset: 0; background: url(hero.png) center / cover no-repeat; }
+  .hero { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: center; padding-left: 7vw; }
+  .name { margin: 0; font-family: 'Fraunces', serif; font-size: 7.5vw; line-height: 0.92; font-weight: 400; color: var(--ink);
+    text-shadow: 0 0.04em 0.3em rgba(9, 1, 24, 0.45); }
+  .name .first { font-variation-settings: 'opsz' 144, 'wght' 700; }
+  .name .last { font-style: italic; font-variation-settings: 'opsz' 144, 'wght' 300; }
+  .role { margin: 2vw 0 0; font-size: 2vw; color: #cbd5e1; }
+  .role i { font-family: 'Instrument Serif', serif; font-size: 1.15em; color: white; }
+  .note { position: absolute; left: 41%; top: 15%; font: 600 2vw 'Caveat', cursive; color: var(--peach); transform: rotate(-6deg);
+    text-shadow: 0 0 0.35em rgba(9, 1, 24, 0.9); }
+  .arrow { position: absolute; left: 53.5%; top: 18%; width: 18vw; height: 10.8vw; overflow: visible; }
+  .arrow path { fill: none; stroke: var(--peach); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .slot { margin-top: 1.8vw; min-height: 6vw; display: flex; align-items: center; font-size: clamp(15px, 1.15vw, 17px); }
+  .variant { display: none; }
+  .variant.is-on { display: inline-flex; }
+  .variant:focus-visible { outline: 2px solid rgba(244, 239, 230, 0.6); outline-offset: 6px; }
+
+  /* Two arrows in one cell, for the ones that slip out one side and in the other */
+  .slip { display: grid; overflow: hidden; width: 1.1em; height: 1.1em; }
+  .slip svg { grid-area: 1 / 1; transition: transform 0.45s var(--ease); }
+  .slip svg + svg { transform: translateX(-160%); }
+  [data-hover='slip'] .variant:hover .slip svg:first-child, [data-hover='slip'] .variant:focus-visible .slip svg:first-child { transform: translateX(160%); }
+  [data-hover='slip'] .variant:hover .slip svg + svg, [data-hover='slip'] .variant:focus-visible .slip svg + svg { transform: none; }
+  svg.icon { width: 1.1em; height: 1.1em; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+
+  /* 0: the capsule as it is in the first round, for comparison */
+  .o { align-items: center; gap: 0.9em; padding: 0.95em 1.2em 0.95em 1.7em; border-radius: 999px; background: var(--ink); color: var(--night);
+    font-size: 1.3vw; font-weight: 700; box-shadow: 0 10px 40px rgba(9, 1, 24, 0.45); }
+  .o .cell { display: grid; place-items: center; width: 2em; height: 2em; border-radius: 50%; background: var(--night); color: var(--ink); }
+
+  /* 1: compact. The same anatomy pulled tight: the disc nearly fills the height, 4px of cream round it */
+  .p { align-items: center; gap: 0.85em; height: 64px; padding: 5px 5px 5px 1.5em; border-radius: 999px; background: var(--ink); color: var(--night);
+    font-weight: 600; letter-spacing: 0.01em; box-shadow: 0 6px 24px rgba(9, 1, 24, 0.35); transition: gap 0.45s var(--ease), background-color 0.3s; }
+  .p .cell { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%; background: var(--night); color: var(--ink);
+    transition: transform 0.45s var(--ease); }
+
+  /* 2: slim. No disc, just the words and the arrow in the capsule; the arrow slips through on hover */
+  .q { align-items: center; gap: 0.6em; height: 64px; padding: 0 1.6em 0 1.85em; border-radius: 999px; background: var(--ink); color: var(--night);
+    font-weight: 600; letter-spacing: 0.01em; box-shadow: 0 6px 24px rgba(9, 1, 24, 0.35); transition: background-color 0.3s; }
+  .q .slip { width: 1em; height: 1em; }
+
+  /* 3: glass. Smoked and blurred over the planet at rest, the cream disc the one solid thing; the whole capsule fills on hover */
+  .r { align-items: center; gap: 0.85em; height: 64px; padding: 5px 5px 5px 1.5em; border-radius: 999px; color: var(--ink);
+    background: rgba(244, 239, 230, 0.1); border: 1px solid rgba(244, 239, 230, 0.28); backdrop-filter: blur(10px);
+    font-weight: 500; letter-spacing: 0.01em; transition: background-color 0.4s, color 0.4s, border-color 0.4s; }
+  .r .cell { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--ink); color: var(--night);
+    transition: background-color 0.4s, color 0.4s; }
+
+  /* 4: tracked caps. Small spaced capitals, quieter and more editorial, in the compact capsule */
+  .s { align-items: center; gap: 1em; height: 64px; padding: 5px 5px 5px 1.7em; border-radius: 999px; background: var(--ink); color: var(--night);
+    font-size: 0.8em; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; box-shadow: 0 6px 24px rgba(9, 1, 24, 0.35);
+    transition: gap 0.45s var(--ease), background-color 0.3s; }
+  .s .cell { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%; background: var(--night); color: var(--ink);
+    font-size: 16px; letter-spacing: 0; }
+
+
+  /* ---- The hovers, any of them on any shape ---- */
+  .variant { position: relative; isolation: isolate; --flood: var(--night); --on-flood: var(--ink); }
+  .r { --flood: var(--ink); --on-flood: var(--night); }
+  .variant > span, .variant > .slip { position: relative; z-index: 1; }
+  .label { display: inline-flex; overflow: hidden; height: 1.3em; line-height: 1.3em; }
+  .ch { display: inline-block; white-space: pre; text-shadow: 0 1.3em currentColor; transition: transform 0.5s var(--ease); transition-delay: calc(var(--i) * 28ms); }
+
+  /* Slip: today's, the arrow out one side and in the other, and the capsule brightens */
+  [data-hover='slip'] .variant:not(.r):hover { background: #fff; }
+
+  /* Flood: the dark of the disc spills out and fills the capsule, the words turning cream */
+  [data-hover='flood'] .variant { overflow: hidden; transition: color 0.45s var(--ease); }
+  [data-hover='flood'] .variant::before { content: ''; position: absolute; z-index: 0; right: 32px; top: 50%; width: 54px; height: 54px; margin: -27px -27px 0 0;
+    border-radius: 50%; background: var(--flood); transform: scale(0); transition: transform 0.6s var(--ease); }
+  [data-hover='flood'] .variant:hover::before, [data-hover='flood'] .variant:focus-visible::before { transform: scale(9); }
+  [data-hover='flood'] .variant:hover, [data-hover='flood'] .variant:focus-visible { color: var(--on-flood); }
+  [data-hover='flood'] .cell { transition: background-color 0.45s var(--ease), color 0.45s var(--ease); }
+  [data-hover='flood'] .variant:hover .cell, [data-hover='flood'] .variant:focus-visible .cell { background: var(--ink); color: var(--night); }
+  [data-hover='flood'] .r:hover .cell, [data-hover='flood'] .r:focus-visible .cell { background: var(--night); color: var(--ink); }
+  [data-hover='flood'] .variant:hover { box-shadow: inset 0 0 0 1px rgba(244, 239, 230, 0.5); }
+
+  /* Lift: nothing moves inside; the capsule rises a little and its shadow deepens */
+  [data-hover='lift'] .variant { transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease), background-color 0.4s; }
+  [data-hover='lift'] .variant:hover, [data-hover='lift'] .variant:focus-visible { transform: translateY(-3px); box-shadow: 0 14px 34px rgba(9, 1, 24, 0.55); }
+  [data-hover='lift'] .r:hover { background: rgba(244, 239, 230, 0.18); }
+
+  /* Halo: a soft ring of cream breathes out round it and stays */
+  /* At rest the same shadows at nothing, so the ring and the glow grow out from the edge rather than fade in */
+  [data-hover='halo'] .variant { transition: box-shadow 0.45s cubic-bezier(0.33, 1, 0.68, 1);
+    box-shadow: 0 0 0 0 rgba(244, 239, 230, 0.38), 0 0 0 0 rgba(244, 239, 230, 0.5), 0 0 0 0 rgba(244, 239, 230, 0.22); }
+  [data-hover='halo'] .variant:hover, [data-hover='halo'] .variant:focus-visible {
+    box-shadow: 0 0 0 6px rgba(244, 239, 230, 0.38), 0 0 28px 4px rgba(244, 239, 230, 0.5), 0 0 70px rgba(244, 239, 230, 0.22); }
+
+  /* Roll: the word rolls up letter by letter and comes back from below; the arrow stays put */
+  [data-hover='roll'] .variant:hover .ch, [data-hover='roll'] .variant:focus-visible .ch { transform: translateY(-1.3em); }
+
+  /* Magnet: the capsule leans towards the pointer and the disc further still (in the script) */
+  [data-hover='magnet'] .variant, [data-hover='magnet'] .variant .cell { transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+
+  .picker.hovers { bottom: 82px; }
+  .picker { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; border-radius: 999px;
+    background: rgba(9, 1, 24, 0.85); border: 1px solid rgba(255, 255, 255, 0.15); }
+  .picker button { padding: 9px 15px; border-radius: 999px; font-weight: 600; font-size: 13px; color: rgba(255, 255, 255, 0.75); }
+  .picker button[aria-pressed='true'] { background: rgba(244, 239, 230, 0.16); color: white; }
+  .caption { position: fixed; left: 50%; bottom: 140px; transform: translateX(-50%); max-width: 640px; text-align: center;
+    font-size: 14px; line-height: 1.5; color: rgba(255, 255, 255, 0.8); text-shadow: 0 1px 8px rgba(9, 1, 24, 0.9); }
+</style>
+</head>
+<body>
+<div class="scene"></div>
+
+<section class="hero">
+  <h1 class="name"><span class="first">Craig</span> <span class="last">Neeson</span></h1>
+  <p class="role">Senior <i>Frontend</i> Engineer</p>
+
+  <div class="slot" data-hover="slip">
+    <button class="variant o" data-key="o"><span class="label">Enter</span><span class="cell"><span class="slip"><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span></span></button>
+    <button class="variant p" data-key="p"><span class="label">Enter</span><span class="cell"><span class="slip"><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span></span></button>
+    <button class="variant q" data-key="q"><span class="label">Enter</span><span class="slip"><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span></button>
+    <button class="variant r" data-key="r"><span class="label">Enter</span><span class="cell"><span class="slip"><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span></span></button>
+    <button class="variant s" data-key="s"><span class="label">Enter</span><span class="cell"><span class="slip"><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span></span></button>
+  </div>
+
+  <span class="note">based in Belfast</span>
+  <svg class="arrow" viewBox="0 0 150 90" aria-hidden="true"><path d="M6 8 C 40 4, 92 14, 128 66"/><path d="M112 60 L 129 68 L 131 49"/></svg>
+</section>
+
+<p class="caption"></p>
+<nav class="picker hovers" aria-label="Hover"></nav>
+<nav class="picker shapes" aria-label="Shape"></nav>
+
+<script>
+  const options = {
+    o: ['First round', 'The capsule as it was: about 73px tall, as loud as the name. For comparison.'],
+    p: ['1 · Compact', 'The same anatomy pulled tight: 64px tall, the dark disc nearly filling it with a 4px rim of cream.'],
+    q: ['2 · Slim', 'No disc: just the words and the arrow in a 64px cream capsule. The simplest and smallest.'],
+    r: ['3 · Glass', 'Smoked and blurred over the planet at rest, with the cream disc the one solid thing. Lighter on the page.'],
+    s: ['4 · Tracked caps', 'The compact capsule with "ENTER" in small spaced capitals. Quieter and more editorial, and it stays clear of the serif above.'],
+  };
+  const hovers = {
+    slip: ['Slip (today)', 'The arrow slips out one side and back in the other.'],
+    flood: ['Flood', 'The disc\'s dark spills out and fills the capsule, turning the words cream.'],
+    lift: ['Lift', 'Nothing moves inside: the capsule rises a few pixels and its shadow deepens.'],
+    halo: ['Halo', 'A ring of cream and a glow grow out from the capsule\'s edge, quickly, and stay.'],
+    roll: ['Roll', 'The word rolls up letter by letter and back in from below.'],
+    magnet: ['Magnet', 'The capsule leans towards the pointer, and the disc further still.'],
+  };
+  const slot = document.querySelector('.slot');
+  const hoverPicker = document.querySelector('.picker.hovers');
+  let hoverNote = hovers.slip[1];
+  for (const [key, [label]] of Object.entries(hovers)) {
+    const button = document.createElement('button');
+    button.dataset.hover = key;
+    button.textContent = label;
+    button.addEventListener('click', () => setHover(key));
+    hoverPicker.append(button);
+  }
+  const setHover = key => {
+    slot.dataset.hover = key;
+    hoverPicker.querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.hover === key)));
+    hoverNote = hovers[key][1];
+    show(location.hash.slice(1) || 'p');
+  };
+  document.querySelectorAll('.label').forEach(label => {
+    label.setAttribute('aria-label', label.textContent);
+    label.innerHTML = [...label.textContent].map((ch, i) => `<span class="ch" style="--i:${i}" aria-hidden="true">${ch}</span>`).join('');
+  });
+  document.querySelectorAll('.variant').forEach(variant => {
+    const cell = variant.querySelector('.cell');
+    variant.addEventListener('pointermove', event => {
+      if (slot.dataset.hover !== 'magnet') return;
+      const box = variant.getBoundingClientRect();
+      const x = (event.clientX - box.left - box.width / 2) / box.width;
+      const y = (event.clientY - box.top - box.height / 2) / box.height;
+      variant.style.transform = `translate(${x * 10}px, ${y * 8}px)`;
+      if (cell) cell.style.transform = `translate(${x * 8}px, ${y * 6}px)`;
+    });
+    variant.addEventListener('pointerleave', () => { variant.style.transform = ''; if (cell) cell.style.transform = ''; });
+  });
+  const picker = document.querySelector('.picker.shapes');
+  const caption = document.querySelector('.caption');
+  const show = key => {
+    document.querySelectorAll('.variant').forEach(variant => {
+      const isOn = variant.dataset.key === key;
+      variant.classList.toggle('is-on', isOn);
+      variant.classList.remove('is-drawn');
+    });
+    picker.querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.key === key)));
+    caption.textContent = `${options[key][1]}  Hover: ${hoverNote}`;
+    // D's loop is drawn once as it arrives
+    if (key === 'd') requestAnimationFrame(() => setTimeout(() => document.querySelector('.d').classList.add('is-drawn'), 300));
+    history.replaceState(null, '', `#${key}`);
+  };
+  for (const [key, [label]] of Object.entries(options)) {
+    const button = document.createElement('button');
+    button.dataset.key = key;
+    button.textContent = label;
+    button.addEventListener('click', () => show(key));
+    picker.append(button);
+  }
+  document.addEventListener('keydown', event => {
+    const keys = Object.keys(options);
+    const index = keys.indexOf(location.hash.slice(1));
+    if (event.key === 'ArrowRight') show(keys[(index + 1) % keys.length]);
+    if (event.key === 'ArrowLeft') show(keys[(index - 1 + keys.length) % keys.length]);
+  });
+  show(options[location.hash.slice(1)] ? location.hash.slice(1) : 'p');
+  setHover('halo');
+</script>
+</body>
+</html>

@@ -5,6 +5,7 @@ import ActionLink from '@/components/action-link.vue';
 import { route, skipIntro } from '@/scene/director';
 import { onOverlayFrame, screenOnEarth } from '@/scene/overlay';
 import { onEarth, PLACES } from '@/scene/planet/geo';
+import { sceneState } from '@/scene/state';
 
 const first = 'Craig';
 const last = 'Neeson';
@@ -50,34 +51,102 @@ const writeNote = () => {
 
 let context: gsap.Context | undefined;
 let isWritten = false;
+let writing: gsap.core.Timeline | undefined;
+/** Set once Enter's pressed: the title's leaving, and mustn't start writing in if it hadn't yet. */
+let isLeaving = false;
+let leaving: gsap.core.Animation | undefined;
 let fallback: number | undefined;
+
+/** Everything hidden, ready to come in: below its line, or not yet written or drawn. */
+const hide = () => {
+  // Back from being left behind (leave())
+  gsap.set('.hero .name, .hero .role, .hero .note, .hero .arrow, [data-intro="enter"]', { clearProps: 'transform,transformOrigin,filter,opacity,visibility' });
+  gsap.set('.hero .intro, .hero .arrow', { autoAlpha: 1 });
+  gsap.set('[data-intro="first"], [data-intro="last"]', { yPercent: 115, rotate: 8, autoAlpha: 1 });
+  gsap.set('[data-intro="last"]', { fontVariationSettings: "'opsz' 144, 'wght' 700" });
+  gsap.set('[data-intro="word"]', { yPercent: 120, autoAlpha: 1 });
+  gsap.set('[data-intro="enter"]', { autoAlpha: 0, y: 12, scale: 1 });
+  gsap.set(noteRef.value!, { '--p': '0px' });
+  // pathLength 1: the dash is the whole stroke, pushed past its start (and its round cap) until it's drawn
+  gsap.set([shaft.value!, head.value!], { attr: { 'stroke-dasharray': '1 1.2', 'stroke-dashoffset': 1.1 } });
+};
 
 /**
  * The title, once the planet's risen into view: the name's letters rise sharp through a line, the surname landing in
  * bold and relaxing into its light italic, then the role word by word. Then the note's written, the arrow drawn from it
- * to Belfast, and the way in appears.
+ * to Belfast, and the way in appears as the country's border is traced where it lands.
  */
 const writeIn = (delay: number) => {
-  if (isWritten) return;
+  // Not over a stop the site opened straight onto
+  if (isWritten || !route.isHeroUp) return;
   isWritten = true;
   // The note's letters must be in their own font before they're measured
   document.fonts.ready.then(() => context?.add(() => {
-    const timeline = gsap.timeline({ delay })
+    if (isLeaving) return;
+    const timeline = writing = gsap.timeline({ delay })
       .to('[data-intro="first"]', { yPercent: 0, rotate: 0, duration: 1.1, stagger: 0.05, ease: 'expo.out' }, 0)
       .to('[data-intro="last"]', { yPercent: 0, rotate: 0, duration: 1.1, stagger: 0.045, ease: 'expo.out' }, 0.4)
       .to('[data-intro="last"]', {
         fontVariationSettings: "'opsz' 144, 'wght' 300", duration: 1.3, stagger: 0.04, ease: 'power2.inOut',
       }, 1.05)
       .to('[data-intro="word"]', { yPercent: 0, duration: 0.9, stagger: 0.1, ease: 'expo.out' }, 1.45)
-      .add(writeNote(), 2.35)
-      // The arrow: the shaft in one stroke, a pause, the head
-      .to(shaft.value!, { strokeDashoffset: 0, duration: 0.55, ease: 'power1.in' }, '>+0.12')
-      .to(head.value!, { strokeDashoffset: 0, duration: 0.22, ease: 'power1.out' }, '>+0.08')
-      .to('[data-intro="enter"]', { autoAlpha: 1, y: 0, duration: 0.7, ease: 'power2.out' }, '>-0.25')
+      // Written as the role's last words settle, and quicker than a hand would write it
+      .add(writeNote().timeScale(2.2), 1.85)
+      // The arrow: the shaft in one quick stroke, a beat, the head. As attributes: CSS would round the offset to whole
+      // pixels, and with the stroke's length counted as 1 it would jump from hidden to drawn
+      .to(shaft.value!, { attr: { 'stroke-dashoffset': 0 }, duration: 0.42, ease: 'sine.inOut' }, '>+0.04')
+      .to(head.value!, { attr: { 'stroke-dashoffset': 0 }, duration: 0.18, ease: 'sine.out' }, '>+0.04')
+      .addLabel('drawn')
+      .to(sceneState, { traced: 1, duration: 1.6, ease: 'power1.inOut' }, 'drawn')
+      .to('[data-intro="enter"]', { autoAlpha: 1, y: 0, duration: 0.7, ease: 'power2.out' }, 'drawn-=0.25')
       .fromTo('[data-intro="enter"] .mark', { scale: 0.6, rotate: -90 },
         { scale: 1, rotate: 0, duration: 0.7, ease: 'back.out(1.6)' }, '<+0.1');
     if (prefersReducedMotion) timeline.progress(1);
   }));
+};
+
+/**
+ * The title leaving, once Enter's pressed: left behind as the camera sets off towards Belfast. Each part swells away
+ * from where the camera's heading, blurring and fading as it passes, the name first as the nearest,
+ * then the role, as if each hung a little further off. The button, the note and its arrow go at once, where they are.
+ */
+const leave = () => {
+  isLeaving = true;
+  writing?.kill();
+  context?.add(() => {
+    // The button, the note and its arrow go the moment it's pressed, where they are, so nothing holds the eye from the
+    // camera setting off (the note marks a place on the planet rather than hanging in front of it, so it isn't passed)
+    gsap.set(['[data-intro="enter"]', '.hero .note', '.hero .arrow'], { autoAlpha: 0 });
+    if (prefersReducedMotion) {
+      leaving = gsap.to('.hero .intro', { autoAlpha: 0, duration: 0.3 });
+      return;
+    }
+    // Scaled about a point between the middle of the screen and Belfast, roughly where the camera's heading
+    const ahead = { x: (innerWidth / 2 + belfast.x) / 2, y: (innerHeight / 2 + belfast.y) / 2 };
+    const fromAhead = (element: Element) => {
+      const box = element.getBoundingClientRect();
+      return `${ahead.x - box.left}px ${ahead.y - box.top}px`;
+    };
+    const passed = (scale: number, duration: number) => ({
+      scale, autoAlpha: 0, filter: 'blur(6px)', duration, ease: 'power2.in',
+      transformOrigin: (_: number, element: Element) => fromAhead(element), immediateRender: false,
+    });
+    leaving = gsap.timeline()
+      .to('.hero .name', passed(1.55, 1), 0)
+      .to('.hero .role', passed(1.4, 1.05), 0.04);
+  });
+};
+
+/** How long after climbing back out of the city (the back button) the title starts to write in again (s). */
+const RETURN_DELAY = 2;
+
+/** Back to the title from the city: written in again, from the start, as the camera arrives at the planet. */
+const comeBack = () => {
+  isLeaving = false;
+  isWritten = false;
+  leaving?.kill();
+  context?.add(hide);
+  writeIn(RETURN_DELAY);
 };
 
 // --- The arrow, from the note to Belfast on the planet, wherever it's turned to ---
@@ -86,6 +155,8 @@ const BELFAST = onEarth(PLACES.belfast.lat, PLACES.belfast.lon).multiplyScalar(1
 const belfast = { x: 0, y: 0 };
 /** The note's box on screen, less the padding that makes room for its loops. Measured when the layout changes. */
 let noteBox: { left: number, top: number, right: number, bottom: number } | null = null;
+/** Its two ends, level with the middle of the lowercase letters (the line's tilted, so not the box's middle). */
+let ends: { start: { x: number, y: number }, end: { x: number, y: number } } | null = null;
 let em = 16;
 
 const measure = () => {
@@ -95,6 +166,14 @@ const measure = () => {
   em = parseFloat(getComputedStyle(element).fontSize);
   const inset = 0.4 * em;
   noteBox = { left: box.left + inset, top: box.top + inset, right: box.right - inset, bottom: box.bottom - inset };
+  const first = letters.value[0]?.getBoundingClientRect();
+  const last = letters.value[letters.value.length - 1]?.getBoundingClientRect();
+  if (first && last) {
+    ends = {
+      start: { x: first.left, y: first.top + first.height * 0.6 },
+      end: { x: last.right, y: last.top + last.height * 0.6 },
+    };
+  }
 };
 
 /** A curve from the side of the note facing Belfast, bowed like a flick of the wrist, stopping just short of it. */
@@ -107,7 +186,9 @@ const drawArrow = (to: { x: number, y: number }) => {
   // Off the end of the line if Belfast's more to the side than above or below it, otherwise from under it
   const fromSide = Math.abs(toX) * (bottom - top) > Math.abs(toY) * (right - left);
   const start = fromSide
-    ? { x: toX > 0 ? right + 0.15 * em : left - 0.15 * em, y: centre.y + 0.2 * em }
+    ? toX > 0
+      ? { x: (ends?.end.x ?? right) + 0.2 * em, y: ends?.end.y ?? centre.y }
+      : { x: (ends?.start.x ?? left) - 0.2 * em, y: ends?.start.y ?? centre.y }
     : { x: centre.x + toX * 0.15, y: toY > 0 ? bottom + 0.1 * em : top - 0.1 * em };
   const dx = to.x - start.x;
   const dy = to.y - start.y;
@@ -134,25 +215,26 @@ const drawArrow = (to: { x: number, y: number }) => {
 };
 
 let stopArrow: (() => void) | undefined;
+let resizing: ResizeObserver | undefined;
+const introRef = ref<HTMLElement>();
 
 onMounted(() => {
   context = gsap.context(() => {
     // Hidden until the planet's up (its textures may take a while), but not for long if it never comes up
-    gsap.set('[data-intro="first"], [data-intro="last"]', { yPercent: 115, rotate: 8 });
-    gsap.set('[data-intro="last"]', { fontVariationSettings: "'opsz' 144, 'wght' 700" });
-    gsap.set('[data-intro="word"]', { yPercent: 120 });
-    gsap.set('[data-intro="enter"]', { autoAlpha: 0, y: 12 });
-    gsap.set(noteRef.value!, { '--p': '0px' });
-    // pathLength 1: the dash is the whole stroke, pushed past its start (and its round cap) until it's drawn
-    gsap.set([shaft.value!, head.value!], { strokeDasharray: '1 1.2', strokeDashoffset: 1.1 });
+    hide();
   });
   watch(() => route.isPlanetUp, isUp => isUp && writeIn(2.4), { immediate: true });
+  watch(() => route.isHeroUp, isUp => (isUp ? comeBack() : leave()));
   fallback = window.setTimeout(() => writeIn(0), 8000);
 
   document.fonts.ready.then(measure);
   window.addEventListener('resize', measure);
+  // And as the title's width changes: the name narrows as it relaxes from bold into its light italic, moving the note
+  resizing = new ResizeObserver(measure);
+  if (introRef.value) resizing.observe(introRef.value);
   stopArrow = onOverlayFrame(camera => {
-    if (!route.isHeroUp || !arrow.value) return;
+    // Only while the title's up: the arrow goes the moment Enter's pressed
+    if (!route.isHeroUp || !arrow.value || route.isIntroDone) return;
     const at = screenOnEarth(BELFAST, camera, arrow.value.clientWidth, arrow.value.clientHeight, belfast);
     arrow.value.classList.toggle('is-lost', !at);
     if (at) drawArrow(at);
@@ -162,6 +244,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.clearTimeout(fallback);
   window.removeEventListener('resize', measure);
+  resizing?.disconnect();
   stopArrow?.();
   context?.revert();
 });
@@ -170,7 +253,7 @@ onBeforeUnmount(() => {
 <template>
   <!-- The title beside the planet, until Enter sets off down to Belfast -->
   <section class="hero" :class="{ 'is-gone': !route.isHeroUp }">
-    <div class="intro">
+    <div ref="introRef" class="intro">
       <h1 class="name" :aria-label="`${first} ${last}`">
         <span class="clip" aria-hidden="true"><span class="first">
           <span v-for="(letter, index) in first" :key="index" class="char" data-intro="first">{{ letter }}</span>
@@ -188,7 +271,7 @@ onBeforeUnmount(() => {
         <span class="clip"><span class="word" data-intro="word">Engineer</span></span>
       </p>
 
-      <ActionLink ring class="enter" data-intro="enter" @click="skipIntro">Come in</ActionLink>
+      <ActionLink primary class="enter" data-intro="enter" @click="skipIntro">Enter</ActionLink>
 
       <p ref="noteRef" class="note" :aria-label="note">
         <span
@@ -221,14 +304,9 @@ $peach: #f6b98a;
     @apply items-center justify-start text-left pt-0 pl-[7vw];
   }
 
-  transition: opacity 1.2s ease, transform 1.2s ease, visibility 0s linear 0s;
-
+  // Its parts are left behind (leave(), which hides each as it goes); out of the way meanwhile
   &.is-gone {
-    opacity: 0;
-    transform: translateY(-40px);
-    visibility: hidden;
     pointer-events: none;
-    transition: opacity 1.2s ease, transform 1.2s ease, visibility 0s linear 1.2s;
   }
 }
 
@@ -259,8 +337,10 @@ $peach: #f6b98a;
   white-space: nowrap;
   text-shadow: 0 0.04em 0.3em rgba(9, 1, 24, 0.45);
 
+  // Beside the planet, never reaching it, even in bold as it writes in (about 5.47em wide, from 7vw): the planet's
+  // edge is near 66.4vw - 31.4vh, and this leaves 2vw between them
   @media (min-aspect-ratio: 1/1) {
-    font-size: clamp(3.5rem, 7.5vw, 9rem);
+    font-size: clamp(2.5rem, min(7.5vw, 10.5vw - 5.74vh), 9rem);
   }
 
   .char {
@@ -310,7 +390,7 @@ $peach: #f6b98a;
   @apply mt-8;
 
   @media (min-aspect-ratio: 1/1) {
-    @apply mt-[2.6vw];
+    @apply mt-[2.5vw];
 
     font-size: clamp(1rem, 1.25vw, 1.4rem);
   }
@@ -327,7 +407,7 @@ $peach: #f6b98a;
   margin: -0.5em;
   font-family: 'Caveat', cursive;
   font-weight: 600;
-  font-size: 7vw;
+  font-size: 6vw;
   line-height: 1;
   color: $peach;
   white-space: nowrap;
@@ -340,9 +420,9 @@ $peach: #f6b98a;
   @media (min-aspect-ratio: 1/1) {
     top: auto;
     right: auto;
-    bottom: calc(100% + 7vh);
+    bottom: calc(100% + 4vh);
     left: 68%;
-    font-size: clamp(1.4rem, 2.4vw, 2.8rem);
+    font-size: clamp(1.2rem, 2vw, 2.4rem);
     transform: rotate(-6deg);
   }
 

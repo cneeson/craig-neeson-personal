@@ -66,7 +66,7 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - Type: one job per face (loaded in `public/index.html`). Fraunces for the name and headings (the surname always in
   its light italic), Instrument Serif's italic for a word of emphasis (and the menu's current page), Caveat for the
   hero's one note and nothing else, Satoshi for the rest. Buttons are `action-link.vue`: words and an arrow, the
-  screen's main action (`ring`) with its arrow in a ring; no pills. Cream (`#f4efe6`) for actions, peach for the hand.
+  screen's main action (`primary`) a cream capsule with the arrow in a dark disc, a halo growing out on hover. Cream (`#f4efe6`) for actions, peach for the hand.
 - `src/components/PlanetScene.vue`: the Tres scene (earth, clouds, atmosphere, stars, markers, bloom + SMAA) and
   the render loop. Must stay inside `<Suspense>` because it awaits textures.
 - `src/scene/earth.ts`: the earth's material (the day map plus NASA Black Marble city lights where the scene's sun
@@ -85,8 +85,7 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   attribution (logo + data providers) must stay visible while they're on screen (`city-attribution.vue`).
 - `src/components/cloud-veil.vue`: full-screen cloud layer hiding the planet ↔ city switch (`veilAt`). It holds,
   then fades, if the city hasn't loaded by the time the reader gets there.
-- `src/components/planet-hud.vue`: DOM overlays pinned to the planet (the forecast, the lock-on to Belfast, the
-  labels where the reach arcs land). Positioned every frame through `onOverlayFrame` (`src/scene/overlay.ts`), which
+- `src/components/planet-hud.vue`: DOM overlays pinned to the planet (the labels where the reach arcs land). Positioned every frame through `onOverlayFrame` (`src/scene/overlay.ts`), which
   the render loop calls with the camera; shown and hidden in time by class.
 - `src/components/city-signs.vue`: Experience's text over Belfast. Each employer gets a callout flat to the screen,
   with a dot on its building and a leader up to a card kept inside the viewport (in the sky instead if the building's
@@ -111,7 +110,12 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   kilometre at Coleraine. The ground there is ~45 units down, with the earth's curve.
 - `src/scene/planet/`: the effects on the planet. `clouds.ts` patches the cloud layer to gather over Northern Ireland
   and part over it (the centre must be turned into the cloud mesh's spinning space); `highlight.ts` traces the
-  outline (`northern-ireland.ts`, from Natural Earth) and scans the land; `arcs.ts` draws the arcs to the HQs.
+  outline (`northern-ireland.ts`, from Natural Earth) and scans the land; `belfast-sign.ts` is Belfast's name in a
+  contour, hung over it on the way down at the distance of a point on the glide (`SIGN_PASS`), so the camera flies
+  through it; `cloud-deck.ts` is a deck of heaped cloud above the planet's, over Belfast, which the camera comes
+  down through after the sign (`deckAt`): a stack of slices over a map of the cloud baked once in the warm-up (each
+  slice needs denser cloud the higher it is, so they dome). Close to it, it reaches out past the horizon, the map
+  mirrored beyond its edges, so it seems to go all round the planet; `arcs.ts` draws the arcs to the HQs.
   `geo.ts` converts lat/lon to the earth group's space (`onEarth`) and holds `EARTH_POSITION`.
 - `src/scene/choreography.ts`: the planet's part, as a pure function of the journey's progress (0..1), which the
   director tweens (the intro's glide, the climb out to `reach` and back). It holds the `windows` (hero, forecast,
@@ -135,7 +139,7 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   boat comes down the Lagan. The plane and boats are bigger, and fly or sail closer, than they would in life, so
   they read. `traffic.ts` drives cars along the main roads near the shots (plus a few named streets they show),
   all on the GPU in two draw calls (models and points): the roads are points in a texture and each car's place is
-  worked out from the time. Within 100 units they're little models (bigger than life close up); further off, points, fading out by 400. They sit
+  worked out from the time. Within 100 units they're little models (small enough to stay in their lanes); further off, points, fading out by 650. They sit
   on a top-down height render of the tiles around the camera, refreshed every second, in the browser only, like the
   tiles. `photo-materials.ts` holds the tile shader (haze and drifting cloud shadows, shared with the overlays) and
   the day sky.
@@ -178,6 +182,9 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   sized in `100lvh` so mobile address-bar changes don't resize the canvas.
 
 ## Verifying visually
+
+Add `?debug` to the address for the checking tools: the descent's speed, and a hand-held city camera that reads
+off its pose (for placing shots in `shots.ts`).
 
 Run the site (or `npm run build` and serve `dist/`) and screenshot the stops (set `location.hash`, e.g.
 `#experience/flexera`, and wait for the move) with headless Chrome via Playwright, at desktop size (e.g. 1440×900) and at a phone size with touch and

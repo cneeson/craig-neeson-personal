@@ -57,10 +57,11 @@ const AHEAD_VIEWS = 2;
 const SETTLE_FRAMES = 10;
 
 /**
- * Seconds the reader waits in the clouds (on a slow connection) before the city shows whatever has
- * loaded so far, or, if nothing has, gives up (and the clouds stay).
+ * Seconds the reader waits in the clouds (on a slow connection, told so by city-loading.vue) before the city shows
+ * whatever has loaded so far, or, if nothing has, gives up (and the clouds stay). Long enough that it rarely clears
+ * onto a city still only in its coarsest tiles.
  */
-const MAX_WAIT = { partial: 6, nothing: 12 };
+const MAX_WAIT = { partial: 15, nothing: 20 };
 
 /**
  * Belfast from Google's photorealistic 3D tiles. The tiles renderer loads whatever its cameras need, so

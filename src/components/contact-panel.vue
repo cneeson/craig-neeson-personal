@@ -35,7 +35,7 @@ const links = [
       I'm currently open to hybrid Senior Frontend Developer roles based in Dublin and Belfast. I'd love to hear from you,
       and please feel free to take a copy of my CV with you.
     </p>
-    <ActionLink ring icon="download" class="cv" href="docs/craig-neeson-cv.pdf" download>Download my CV</ActionLink>
+    <ActionLink primary icon="download" class="cv" href="docs/craig-neeson-cv.pdf" download>Download my CV</ActionLink>
     <ul class="links">
       <li v-for="link in links" :key="link.label">
         <a :href="link.href" target="_blank" rel="noopener" class="link">

@@ -8,6 +8,8 @@ export const sceneState = {
     progress: 0,
     /** The planet's first appearance, 0 → 1 (see entranceAt in choreography.ts). */
     entrance: 0,
+    /** Northern Ireland's border traced on from orbit, 0 → 1, once the hero's arrow to it is drawn (hero.vue). */
+    traced: 0,
     /** Set once the Belfast flythrough has loaded (it's fetched in the background after the planet). */
     cityReady: false,
     /** The planet's spin (radians), written by the render loop for the overlays pinned to it. */

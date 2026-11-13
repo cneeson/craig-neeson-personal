@@ -11,13 +11,13 @@ export const quality = isMobile
       dpr: Math.min(window.devicePixelRatio, 1.5),
       textureDir: 'textures/earth/low-res/',
       sphereSegments: 64,
-      starCounts: [300, 1500, 4000],
+      starCounts: [400, 4000, 16000],
       canvasBlur: 16,
     }
   : {
       dpr: Math.min(window.devicePixelRatio, 2),
       textureDir: 'textures/earth/',
       sphereSegments: 96,
-      starCounts: [500, 3000, 12000],
+      starCounts: [800, 9000, 48000],
       canvasBlur: 32,
     }

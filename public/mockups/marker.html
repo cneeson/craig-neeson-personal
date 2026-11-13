@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marker colour and finish · Craig Neeson</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap">
+<style>
+  :root { --night: #090118; --m: #f6b98a; --m-deep: #c9814f; --m-light: #ffe2c9; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--night); }
+  body { color: white; font-family: 'Satoshi', sans-serif; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+  /* Today's hero at 1440 × 900 with the note and arrow taken out, scaled to cover the window like the canvas */
+  .stage { position: absolute; left: 50%; top: 50%; width: 1440px; height: 900px; transform-origin: center;
+    background: url(marker-bg.png) center / cover no-repeat; }
+
+  .note { position: absolute; left: 450.8px; top: 232px; padding: 14.4px; font: 600 28.8px/1.2 'Caveat', cursive; white-space: nowrap;
+    transform: rotate(-6deg); color: var(--m); }
+  /* Room round each letter: Caveat's loops reach well outside their boxes, and a fill clipped to the text stops at the box */
+  .note .ch { display: inline-block; white-space: pre; padding: 0.3em 0.12em; margin: -0.3em -0.12em; }
+  .arrow { position: absolute; inset: 0; width: 1440px; height: 900px; overflow: visible; pointer-events: none; }
+  .arrow path { fill: none; stroke: var(--m); stroke-width: 2.45px; stroke-linecap: round; stroke-linejoin: round; }
+  .arrow .shine { display: none; }
+
+  /* Flat: today's */
+  [data-finish='flat'] .note { text-shadow: 0 0 0.04em color-mix(in srgb, var(--m) 60%, transparent), 0 0 0.35em rgba(9, 1, 24, 0.9); }
+  [data-finish='flat'] .arrow path { filter: drop-shadow(0 0 1px color-mix(in srgb, var(--m) 60%, transparent)) drop-shadow(0 0 6px rgba(9, 1, 24, 0.8)); }
+
+  /* Ink: a real felt tip. Ragged edges, each letter a little heavier or lighter where the pen pressed, the ink pooling
+     darker at the foot of the strokes */
+  [data-finish='ink'] .note { color: transparent; filter: url(#rough) drop-shadow(0 0 5px rgba(9, 1, 24, 0.85)); }
+  [data-finish='ink'] .note .ch { background: linear-gradient(175deg, var(--m-light) 0%, var(--m) 45%, var(--m-deep) 110%);
+    -webkit-background-clip: text; background-clip: text; opacity: var(--press); }
+  [data-finish='ink'] .arrow { filter: url(#rough) drop-shadow(0 0 5px rgba(9, 1, 24, 0.85)); }
+  [data-finish='ink'] .arrow .shaft { stroke-width: 2.7px; }
+
+  /* Glow: written in light, like a neon pen against space */
+  [data-finish='glow'] .note { color: var(--m-light);
+    text-shadow: 0 0 2px var(--m), 0 0 8px var(--m), 0 0 22px color-mix(in srgb, var(--m) 55%, transparent), 0 0 44px color-mix(in srgb, var(--m) 30%, transparent); }
+  [data-finish='glow'] .arrow path { stroke: var(--m-light);
+    filter: drop-shadow(0 0 2px var(--m)) drop-shadow(0 0 7px var(--m)) drop-shadow(0 0 18px color-mix(in srgb, var(--m) 50%, transparent)); }
+
+  /* Chalk: a dry marker, the ink broken up by grain */
+  [data-finish='chalk'] .note { font-weight: 700; filter: url(#grain) drop-shadow(0 0 5px rgba(9, 1, 24, 0.85)); }
+  [data-finish='chalk'] .arrow { filter: url(#grain) drop-shadow(0 0 5px rgba(9, 1, 24, 0.85)); }
+  [data-finish='chalk'] .arrow path { stroke-width: 3px; }
+
+  /* Paint pen: opaque and raised a little off the page, a lighter top edge and a shadow under */
+  [data-finish='paint'] .note { color: transparent;
+    filter: drop-shadow(0 1.5px 0 var(--m-deep)) drop-shadow(0 3px 5px rgba(9, 1, 24, 0.75)); }
+  [data-finish='paint'] .note .ch { background: linear-gradient(180deg, var(--m-light) 18%, var(--m) 55%);
+    -webkit-background-clip: text; background-clip: text; }
+  [data-finish='paint'] .arrow { filter: drop-shadow(0 1.5px 0 var(--m-deep)) drop-shadow(0 3px 5px rgba(9, 1, 24, 0.75)); }
+  [data-finish='paint'] .arrow path { stroke-width: 3px; }
+  [data-finish='paint'] .arrow .shine { display: inline; stroke: var(--m-light); stroke-width: 1px; opacity: 0.85; transform: translate(-0.4px, -0.6px); }
+
+  .picker { position: fixed; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; padding: 5px; border-radius: 999px;
+    background: rgba(9, 1, 24, 0.85); border: 1px solid rgba(255, 255, 255, 0.15); }
+  .picker button { display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 999px; font-weight: 600; font-size: 13px;
+    color: rgba(255, 255, 255, 0.75); }
+  .picker button[aria-pressed='true'] { background: rgba(244, 239, 230, 0.16); color: white; }
+  .picker .swatch { width: 12px; height: 12px; border-radius: 50%; }
+  .colours { bottom: 22px; }
+  .finishes { bottom: 76px; }
+  .caption { position: fixed; left: 50%; bottom: 132px; transform: translateX(-50%); width: min(660px, 90vw); text-align: center;
+    font-size: 14px; line-height: 1.5; color: rgba(255, 255, 255, 0.85); text-shadow: 0 1px 8px rgba(9, 1, 24, 0.9); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+  <defs>
+    <!-- Ragged felt-tip edges: the outline pushed about by fine noise -->
+    <filter id="rough" x="-10%" y="-30%" width="120%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="noise" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.6" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+    <!-- Dry grain: speckles of the ink knocked out by coarse noise -->
+    <filter id="grain" x="-10%" y="-30%" width="120%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="7" result="noise" />
+      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -3 2.4" result="speckle" />
+      <feComposite in="SourceGraphic" in2="speckle" operator="in" result="grainy" />
+      <feDisplacementMap in="grainy" in2="noise" scale="1.2" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </defs>
+</svg>
+
+<div class="stage" data-finish="flat">
+  <p class="note" style="margin: 0">based in Belfast</p>
+  <svg class="arrow" viewBox="0 0 1440 900" aria-hidden="true">
+    <path class="shaft" d="M668.37 255.8C791.7 182.69 971.26 247.13 1039.43 286.21" />
+    <path class="head" d="M1030.39 271.48L1039.43 286.21L1019.89 284.83" />
+    <path class="shine" d="M668.37 255.8C791.7 182.69 971.26 247.13 1039.43 286.21" />
+  </svg>
+</div>
+
+<p class="caption"></p>
+<nav class="picker finishes" aria-label="Finish"></nav>
+<nav class="picker colours" aria-label="Colour"></nav>
+
+<script>
+  const colours = {
+    peach: ['Peach (today)', '#f6b98a', '#c9814f', '#ffe2c9', 'Soft and warm, but next to the cream type it can read as a washed-out beige.'],
+    amber: ['Sodium amber', '#ffc35c', '#c98a1f', '#ffe7b3', 'The colour of the city lights on the night side and of Belfast\'s streetlamps: ties the note to the place it points at.'],
+    coral: ['Coral', '#ff8a6a', '#c9533a', '#ffd0c2', 'Warmer and more saturated: clearly a hand, not part of the type, and it stands out against the violet.'],
+    rose: ['Rose', '#ff9cc4', '#c9618e', '#ffd9e8', 'Pink highlighter. Playful, picks up the pink in the atmosphere\'s edge.'],
+    mint: ['Mint', '#8fe8c6', '#4fae8b', '#d6f8ea', 'Cool and fresh against the warm cream; the most contrast with the violet, a bit more "tech".'],
+    sky: ['Sky', '#9fd2ff', '#5a95cf', '#dcefff', 'The atmosphere\'s blue: calm and of a piece with the planet, the least loud.'],
+    lime: ['Highlighter', '#d9f76a', '#9fb92e', '#f1fcc6', 'Acid yellow-green, like a real highlighter. The boldest; hard to miss.'],
+    chalk: ['Chalk white', '#f4efe6', '#b9b1a3', '#ffffff', 'The type\'s own cream, as if written in white pen. Quiet and elegant, but less of a contrast with the name.'],
+  };
+  const finishes = {
+    flat: ['Flat (today)', 'One even colour and a dark halo.'],
+    ink: ['Felt tip', 'Ragged edges, each letter a touch heavier or lighter where the pen pressed, the ink darker at the foot of the strokes.'],
+    glow: ['Glow', 'Written in light: a pale core and a halo of the colour, like a neon pen against space.'],
+    chalk: ['Dry marker', 'The ink broken up by grain, as a marker running dry on a rough surface.'],
+    paint: ['Paint pen', 'Opaque and raised a little off the page: a lighter top edge, a deeper edge and a shadow underneath.'],
+  };
+
+  const stage = document.querySelector('.stage');
+  const fit = () => { const scale = Math.max(innerWidth / 1440, innerHeight / 900); stage.style.transform = `translate(-50%, -50%) scale(${scale})`; };
+  addEventListener('resize', fit); fit();
+
+  // Letters pressed a little heavier or lighter, the same every time
+  const note = document.querySelector('.note');
+  let seed = 3;
+  const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  note.innerHTML = [...note.textContent].map(ch => `<span class="ch" style="--press:${(0.78 + random() * 0.22).toFixed(2)}">${ch}</span>`).join('');
+
+  const state = { colour: 'peach', finish: 'flat' };
+  const caption = document.querySelector('.caption');
+  const render = () => {
+    const [, m, deep, light, about] = colours[state.colour];
+    stage.style.setProperty('--m', m); stage.style.setProperty('--m-deep', deep); stage.style.setProperty('--m-light', light);
+    stage.dataset.finish = state.finish;
+    document.querySelectorAll('.colours button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.key === state.colour)));
+    document.querySelectorAll('.finishes button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.key === state.finish)));
+    caption.textContent = `${about} · ${finishes[state.finish][1]}`;
+    history.replaceState(null, '', `#${state.colour}/${state.finish}`);
+  };
+  const build = (selector, list, field) => {
+    for (const [key, [label, swatch]] of Object.entries(list)) {
+      const button = document.createElement('button');
+      button.dataset.key = key;
+      button.innerHTML = field === 'colour' ? `<span class="swatch" style="background:${swatch}"></span>${label}` : label;
+      button.addEventListener('click', () => { state[field] = key; render(); });
+      document.querySelector(selector).append(button);
+    }
+  };
+  build('.colours', colours, 'colour');
+  build('.finishes', finishes, 'finish');
+  const [colour, finish] = location.hash.slice(1).split('/');
+  if (colours[colour]) state.colour = colour;
+  if (finishes[finish]) state.finish = finish;
+  document.addEventListener('keydown', event => {
+    const step = (list, field, by) => { const keys = Object.keys(list); state[field] = keys[(keys.indexOf(state[field]) + by + keys.length) % keys.length]; render(); };
+    if (event.key === 'ArrowRight') step(colours, 'colour', 1);
+    if (event.key === 'ArrowLeft') step(colours, 'colour', -1);
+    if (event.key === 'ArrowDown') step(finishes, 'finish', 1);
+    if (event.key === 'ArrowUp') step(finishes, 'finish', -1);
+  });
+  render();
+</script>
+</body>
+</html>

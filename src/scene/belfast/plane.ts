@@ -15,19 +15,22 @@ const THRESHOLD_04 = new Vector3(222, 0.1, -81.4);
 /**
  * The take-off: down runway 22 towards the south-west, lifting off two thirds of the way along, then climbing out in
  * a right turn onto west, which brings it towards the reader (looking east past the cranes in the craft beat) over
- * the cranes and on overhead. Steeper, tighter and lower than a real departure, so it reads. x, height, z in scene
- * units.
+ * the cranes and on overhead, then on west, climbing away until it's lost in the haze several kilometres out (see
+ * FADES_FROM). Steeper, tighter and lower than a real departure, so it reads. x, height, z in scene units.
  */
 const LIFT_OFF = new Vector3().lerpVectors(THRESHOLD_22, THRESHOLD_04, 0.65);
 const PATH = new CatmullRomCurve3([
     THRESHOLD_22, LIFT_OFF, new Vector3(222, 4, -81.4), new Vector3(195, 9, -48), new Vector3(165, 13, -25),
     new Vector3(130, 16, -12), new Vector3(95, 18, -5), new Vector3(60, 20, -2), new Vector3(25, 22, -2),
-    new Vector3(-15, 24, -5), new Vector3(-60, 26, -12),
+    new Vector3(-15, 24, -5), new Vector3(-60, 26, -12), new Vector3(-120, 29, -22), new Vector3(-200, 33, -36),
+    new Vector3(-320, 39, -55), new Vector3(-480, 47, -80), new Vector3(-700, 58, -115),
 ], false, 'centripetal');
 const PATH_LENGTH = PATH.getLength();
 const ROLL = THRESHOLD_22.distanceTo(LIFT_OFF);
-/** How far along the path it is when it's passing over the reader: the 8th of its 11 points, beside the cranes. */
-const OVERHEAD = PATH.getLengths(1000)[700];
+/** How far along the path it is when it's passing over the reader, beside the cranes (scene units). */
+const OVERHEAD = 372;
+/** How far along the path it starts to fade into the haze, so it's gone by the end, wherever it's seen from. */
+const FADES_FROM = PATH_LENGTH - 300;
 
 /**
  * When it lifts off and when it's overhead (seconds into each flight, see update), passing over the cranes. It
@@ -171,7 +174,7 @@ const MAX_BANK = MathUtils.degToRad(28);
 export const createPlane = (sun: IUniform<Vector3>) => {
     const geometry = createAirliner();
     const material = new ShaderMaterial({
-        uniforms: { uSun: sun, ...photoUniforms, ...cloudShadowUniforms },
+        uniforms: { uSun: sun, uFade: { value: 1 }, ...photoUniforms, ...cloudShadowUniforms },
         vertexShader: /* glsl */ `
             attribute vec3 color;
             attribute float glow;
@@ -195,7 +198,7 @@ export const createPlane = (sun: IUniform<Vector3>) => {
                     float beam = smoothstep(-0.3, 0.8, dot(forward, normalize(cameraPosition - world.xyz)));
                     vGlow = 1.0 + beam;
                     // 1.2 m across, but never less than a few pixels
-                    float size = max(0.06 * projectionMatrix[1][1] / gl_Position.w, 0.002 + 0.0025 * beam);
+                    float size = max(0.06 * projectionMatrix[1][1] / gl_Position.w, 0.0015 + 0.0015 * beam);
                     gl_Position.xy += corner * size * vec2(projectionMatrix[0][0] / projectionMatrix[1][1], 1.0)
                         * gl_Position.w;
                 }
@@ -205,6 +208,7 @@ export const createPlane = (sun: IUniform<Vector3>) => {
             uniform vec3 uSun;
             uniform vec3 uFogColor;
             uniform float uFogDensity;
+            uniform float uFade;
             varying vec3 vColor;
             varying float vGlow;
             varying vec2 vCorner;
@@ -212,11 +216,13 @@ export const createPlane = (sun: IUniform<Vector3>) => {
             ${CLOUD_SHADOW_GLSL}
             void main() {
                 float distance = length(cameraPosition - vWorld);
-                float haze = 1.0 - exp(-pow(distance * uFogDensity, 2.0));
+                // Lost in the haze at the end of its flight (uFade, 1 → 0)
+                float haze = max(1.0 - exp(-pow(distance * uFogDensity, 2.0)), 1.0 - uFade);
                 if (vGlow > 0.5) {
-                    // A round light, well over the bloom's threshold, that cuts through the haze
+                    // A round light, over the bloom's threshold but not by much, that cuts through the haze until it fades
                     if (dot(vCorner, vCorner) > 1.0) discard;
-                    gl_FragColor = vec4(vColor * (0.6 + 1.6 * vGlow) * (1.0 - 0.5 * haze), 1.0);
+                    vec3 light = vColor * (0.45 + 0.55 * vGlow) * (1.0 - 0.5 * haze);
+                    gl_FragColor = vec4(mix(uFogColor, light, uFade), 1.0);
                     return;
                 }
                 vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
@@ -245,6 +251,7 @@ export const createPlane = (sun: IUniform<Vector3>) => {
             // Waiting at the end of the runway, too far off to notice, until it rolls; gone once it's turned away
             mesh.visible = time > ROLLS_FROM && distance < PATH_LENGTH;
             if (!mesh.visible) return;
+            material.uniforms.uFade.value = 1 - MathUtils.smoothstep(distance, FADES_FROM, PATH_LENGTH);
             const u = distance / PATH_LENGTH;
             PATH.getPointAt(u, position);
             PATH.getTangentAt(u, tangent);

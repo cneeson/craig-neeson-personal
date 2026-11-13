@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>"Enter" options · Craig Neeson</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Instrument+Serif:ital@1&display=swap">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap">
+<style>
+  :root { --ink: #f4efe6; --peach: #f6b98a; --night: #090118; --ease: cubic-bezier(0.65, 0, 0.35, 1); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--night); }
+  body { color: white; font-family: 'Satoshi', sans-serif; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+  .scene { position: fixed; inset: 0; background: url(hero.png) center / cover no-repeat; }
+  .hero { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: center; padding-left: 7vw; }
+  .name { margin: 0; font-family: 'Fraunces', serif; font-size: 7.5vw; line-height: 0.92; font-weight: 400; color: var(--ink);
+    text-shadow: 0 0.04em 0.3em rgba(9, 1, 24, 0.45); }
+  .name .first { font-variation-settings: 'opsz' 144, 'wght' 700; }
+  .name .last { font-style: italic; font-variation-settings: 'opsz' 144, 'wght' 300; }
+  .role { margin: 2vw 0 0; font-size: 2vw; color: #cbd5e1; }
+  .role i { font-family: 'Instrument Serif', serif; font-size: 1.15em; color: white; }
+  .note { position: absolute; left: 41%; top: 15%; font: 600 2vw 'Caveat', cursive; color: var(--peach); transform: rotate(-6deg);
+    text-shadow: 0 0 0.35em rgba(9, 1, 24, 0.9); }
+  .arrow { position: absolute; left: 53.5%; top: 18%; width: 18vw; height: 10.8vw; overflow: visible; }
+  .arrow path { fill: none; stroke: var(--peach); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .slot { margin-top: 2.8vw; min-height: 6vw; display: flex; align-items: center; font-size: 1.3vw; }
+  .variant { display: none; }
+  .variant.is-on { display: inline-flex; }
+  .variant:focus-visible { outline: 2px solid rgba(244, 239, 230, 0.6); outline-offset: 6px; }
+
+  /* Two arrows in one cell, for the ones that slip out one side and in the other */
+  .slip { display: grid; overflow: hidden; width: 1.1em; height: 1.1em; }
+  .slip svg { grid-area: 1 / 1; transition: transform 0.45s var(--ease); }
+  .slip svg + svg { transform: translateX(-160%); }
+  .variant:hover .slip svg:first-child, .variant:focus-visible .slip svg:first-child { transform: translateX(160%); }
+  .variant:hover .slip svg + svg, .variant:focus-visible .slip svg + svg { transform: none; }
+  svg.icon { width: 1.1em; height: 1.1em; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* A: today's, for comparison */
+  .a { align-items: center; gap: 1vw; color: var(--ink); font-weight: 500; }
+  .a .ring { display: grid; place-items: center; width: 3.4vw; height: 3.4vw; border-radius: 50%; border: 1px solid rgba(244, 239, 230, 0.45);
+    transition: background-color 0.35s, color 0.35s, border-color 0.35s; }
+  .a:hover .ring { background: var(--ink); color: var(--night); border-color: var(--ink); }
+
+  /* B: a solid capsule in the name's ink. The one unmistakable thing to press */
+  .b { align-items: center; gap: 0.9em; padding: 0.95em 1.2em 0.95em 1.7em; border-radius: 999px; background: var(--ink); color: var(--night);
+    font-weight: 700; letter-spacing: 0.01em; box-shadow: 0 10px 40px rgba(9, 1, 24, 0.45); transition: background-color 0.35s, transform 0.35s var(--ease); }
+  .b .cell { display: grid; place-items: center; width: 2em; height: 2em; border-radius: 50%; background: var(--night); color: var(--ink); }
+  .b:hover { background: #fff; transform: translateY(-2px); }
+
+  /* C: editorial. The words in the name's italic, and a long hairline arrow that reaches further on hover */
+  .c { align-items: center; gap: 0.6em; font-family: 'Fraunces', serif; font-style: italic; font-size: 2.3vw; color: var(--ink);
+    font-variation-settings: 'opsz' 144, 'wght' 300; text-shadow: 0 2px 16px rgba(9, 1, 24, 0.7); }
+  .c .line { position: relative; width: 3.2em; height: 1px; background: currentColor; transition: width 0.55s var(--ease); }
+  .c .line::after { content: ''; position: absolute; right: 0; top: 50%; width: 0.45em; height: 0.45em; border: solid currentColor;
+    border-width: 1px 1px 0 0; transform: translate(0, -50%) rotate(45deg); transform-origin: center; }
+  .c:hover .line { width: 5em; }
+  .c:hover { font-variation-settings: 'opsz' 144, 'wght' 400; }
+
+  /* D: the hand again. Plain words, and a loop scribbled round them in the marker's peach: once as it arrives, again on hover */
+  .d { position: relative; align-items: center; gap: 0.6em; padding: 0.9em 1.5em; color: var(--ink); font-weight: 700; letter-spacing: 0.02em; }
+  .d svg.loop { position: absolute; inset: -18% -10%; width: 120%; height: 136%; overflow: visible; pointer-events: none; }
+  .d .loop path { fill: none; stroke: var(--peach); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 1 1.2; stroke-dashoffset: 1.1;
+    transition: stroke-dashoffset 0.7s var(--ease); }
+  .d.is-drawn .loop path, .d:hover .loop path { stroke-dashoffset: 0; }
+  .d .icon { transition: transform 0.4s var(--ease); }
+  .d:hover .icon { transform: translateX(0.25em); }
+
+  /* E: a badge. A disc with the words running round it, turning slowly, an arrow pointing down at the city */
+  .e { position: relative; width: 8vw; height: 8vw; border-radius: 50%; color: var(--ink); place-items: center; display: none;
+    background: rgba(9, 1, 24, 0.35); box-shadow: inset 0 0 0 1px rgba(244, 239, 230, 0.3); transition: background-color 0.4s, color 0.4s; }
+  .e.is-on { display: grid; }
+  .e .words { position: absolute; inset: 0; width: 100%; height: 100%; animation: turn 18s linear infinite; overflow: visible; }
+  .e .words text { font: 700 9.5px 'Satoshi', sans-serif; letter-spacing: 2.6px; fill: currentColor; text-transform: uppercase; }
+  .e .centre { width: 2.6vw; height: 2.6vw; transform: rotate(45deg); transition: transform 0.5s var(--ease); }
+  .e:hover { background: var(--ink); color: var(--night); }
+  .e:hover .words { animation-duration: 6s; }
+  .e:hover .centre { transform: rotate(90deg); }
+  @keyframes turn { to { transform: rotate(360deg); } }
+
+  /* F: split capsule. A hairline outline with the words and a cell for the arrow, which fills, divided by a rule */
+  .f { align-items: stretch; border-radius: 999px; color: var(--ink); font-weight: 500; letter-spacing: 0.01em; overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(244, 239, 230, 0.4); background: rgba(9, 1, 24, 0.4); backdrop-filter: blur(6px); }
+  .f .label { padding: 0.95em 1.4em 0.95em 1.7em; }
+  .f .cell { display: grid; place-items: center; padding: 0 1.2em; border-left: 1px solid rgba(244, 239, 230, 0.4);
+    transition: background-color 0.35s, color 0.35s; }
+  .f:hover .cell { background: var(--ink); color: var(--night); }
+
+  /* G: just type. "Enter" big in Satoshi, underlined already; the line runs off and back in on hover */
+  .g { align-items: baseline; gap: 0.35em; font-size: 2.4vw; font-weight: 500; letter-spacing: -0.01em; color: var(--ink); }
+  .g .label { position: relative; }
+  .g .label::after { content: ''; position: absolute; left: 0; right: 0; bottom: -0.08em; height: 2px; background: currentColor;
+    transform-origin: right; transition: transform 0.5s var(--ease); }
+  .g:hover .label::after { animation: rerule 0.7s var(--ease); }
+  .g .icon { width: 0.8em; height: 0.8em; transform: rotate(45deg); transition: transform 0.4s var(--ease); }
+  .g:hover .icon { transform: rotate(45deg) translate(0.1em, 0); }
+  @keyframes rerule { 0% { transform: scaleX(1); transform-origin: right; } 45% { transform: scaleX(0); transform-origin: right; }
+    55% { transform: scaleX(0); transform-origin: left; } 100% { transform: scaleX(1); transform-origin: left; } }
+
+  .picker { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; border-radius: 999px;
+    background: rgba(9, 1, 24, 0.85); border: 1px solid rgba(255, 255, 255, 0.15); }
+  .picker button { padding: 9px 15px; border-radius: 999px; font-weight: 600; font-size: 13px; color: rgba(255, 255, 255, 0.75); }
+  .picker button[aria-pressed='true'] { background: rgba(244, 239, 230, 0.16); color: white; }
+  .caption { position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); max-width: 640px; text-align: center;
+    font-size: 14px; line-height: 1.5; color: rgba(255, 255, 255, 0.8); text-shadow: 0 1px 8px rgba(9, 1, 24, 0.9); }
+</style>
+</head>
+<body>
+<div class="scene"></div>
+
+<section class="hero">
+  <h1 class="name"><span class="first">Craig</span> <span class="last">Neeson</span></h1>
+  <p class="role">Senior <i>Frontend</i> Engineer</p>
+
+  <div class="slot">
+    <button class="variant a" data-key="a"><span>Enter</span><span class="ring"><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span></button>
+
+    <button class="variant b" data-key="b"><span>Enter</span><span class="cell"><span class="slip"><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span></span></button>
+
+    <button class="variant c" data-key="c"><span>Enter</span><span class="line"></span></button>
+
+    <button class="variant d" data-key="d"><span>Enter</span><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+      <svg class="loop" viewBox="0 0 200 80" preserveAspectRatio="none"><path pathLength="1" d="M150 10 C 110 2, 30 4, 12 30 C -2 54, 50 76, 110 74 C 170 72, 198 54, 192 32 C 187 14, 150 6, 118 9"/></svg>
+    </button>
+
+    <button class="variant e" data-key="e" aria-label="Enter">
+      <svg class="words" viewBox="0 0 100 100" aria-hidden="true"><defs><path id="round" d="M50 50 m -38 0 a 38 38 0 1 1 76 0 a 38 38 0 1 1 -76 0"/></defs>
+        <text><textPath href="#round" textLength="236" lengthAdjust="spacing">Enter · Fly down to Belfast · </textPath></text></svg>
+      <svg class="icon centre" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+    </button>
+
+    <button class="variant f" data-key="f"><span class="label">Enter</span><span class="cell"><span class="slip"><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span></span></button>
+
+    <button class="variant g" data-key="g"><span class="label">Enter</span><svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+  </div>
+
+  <span class="note">based in Belfast</span>
+  <svg class="arrow" viewBox="0 0 150 90" aria-hidden="true"><path d="M6 8 C 40 4, 92 14, 128 66"/><path d="M112 60 L 129 68 L 131 49"/></svg>
+</section>
+
+<p class="caption"></p>
+<nav class="picker"></nav>
+
+<script>
+  const options = {
+    a: ['A · Ring (today)', 'For comparison: the words and a thin ring that fills on hover. Quiet, but over the planet it can read as a caption rather than a button.'],
+    b: ['B · Ink capsule', 'A solid cream capsule with a dark disc holding the arrow. The one unmistakable thing to press, and it borrows the name\'s ink, not a new colour. The safest choice.'],
+    c: ['C · Editorial italic', 'The words in Fraunces\' light italic, as the surname, with a long hairline arrow that reaches further on hover. Most at one with the title; the least like a button.'],
+    d: ['D · Circled by hand', 'Plain bold words, with a loop scribbled round them in the marker\'s peach as they arrive, and again on hover. Ties the action to the note, but spends a second hand-drawn mark.'],
+    e: ['E · Turning badge', 'A disc with "Enter · Fly down to Belfast" running round it, turning slowly; it fills and spins up on hover. The designer-portfolio move: playful, and says where it goes.'],
+    f: ['F · Split capsule', 'A hairline capsule split into the words and a cell for the arrow, which fills with ink on hover. Neater and more product-like; it frames the arrow as the action.'],
+    g: ['G · Just type', 'Big Satoshi words, underlined from the start, with an arrow pointing down towards the city; the underline runs off and back in on hover. Confident and minimal.'],
+  };
+  const picker = document.querySelector('.picker');
+  const caption = document.querySelector('.caption');
+  const show = key => {
+    document.querySelectorAll('.variant').forEach(variant => {
+      const isOn = variant.dataset.key === key;
+      variant.classList.toggle('is-on', isOn);
+      variant.classList.remove('is-drawn');
+    });
+    picker.querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.key === key)));
+    caption.textContent = options[key][1];
+    // D's loop is drawn once as it arrives
+    if (key === 'd') requestAnimationFrame(() => setTimeout(() => document.querySelector('.d').classList.add('is-drawn'), 300));
+    history.replaceState(null, '', `#${key}`);
+  };
+  for (const [key, [label]] of Object.entries(options)) {
+    const button = document.createElement('button');
+    button.dataset.key = key;
+    button.textContent = label;
+    button.addEventListener('click', () => show(key));
+    picker.append(button);
+  }
+  document.addEventListener('keydown', event => {
+    const keys = Object.keys(options);
+    const index = keys.indexOf(location.hash.slice(1));
+    if (event.key === 'ArrowRight') show(keys[(index + 1) % keys.length]);
+    if (event.key === 'ArrowLeft') show(keys[(index - 1 + keys.length) % keys.length]);
+  });
+  show(options[location.hash.slice(1)] ? location.hash.slice(1) : 'b');
+</script>
+</body>
+</html>

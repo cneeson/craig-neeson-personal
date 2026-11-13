@@ -1,8 +1,10 @@
-import { go, modeOrder, modes, route, skipIntro, startIntro, type Mode, type StopId } from '@/scene/director';
+import { watch } from 'vue';
+import { go, modeOrder, modes, returnToHero, route, skipIntro, startIntro, type Mode, type StopId } from '@/scene/director';
 
 /**
  * Where the site is lives in the address (`#experience/ankorstore`), so stops can be linked to, the back button
- * works and a reload lands in the same place. Scrolling, swiping and the arrow keys step from one stop to the next,
+ * works and a reload lands in the same place. The title over the planet is the bare address, before them all, so back
+ * from the first stop climbs back out to it. Scrolling, swiping and the arrow keys step from one stop to the next,
  * on through the modes in turn; Escape goes home.
  */
 
@@ -14,7 +16,7 @@ const parse = (hash: string): { mode: Mode, step: number } | null => {
 };
 
 const hashOf = (mode: Mode, step: number) => {
-    if (mode === 'home') return ' ';
+    if (mode === 'home') return '#home';
     const stops = modes[mode];
     return step === 0 && stops.length === 1 ? `#${mode}` : `#${mode}/${stops[step]}`;
 };
@@ -117,13 +119,35 @@ const onKey = (event: KeyboardEvent) => {
 };
 
 const onPopState = () => {
-    const destination = parse(location.hash) ?? { mode: 'home' as Mode, step: 0 };
-    go(destination.mode, destination.step);
+    const destination = parse(location.hash);
+    if (destination) go(destination.mode, destination.step);
+    else returnToHero();
+};
+
+const bare = () => `${location.pathname}${location.search}`;
+
+/** Climbs back out to the title over the planet, as a new entry in the history (so back flies down again). */
+export const goToOrbit = () => {
+    if (route.isHeroUp) return;
+    history.pushState(null, '', bare());
+    returnToHero();
 };
 
 /** Starts the site at the stop in the address (if any) and listens for input. Returns a function that stops it. */
 export const startNavigation = () => {
     const destination = parse(location.hash) ?? undefined;
+    // A link to a stop: the title goes in the history before it, for the back button to climb out to
+    if (destination) {
+        const url = location.href;
+        history.replaceState(null, '', bare());
+        history.pushState(null, '', url);
+    } else if (location.hash) {
+        history.replaceState(null, '', bare());
+    }
+    // Setting off from the title (Enter, a scroll, a key) is a step in the history
+    const stopWatching = watch(() => route.isHeroUp, isUp => {
+        if (!isUp && !location.hash) history.pushState(null, '', `${bare()}#home`);
+    });
     startIntro(destination);
 
     window.addEventListener('wheel', onWheel, { passive: false });
@@ -133,6 +157,7 @@ export const startNavigation = () => {
     window.addEventListener('keydown', onKey);
     window.addEventListener('popstate', onPopState);
     return () => {
+        stopWatching();
         window.removeEventListener('wheel', onWheel);
         window.removeEventListener('touchstart', onTouchStart);
         window.removeEventListener('touchend', onTouchEnd);

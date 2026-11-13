@@ -7,15 +7,14 @@ import { ARCS } from '@/scene/planet/arcs';
 import { onEarth, PLACES } from '@/scene/planet/geo';
 
 /**
- * The labels over the planet: Belfast named as the camera comes down onto it, and where the arcs land. Positioned every frame from the render loop
- * (`onOverlayFrame`) so it stays pinned to the planet, and shown and hidden in time rather than scrubbed.
+ * The labels over the planet where the arcs land (Belfast's named on the way down by its sign, in the scene). Positioned
+ * every frame from the render loop (`onOverlayFrame`) so they stay pinned to the planet, and shown and hidden in time
+ * rather than scrubbed.
  */
 
-const BELFAST = onEarth(PLACES.belfast.lat, PLACES.belfast.lon).multiplyScalar(1.01);
 const ENDS = ARCS.map(arc => ({ ...arc, at: onEarth(PLACES[arc.to].lat, PLACES[arc.to].lon).multiplyScalar(1.01) }));
 
 const root = ref<HTMLElement>();
-const belfast = ref<HTMLElement>();
 const labels = ref<HTMLElement[]>([]);
 
 const shown = new WeakMap<HTMLElement, boolean>();
@@ -43,10 +42,6 @@ onMounted(() => {
     const width = root.value?.clientWidth ?? 0;
     const height = root.value?.clientHeight ?? 0;
 
-    // From partway down, until it goes into the clouds
-    const isNamed = windowOpacity(progress, [windows.northernIreland[0] - 0.045, windows.northernIreland[1] - 0.02]) > 0.5;
-    toggle(belfast.value, pin(belfast.value, BELFAST, camera, width, height) && isNamed);
-
     const reach = windowOpacity(progress, [windows.reach[0], windows.reveal[0]], FADE);
     ENDS.forEach((end, i) => {
       const label = labels.value[i];
@@ -61,12 +56,6 @@ onBeforeUnmount(() => stop?.());
 
 <template>
   <div ref="root" class="planet-hud" aria-hidden="true">
-    <div ref="belfast" class="place">
-      <span class="dot" />
-      <span class="name">Belfast</span>
-      <span class="region">Northern Ireland</span>
-    </div>
-
     <span
       v-for="end in ENDS"
       :key="end.to"
@@ -96,61 +85,8 @@ $blue: #88b8f2;
 }
 
 // Shown and hidden by class, in time
-.place,
 .arc-label {
   opacity: 0;
-}
-
-.place {
-  position: absolute;
-  left: 0;
-  top: 0;
-  will-change: transform;
-  text-shadow: 0 1px 10px rgba(9, 1, 24, 0.9);
-  transition: opacity 0.6s ease;
-
-  .dot {
-    position: absolute;
-    width: 0.55rem;
-    height: 0.55rem;
-    margin: -0.275rem 0 0 -0.275rem;
-    border-radius: 50%;
-    background: white;
-    box-shadow: 0 0 12px 3px $blue;
-  }
-
-  .name,
-  .region {
-    position: absolute;
-    left: 1rem;
-    white-space: nowrap;
-    transform: translateX(-0.4rem);
-    transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-
-  .name {
-    top: -1.05rem;
-    font-family: 'Satoshi', Helvetica, Arial, sans-serif;
-    font-size: 1.35rem;
-    font-weight: 700;
-  }
-
-  .region {
-    top: 0.45rem;
-    font-size: 0.7rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: $blue;
-  }
-
-  &.is-shown {
-    opacity: 1;
-
-    .name,
-    .region {
-      transform: none;
-    }
-  }
 }
 
 .arc-label {
