@@ -132,7 +132,7 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   orbit (`approachAt` in choreography, `glideFromOrbit` in PlanetScene) starts far north looking on past the pole,
   backs south past Northern Ireland still looking north, and sinks onto it, turning to the arrival shot's heading
   (under the H&W cranes); it runs along a great circle that passes beside the pole, as the planet's texture pinches
-  at it. The climb out carries on along `CITY_ENDS.end` (`climbFromHome`). `water.ts`, `starlings.ts`, `train.ts`,
+  at it. The climb out carries on along `CITY_ENDS.end` (`climbFromHome`). `water.ts`, `train.ts`,
   `plane.ts` and `boats.ts` animate the city, in time. The train leaves Lanyon Place when the Ocula stop is reached
   and crosses the Lagan Railway Bridge, then heads east along the Bangor line. The plane takes off from Belfast City
   Airport and passes over the cranes every 90 s. A ferry comes in down Musgrave Channel past the cranes, and a tour

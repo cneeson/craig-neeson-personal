@@ -12,6 +12,8 @@
       />
       <!-- After the bloom, so it doesn't smear the stars -->
       <SMAAPmndrs />
+      <!-- Last, so the grain isn't smoothed away -->
+      <FilmGrain ref="grainRef" />
     </EffectComposerPmndrs>
   </Suspense>
 
@@ -24,6 +26,7 @@
 
     <!-- The stars, in three layers by brightness: the faint mass, then fewer brighter, then the brightest few -->
     <primitive v-for="layer in starLayers" :key="layer.points.uuid" :object="layer.points" />
+    <primitive :object="shootingStar.mesh" />
 
     <TresGroup ref="earthRef" :position="EARTH_POSITION">
       <TresMesh :rotation-y="EARTH_MESH_ROTATION" :material="earth.material">
@@ -76,6 +79,7 @@ import { BloomPmndrs, EffectComposerPmndrs, SMAAPmndrs } from '@tresjs/post-proc
 import { BlendFunction } from 'postprocessing'
 import BelfastPhoto from './belfast-photo.vue'
 import CloudVeil from './cloud-veil.vue'
+import FilmGrain from './film-grain.vue'
 import { isMobile, prefersReducedMotion, quality } from '@/services/device';
 import {
   approachAt, bloomThresholdAt, diveAt, ENTRANCE_DURATION, entranceAt, RISEN, frameAt, highlightAt, isInBelfast, reachAt,
@@ -94,6 +98,7 @@ import { EARTH_MESH_ROTATION, EARTH_POSITION, onEarth, PLACES } from '@/scene/pl
 import { patchClouds } from '@/scene/planet/clouds';
 import { createNebula } from '@/scene/planet/nebula';
 import { createStarLayer, type StarLayer } from '@/scene/planet/starfield';
+import { createShootingStar } from '@/scene/planet/shooting-star';
 import { warmShaders } from '@/scene/warm';
 import { createParisArc } from '@/scene/belfast/paris-arc';
 import { ATMOSPHERE_RADIUS, createAtmosphereMaterial, createEarthMaterial, SUN_DIRECTION } from '@/scene/earth';
@@ -155,6 +160,8 @@ const ENTRANCE_SPIN = 0.3
 const GLINT = { at: 0.6, width: 0.06 }
 const ROLL = MathUtils.degToRad(4)
 const STARS_IN = [[0, 0.12], [0.06, 0.22], [0.12, 0.32]]
+// The grain and vignette (GrainEffect), out over the planet and over the city
+const GRAIN = { planet: { amount: 0.022, vignette: 0.4 }, city: { amount: 0.01, vignette: 0.12 } }
 const DRIFT = { angle: MathUtils.degToRad(2.5), period: 40 }
 
 export default defineComponent({
@@ -182,6 +189,7 @@ const bloomRef = shallowRef<{ effect?: { luminanceMaterial: { threshold: number 
 const planetRef = shallowRef<Group>()
 const sunRef = shallowRef<DirectionalLight>()
 const fillRef = shallowRef<PointLight>()
+const grainRef = shallowRef<{ effect?: { uniforms: Map<string, { value: number }> } }>()
 const veilRef = shallowRef<{ update(amount: number, travel: number, aspect: number): void }>()
 
 const highlight = createHighlight()
@@ -199,10 +207,11 @@ const cloudCentre = new Vector3()
 const nebula = createNebula(renderer, isMobile ? 1024 : 2048)
 // Faintest first, as they fade in in that order (STARS_IN)
 const starLayers = [
-  { count: quality.starCounts[2], brightness: [0.16, 0.4], size: [1.6, 2.3] },
-  { count: quality.starCounts[1], brightness: [0.25, 0.7], size: [1.8, 2.6] },
+  { count: quality.starCounts[2], brightness: [0.16, 0.4], size: [1.6, 2.3], band: 0.75 },
+  { count: quality.starCounts[1], brightness: [0.25, 0.7], size: [1.8, 2.6], band: 0.4 },
   { count: quality.starCounts[0], brightness: [0.5, 2], size: [2.2, 3.4] },
 ].map(layer => createStarLayer(layer as StarLayer, renderer.getPixelRatio()))
+const shootingStar = createShootingStar(renderer)
 onBeforeUnmount(() => {
   highlight.dispose()
   arcs.dispose()
@@ -211,6 +220,7 @@ onBeforeUnmount(() => {
   parisArc.dispose()
   nebula.dispose()
   starLayers.forEach(layer => layer.dispose())
+  shootingStar.dispose()
 })
 
 // Belfast loads in the background from Google's tiles once the planet has risen into view (if there's a key in the
@@ -471,6 +481,8 @@ onBeforeRender(({ delta, elapsed }) => {
       material.uniforms.uTime.value = elapsed
       points.position.copy(cam.position)
     })
+    // Only once the stars are all out, and not in the clouds
+    shootingStar.update(cam, delta, !prefersReducedMotion && entrance >= 1 && veil < 0.05)
 
     // Ambient motion
     const cloudSpin = -elapsed * 0.006
@@ -503,6 +515,12 @@ onBeforeRender(({ delta, elapsed }) => {
   // The journey streams the clouds past, and they drift a little on their own
   veilRef.value?.update(veil, progress * 24 + elapsed * 0.03, cam.aspect)
   if (bloomRef.value?.effect) bloomRef.value.effect.luminanceMaterial.threshold = bloomThresholdAt(progress)
+  const grain = grainRef.value?.effect?.uniforms
+  if (grain) {
+    const { amount, vignette } = isInCity ? GRAIN.city : GRAIN.planet
+    grain.get('amount')!.value = amount
+    grain.get('vignette')!.value = vignette
+  }
   updateOverlays(cam, progress, elapsed)
 
   invalidate()

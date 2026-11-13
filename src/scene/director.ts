@@ -148,9 +148,9 @@ const flyTo = (
 /**
  * Out of the clouds, the camera's still finishing the glide down from orbit: it's put a little above and behind where
  * it's going (`up`, `back`, scene units), looking further down (`pitch`, degrees), and eases on into the shot from
- * there, slowing to a stop, over `duration` (s).
+ * there, slowing to a stop, over `duration` (s). Going back up to the title it leaves the same way, over `leave` (s).
  */
-const ARRIVAL = { up: 18, back: 22, pitch: -7, duration: 3.2 };
+const ARRIVAL = { up: 18, back: 22, pitch: -7, duration: 3.2, leave: 1.1 };
 const shortOf = (next: Shot): Shot => {
     const pose = poseOf(next, 0, now());
     const heading = MathUtils.degToRad(pose.heading);
@@ -375,10 +375,13 @@ export const returnToHero = () => {
 
     const climb = progressTween = gsap.timeline().timeScale(prefersReducedMotion ? 3 : 1);
     if (wasInCity) {
-        // Up off the city into the clouds, briskly from the off
-        const from = cityPoseAt();
-        flyTo({ pose: { x: from.x, z: from.z + 25, y: from.y + 70, pitch: -38, heading: 174 } }, { duration: 0.7, ease: 'power1.in' });
-        sceneState.progress = CLIMB_FROM;
+        // The way it came in, backwards (see ARRIVAL): drawing up and back off the city, gathering pace, and only then
+        // on up off it into the clouds
+        flyTo(shortOf({ pose: cityPoseAt() }), { duration: ARRIVAL.leave, ease: 'power2.in', lift: 0 });
+        climb.call(() => {
+            const from = cityPoseAt();
+            flyTo({ pose: { x: from.x, z: from.z + 25, y: from.y + 70, pitch: -38, heading: 174 } }, { duration: 0.7, ease: 'none' });
+        }, [], ARRIVAL.leave).set(sceneState, { progress: CLIMB_FROM });
     }
     if (sceneState.progress > windows.belfast[0]) {
         climb.to(sceneState, { progress: windows.belfast[1], duration: wasInCity ? 0.45 : 1.2, ease: wasInCity ? 'none' : 'power1.in' })

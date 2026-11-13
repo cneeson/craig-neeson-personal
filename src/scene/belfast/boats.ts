@@ -91,7 +91,7 @@ const createBoatMaterial = (sun: IUniform<Vector3>, shadeHeight: number) => new 
             float sunlit = cloudShadow(vWorld.xz);
             float light = 0.72 + 0.3 * max(dot(n, uSun), 0.0) * sunlit + 0.08 * n.y;
             // Greyed and toned down towards the photographed city's colours
-            vec3 paint = mix(vColor, vec3(dot(vColor, vec3(0.2126, 0.7152, 0.0722))), 0.35) * 0.82;
+            vec3 paint = mix(vColor, vec3(dot(vColor, vec3(0.2126, 0.7152, 0.0722))), 0.2) * 0.9;
             // Darker low down, in the shadow of itself and the water's edge, and mottled
             float low = mix(0.6, 1.0, smoothstep(-0.1 * uShadeHeight, uShadeHeight, vHeight));
             float grime = mix(0.88, 1.06, grimeNoise(vWorld * 6.0) * 0.6 + grimeNoise(vWorld * 1.7 + 3.0) * 0.4);
@@ -305,7 +305,7 @@ const ferryIn = (time: number) => {
  * A ferry coming in to Belfast in Stena Line's colours: a hand-built Superfast-class ro-ro, navy hull, red band,
  * white superstructure and twin funnels, with a pale V of a wake and a churned trail behind it that die away as
  * it slows. It comes down Musgrave Channel to a berth, on the left of the view past the cranes
- * (Stena's own terminal is out of sight, behind the dry dock). Only just bigger than life, so it reads at the 2 km
+ * (Stena's own terminal is out of sight, behind the dry dock). Half as big again as life, so it reads at the 2 km
  * or so it's seen from without standing out.
  */
 export const createFerry = (sun: IUniform<Vector3>) => createBoat({
@@ -315,7 +315,7 @@ export const createFerry = (sun: IUniform<Vector3>) => createBoat({
     route: [[171.5, -230], [171, -200], [170.6, -170], [169, -155], [168.3, -140], [166, -128], [161, -116]],
     // On the water drawn over the docks (water.ts)
     waterline: 0.1,
-    scale: 1.05,
+    scale: 1.5,
     wake: { bow: FERRY_BOW, stern: FERRY_STERN, size: 1, length: 50, height: 0.05 },
     along: time => 100 * ferryIn(time),
     wakeAt: time => 1 - ferryIn(time),
@@ -362,7 +362,7 @@ export const createRiverBoat = (sun: IUniform<Vector3>) => createBoat({
     ],
     // On the water drawn over the river (water.ts)
     waterline: 0.1,
-    scale: 0.85,
+    scale: 1.3,
     wake: { bow: BOAT_BOW, stern: BOAT_STERN, size: 0.24, length: 10, height: 0.05 },
     along: time => BOAT_SPEED * time,
     sun,

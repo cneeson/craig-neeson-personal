@@ -232,7 +232,9 @@ export const entranceAt = (entrance: number) => ({
 export const SIGN_PASS = windows.northernIreland[0] + 0.046;
 export const signAt = (progress: number) => ({
     enter: clamp01((progress - 0.035) / 0.055),
-    opacity: 1 - ramp(progress, SIGN_PASS, SIGN_PASS + 0.01),
+    // Gone the moment the camera's through: it's hung ahead of the camera by how far it is from the pass, which grows
+    // again after it, so it would come back up in front
+    opacity: progress < SIGN_PASS ? 1 : 0,
 });
 
 /**
@@ -305,8 +307,8 @@ export const highlightAt = (progress: number, entrance = 1, traced = 1) => {
     const descent = ramp(progress, 0.004, start - 0.01);
     return {
         cover: progress < cityTo ? ramp(progress, 0, 0.03) : 0,
-        // Closing in a little again as the camera comes down to the clouds
-        hole: Math.max(ramp(entrance, 0.4, 0.9) * 0.8, descent) * (1 - 0.5 * ramp(progress, SIGN_PASS - 0.02, cityFrom)),
+        // Closing up again as the camera comes down to the sign, all but shut by the time it's through it
+        hole: Math.max(ramp(entrance, 0.4, 0.9) * 0.8, descent) * (1 - 0.85 * ramp(progress, SIGN_PASS - 0.045, SIGN_PASS - 0.005)),
         draw: Math.max(traced, ramp(progress, start - 0.042, start - 0.015)),
         fill: Math.max(ramp(traced, 0.6, 1) * lerp(1, DESCENT_FILL, descent), ramp(progress, start - 0.025, start - 0.008) * DESCENT_FILL),
         scan: clamp01((progress - start + 0.02) / 0.03),

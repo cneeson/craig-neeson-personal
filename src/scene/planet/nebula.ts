@@ -17,7 +17,36 @@ const HERO_FORWARD = new Vector3(0.131, -0.521, -0.844);
 const HERO_UP = new Vector3(0.199, 0.847, -0.492);
 const across = new Vector3().crossVectors(HERO_FORWARD, HERO_UP).multiplyScalar(Math.cos(0.5))
     .addScaledVector(HERO_UP, Math.sin(0.5));
-const BAND_NORMAL = new Vector3().crossVectors(HERO_FORWARD, across).normalize();
+/** The band's axis: it runs round the sky where a direction is square to this. */
+export const BAND_NORMAL = new Vector3().crossVectors(HERO_FORWARD, across).normalize();
+
+/**
+ * A few distant galaxies, placed in the title's view (`at`, across and up from its middle, where ±0.3 up is about the
+ * screen's edge): `size` their radius (on the same scale), `tilt` the turn of their long axis, `ratio` how round they
+ * look (1 face on), `arms` 1 for a spiral and 0 for an elliptical. Drawn as the sky is looked up, sharp at any size,
+ * and faint, all but their cores well under the bloom.
+ */
+const GALAXIES = [
+    { at: [-0.4, 0.24], size: 0.022, tilt: 0.6, ratio: 0.42, arms: 1, tint: '#d4c8ff' },
+    { at: [-0.1, -0.25], size: 0.013, tilt: -0.9, ratio: 0.3, arms: 1, tint: '#ffe6cc' },
+    { at: [0.43, 0.26], size: 0.008, tilt: 0.2, ratio: 0.62, arms: 0, tint: '#fff1e2' },
+];
+const heroAcross = new Vector3().crossVectors(HERO_FORWARD, HERO_UP).normalize();
+const galaxies = GALAXIES.map(({ at, size, tilt, ratio, arms, tint }) => {
+    const centre = HERO_FORWARD.clone().addScaledVector(heroAcross, at[0]).addScaledVector(HERO_UP, at[1]).normalize();
+    // Its long and short axes, square to the line of sight, scaled so the galaxy's edge is at 1
+    const right = new Vector3().crossVectors(HERO_UP, centre).normalize();
+    const up = new Vector3().crossVectors(centre, right);
+    const long = right.clone().multiplyScalar(Math.cos(tilt)).addScaledVector(up, Math.sin(tilt));
+    const short = new Vector3().crossVectors(centre, long);
+    return {
+        centre,
+        long: long.divideScalar(size),
+        short: short.divideScalar(size * ratio),
+        tint: lin(tint),
+        arms,
+    };
+});
 
 const noise = /* glsl */ `
     float hash(vec3 p) {
@@ -130,7 +159,14 @@ export const createNebula = (renderer: WebGLRenderer, width: number) => {
     target.texture.wrapS = RepeatWrapping;
 
     const material = new ShaderMaterial({
-        uniforms: { uSky: { value: target.texture } },
+        uniforms: {
+            uSky: { value: target.texture },
+            uGalaxyCentre: { value: galaxies.map(galaxy => galaxy.centre) },
+            uGalaxyLong: { value: galaxies.map(galaxy => galaxy.long) },
+            uGalaxyShort: { value: galaxies.map(galaxy => galaxy.short) },
+            uGalaxyTint: { value: galaxies.map(galaxy => galaxy.tint) },
+            uGalaxyArms: { value: galaxies.map(galaxy => galaxy.arms) },
+        },
         vertexShader: /* glsl */ `
             varying vec3 vDir;
             void main() {
@@ -138,14 +174,35 @@ export const createNebula = (renderer: WebGLRenderer, width: number) => {
                 gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
             }`,
         fragmentShader: /* glsl */ `
+            #define GALAXIES ${galaxies.length}
             uniform sampler2D uSky;
+            uniform vec3 uGalaxyCentre[GALAXIES];
+            uniform vec3 uGalaxyLong[GALAXIES];
+            uniform vec3 uGalaxyShort[GALAXIES];
+            uniform vec3 uGalaxyTint[GALAXIES];
+            uniform float uGalaxyArms[GALAXIES];
             varying vec3 vDir;
+            // A bright core and a disc fading out from it, wound into two arms for a spiral
+            vec3 galaxies(vec3 dir) {
+                vec3 light = vec3(0.0);
+                for (int i = 0; i < GALAXIES; i++) {
+                    if (dot(dir, uGalaxyCentre[i]) < 0.995) continue;
+                    vec2 q = vec2(dot(dir, uGalaxyLong[i]), dot(dir, uGalaxyShort[i]));
+                    float r = length(q);
+                    if (r > 2.0) continue;
+                    float arms = 0.5 + 0.5 * cos(2.0 * (atan(q.y, q.x) - 3.2 * log(r + 0.04)));
+                    float disc = exp(-r * 3.2) * mix(1.0, mix(0.25, 1.0, arms * arms), uGalaxyArms[i] * smoothstep(0.08, 0.3, r));
+                    float core = exp(-r * r * 60.0);
+                    light += uGalaxyTint[i] * (disc * 0.16 + core * 0.45);
+                }
+                return light;
+            }
             void main() {
                 vec3 dir = normalize(vDir);
                 vec2 uv = vec2(atan(dir.x, dir.z) / 6.2831853 + 0.5, asin(clamp(dir.y, -1.0, 1.0)) / 3.1415927 + 0.5);
                 // With a little grain, about a step of the screen's 8 bits, so the dark gradients don't band
                 float grain = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
-                gl_FragColor = vec4(texture2D(uSky, uv).rgb * (1.0 + grain * 0.1), 1.0);
+                gl_FragColor = vec4(texture2D(uSky, uv).rgb * (1.0 + grain * 0.1) + galaxies(dir), 1.0);
             }`,
         side: BackSide,
         depthTest: false,

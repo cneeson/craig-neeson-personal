@@ -292,6 +292,7 @@ export const createTraffic = (sun: IUniform<Vector3>) => {
             varying vec3 vColor;
             varying vec3 vWorld;
             varying float vPart;
+            varying float vHeight;
             void main() {
                 vec3 base;
                 vec2 heading;
@@ -308,6 +309,7 @@ export const createTraffic = (sun: IUniform<Vector3>) => {
                 vWorld = base + forward * local.x + vec3(0.0, local.y, 0.0) + right * local.z;
                 vColor = aColor;
                 vPart = part;
+                vHeight = position.y;
                 gl_Position = projectionMatrix * viewMatrix * vec4(vWorld, 1.0);
             }
         `,
@@ -316,6 +318,7 @@ export const createTraffic = (sun: IUniform<Vector3>) => {
             varying vec3 vColor;
             varying vec3 vWorld;
             varying float vPart;
+            varying float vHeight;
             ${CLOUD_SHADOW_GLSL}
             ${HAZE_GLSL}
             void main() {
@@ -325,10 +328,17 @@ export const createTraffic = (sun: IUniform<Vector3>) => {
                 else {
                     vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
                     float sunlit = cloudShadow(vWorld.xz);
-                    float light = 0.7 + 0.35 * max(dot(n, uSun), 0.0) * sunlit + 0.1 * n.y;
+                    // Lit like the photos around it (and the train): mostly the soft light from a bright sky, a
+                    // little sun, and the sky's blue in the shade and on top
+                    float light = 0.66 + 0.26 * max(dot(n, uSun), 0.0) * sunlit + 0.1 * n.y;
                     // Glass round the cabin, but its roof the car's colour, as it's mostly seen from above
                     color = (vPart > 0.5 && n.y < 0.7 ? vec3(0.03, 0.04, 0.05) : vColor) * light
                         * mix(${CLOUD_SHADE_GLSL}, vec3(1.0), sunlit);
+                    color += uFogColor * (0.04 + 0.05 * max(n.y, 0.0));
+                    // Darker low down, out of the light under the body, so it sits on the road
+                    color *= mix(0.55, 1.0, smoothstep(0.03, 0.08, vHeight));
+                    // A touch less saturated, as the photos are
+                    color = mix(vec3(dot(color, vec3(0.2126, 0.7152, 0.0722))), color, 0.82);
                 }
                 gl_FragColor = vec4(hazed(color, vWorld), 1.0);
             }

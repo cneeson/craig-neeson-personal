@@ -1,11 +1,13 @@
 import {
     AdditiveBlending, BufferAttribute, BufferGeometry, Color, MathUtils, Points, ShaderMaterial, Vector3,
 } from 'three';
+import { BAND_NORMAL } from './nebula';
 
 /**
  * The stars, as pinpoints at an infinite distance: kept around the camera, so they don't slide past each other as it
  * moves, and drawn a fixed number of pixels across, round and soft. Most are faint and a few bright (only those
- * reach the bloom), each a little warm or cool, but only just, and a few faintly coloured.
+ * reach the bloom), each a little warm or cool, but only just, and a few faintly coloured. Like the Milky Way's, the
+ * faint ones crowd along the nebula's band, in clumps, and thin out away from it.
  */
 
 // Star colours from hot to cool, then mostly greyed back towards white
@@ -25,6 +27,16 @@ export type StarLayer = {
     brightness: [number, number];
     /** Size range (CSS pixels). */
     size: [number, number];
+    /** How much they gather along the band (0 evenly spread, 1 none away from it). */
+    band?: number;
+};
+
+/** How crowded the sky is along `dir` (0..1): the band's core, a broader glow round it, and clumps along it. */
+const bandDensity = (dir: Vector3) => {
+    const off = dir.dot(BAND_NORMAL);
+    const across = Math.max(Math.exp(-((off / 0.15) ** 2)), 0.45 * Math.exp(-((off / 0.4) ** 2)));
+    const clumps = 0.65 + 0.35 * Math.sin(dir.x * 11 + 1.3) * Math.sin(dir.y * 9 - 0.7) * Math.sin(dir.z * 13 + 2.1);
+    return across * clumps;
 };
 
 const pickTint = () => {
@@ -35,7 +47,7 @@ const pickTint = () => {
 
 const white = new Color(1, 1, 1);
 
-export const createStarLayer = ({ count, brightness, size }: StarLayer, pixelRatio: number) => {
+export const createStarLayer = ({ count, brightness, size, band = 0 }: StarLayer, pixelRatio: number) => {
     const positions = new Float32Array(count * 3);
     const colours = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
@@ -43,7 +55,10 @@ export const createStarLayer = ({ count, brightness, size }: StarLayer, pixelRat
     const point = new Vector3();
     const colour = new Color();
     for (let i = 0; i < count; i++) {
-        point.randomDirection().multiplyScalar(RADIUS).toArray(positions, i * 3);
+        // Kept as often as the sky's crowded there
+        do point.randomDirection();
+        while (Math.random() > 1 - band + band * bandDensity(point));
+        point.multiplyScalar(RADIUS).toArray(positions, i * 3);
         const strength = Math.random() ** 3;
         const isPastel = Math.random() < PASTEL_SHARE;
         const tint = isPastel ? PASTELS[Math.floor(Math.random() * PASTELS.length)] : pickTint();

@@ -9,7 +9,6 @@ import { useLoop, useTres } from '@tresjs/core';
 import { createPhotoCity } from '@/scene/belfast/photo-city';
 import { cloudShadowUniforms, createDaySkyMaterial } from '@/scene/belfast/photo-materials';
 import { createWater, SkyUniforms } from '@/scene/belfast/water';
-import { createStarlings } from '@/scene/belfast/starlings';
 import { createTrain } from '@/scene/belfast/train';
 import { createTelescope } from '@/scene/belfast/telescope';
 import { createPlane } from '@/scene/belfast/plane';
@@ -52,14 +51,13 @@ const photoCity = createPhotoCity(renderer, process.env.VUE_APP_GOOGLE_MAPS_API_
 }, telescope);
 // Shares the sky's uniforms, so its reflections match the sky
 const water = createWater(skyMaterial.uniforms as SkyUniforms, renderer.capabilities.getMaxAnisotropy());
-const starlings = createStarlings();
 const train = createTrain(skyMaterial.uniforms.uSun);
 const plane = createPlane(skyMaterial.uniforms.uSun);
 const ferry = createFerry(skyMaterial.uniforms.uSun);
 const riverBoat = createRiverBoat(skyMaterial.uniforms.uSun);
 const traffic = createTraffic(skyMaterial.uniforms.uSun);
 const offices = createOfficeHighlights();
-root.add(sky, photoCity.group, water.mesh, starlings.object, train.object, plane.object, ferry.object,
+root.add(sky, photoCity.group, water.mesh, train.object, plane.object, ferry.object,
   riverBoat.object, traffic.object, offices.object, telescope.overlay);
 
 /** Visited in the background once it's shown, in about the order a reader would go. */
@@ -83,7 +81,6 @@ const showAttribution = (isShown: boolean) => {
 onBeforeUnmount(() => {
   photoCity.dispose();
   water.dispose();
-  starlings.dispose();
   train.dispose();
   telescope.dispose();
   plane.dispose();
@@ -103,7 +100,6 @@ const animate = (view: PerspectiveCamera, elapsed: number) => {
   sky.position.copy(view.position);
   cloudShadowUniforms.uCloudTime.value = elapsed;
   water.update(elapsed);
-  starlings.update(elapsed, view, renderer);
   train.update(cityState.trainAway);
   plane.update(elapsed % PLANE_EVERY);
   ferry.update(shownFor);
