@@ -144,7 +144,7 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: rgba(9, 1, 24, 0.7);
   box-shadow: 0 0 30px rgba(136, 184, 242, 0.35);
-  font-family: 'Funnel Display', Helvetica, Arial, sans-serif;
+  font-family: 'Satoshi', Helvetica, Arial, sans-serif;
   font-size: 28px;
   font-weight: 700;
   white-space: nowrap;
@@ -167,7 +167,7 @@ onBeforeUnmount(() => {
     linear-gradient(170deg, #2a0f4a, #12052a 70%);
   border: 3px solid #ffd27a;
   box-shadow: 0 0 40px rgba(255, 190, 90, 0.35);
-  font-family: 'Funnel Display', Helvetica, Arial, sans-serif;
+  font-family: 'Satoshi', Helvetica, Arial, sans-serif;
   text-transform: uppercase;
 
   .venue {

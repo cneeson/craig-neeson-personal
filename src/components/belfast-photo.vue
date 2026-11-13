@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts" setup>
-import { Group, Mesh, PerspectiveCamera, SphereGeometry, WebGLRenderer } from 'three';
+import { BufferGeometry, Group, Mesh, PerspectiveCamera, ShaderMaterial, SphereGeometry, WebGLRenderer } from 'three';
 import { onBeforeUnmount } from 'vue';
 import { useLoop, useTres } from '@tresjs/core';
 import { createPhotoCity } from '@/scene/belfast/photo-city';
@@ -20,8 +20,9 @@ import { attribution } from '@/scene/belfast/attribution';
 import { sceneState } from '@/scene/state';
 import { isInBelfast } from '@/scene/choreography';
 import { cityDestination, cityState, firstShot, route } from '@/scene/director';
-import { poseOf, shots, type ShotName } from '@/scene/shots';
+import { placeCamera, poseOf, shots, type ShotName } from '@/scene/shots';
 import { camera } from '@/scene/camera';
+import { warmShaders } from '@/scene/warm';
 
 const emit = defineEmits<{
   /** The tiles can't load, so the city should be dropped. */
@@ -33,6 +34,7 @@ const emit = defineEmits<{
  * orbit comes out of the clouds loads in the background while the reader is still on the planet, then the rest
  * (see photo-city.ts).
  */
+const { scene } = useTres();
 const renderer = useTres().renderer as WebGLRenderer;
 
 const root = new Group();
@@ -89,11 +91,79 @@ onBeforeUnmount(() => {
   riverBoat.dispose();
   traffic.dispose();
   offices.dispose();
+  keepers.forEach(keeper => (keeper.material as ShaderMaterial).dispose());
   sky.geometry.dispose();
   skyMaterial.dispose();
   showAttribution(false);
   sceneState.cityReady = false;
 });
+
+/** Moves everything in the city on to `elapsed` (s), as seen from `view`. */
+const animate = (view: PerspectiveCamera, elapsed: number) => {
+  sky.position.copy(view.position);
+  cloudShadowUniforms.uCloudTime.value = elapsed;
+  water.update(elapsed);
+  starlings.update(elapsed, view, renderer);
+  train.update(cityState.trainAway);
+  plane.update(elapsed % PLANE_EVERY);
+  ferry.update(shownFor);
+  riverBoat.update((elapsed + 40) % BOAT_EVERY);
+  traffic.update(elapsed, view, renderer, photoCity.group);
+  offices.update(cityState.offices, elapsed, true);
+  // The offices' outlines too, for Nitec's through the telescope
+  telescope.update(cityState.scope, elapsed, view.aspect, sky, [photoCity.group, offices.object]);
+};
+
+/**
+ * The tile shader (fading between levels of detail, and not) is let go whenever the last tile using it is unloaded,
+ * and compiled again for the next tile drawn, stalling that frame, as tiles come and go all the time. Two materials
+ * kept aside, never drawn, hold on to it.
+ */
+const keepTileShaders = () => {
+  let tile: Mesh | undefined;
+  photoCity.group.traverse(child => {
+    const material = (child as Mesh).material as ShaderMaterial | undefined;
+    if (!tile && material?.defines && 'FEATURE_FADE' in material.defines) tile = child as Mesh;
+  });
+  if (!tile) return [];
+  const original = tile.material as ShaderMaterial;
+  return [0, 1].map(fade => {
+    const material = new ShaderMaterial().copy(original);
+    Object.assign(material, {
+      // Not the tile's photo, which goes when it does
+      uniforms: { ...original.uniforms, map: { value: null } },
+      defines: { ...original.defines, FEATURE_FADE: fade },
+      onBeforeCompile: original.onBeforeCompile,
+      customProgramCacheKey: original.customProgramCacheKey,
+    });
+    const keeper = new Mesh((tile as Mesh).geometry, material);
+    keeper.visible = false;
+    root.add(keeper);
+    return keeper;
+  });
+};
+let keepers: Mesh[] = [];
+
+/**
+ * Gets the city's shaders ready as soon as the tiles at the first shot have loaded (see warmShaders), so they aren't
+ * compiled on the frame it's first shown, under the clouds on the way in. Without the planet, and its lights, as it's
+ * hidden in the city. The tiles are drawn as they are, rather than all of them.
+ */
+let isWarm = false;
+const warmUp = (elapsed: number) => {
+  isWarm = true;
+  keepers = keepTileShaders();
+  const view = new PerspectiveCamera(camera.fov, camera.aspect, 0.3, 4000);
+  placeCamera(view, poseOf(firstShot(), 0, performance.now() / 1000), camera.aspect);
+  view.updateMatrixWorld();
+  // Its first move draws the heights under the traffic, getting that shader ready too
+  animate(view, elapsed);
+  const planet = scene.value.children.filter(child => child !== root && child.getObjectByProperty('isLight', true));
+  warmShaders(renderer, scene.value, view, { object: root, skip: photoCity.group, hide: planet })
+    .catch(() => undefined)
+    // Only needed a tile's vertices to draw them
+    .then(() => keepers.forEach(keeper => (keeper.geometry = new BufferGeometry())));
+};
 
 const { onBeforeRender } = useLoop();
 onBeforeRender(({ delta, elapsed }) => {
@@ -112,21 +182,11 @@ onBeforeRender(({ delta, elapsed }) => {
   sceneState.cityReady = photoCity.isReady;
 
   const isActive = isFlying && photoCity.isReady;
+  if (photoCity.isReady && !isWarm && !isActive) warmUp(elapsed);
   root.visible = isActive;
   showAttribution(isActive);
   if (!isActive) return;
   shownFor += delta;
-  sky.position.copy(camera.position);
-  cloudShadowUniforms.uCloudTime.value = elapsed;
-  water.update(elapsed);
-  starlings.update(elapsed, camera as PerspectiveCamera, renderer);
-  train.update(cityState.trainAway);
-  plane.update(elapsed % PLANE_EVERY);
-  ferry.update(shownFor);
-  riverBoat.update((elapsed + 40) % BOAT_EVERY);
-  traffic.update(elapsed, camera as PerspectiveCamera, renderer, photoCity.group);
-  offices.update(cityState.offices, elapsed, true);
-  // The offices' outlines too, for Nitec's through the telescope
-  telescope.update(scope, elapsed, (camera as PerspectiveCamera).aspect, sky, [photoCity.group, offices.object]);
+  animate(camera as PerspectiveCamera, elapsed);
 });
 </script>

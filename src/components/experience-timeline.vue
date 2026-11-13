@@ -141,7 +141,7 @@ $blue: #88b8f2;
 }
 
 .title {
-  @apply text-xl lg:text-2xl font-bold mt-1;
+  @apply text-xl lg:text-2xl font-semibold mt-1;
 }
 
 .text {

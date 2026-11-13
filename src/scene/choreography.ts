@@ -169,8 +169,8 @@ const approachSplines = {
 /**
  * The descent from the whole planet down to Northern Ireland, until the clouds. The camera starts out far off
  * over the Atlantic to the south, looking at the middle of the planet (`overview` 1, with it framed off to the side
- * of the title), and comes down along a great circle through the Northern Ireland marker, tilting up to look on
- * ahead over the horizon, then turning to the way the first shot over the city looks (`turn`, 0 → 1):
+ * of the title), and comes down along a great circle through the Northern Ireland marker, looking at Belfast, then
+ * at the end turning to look on ahead over the horizon the way the first shot over the city does (`turn`, 0 → 1):
  * - `arc`: degrees along the great circle from the marker, north positive;
  * - `height`: above the surface, in earth radii;
  * - `aim`: degrees above the horizon it looks, once it's looking ahead;

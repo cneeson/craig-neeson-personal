@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { route } from '@/scene/director';
+import ActionLink from './action-link.vue';
 import AttributionsModal from './attributions-modal.vue';
 
 /** Contact, hovering over Belfast: how to get in touch, the CV, and the credits. */
@@ -34,12 +35,7 @@ const links = [
       I'm currently open to hybrid Senior Frontend Developer roles based in Dublin and Belfast. I'd love to hear from you,
       and please feel free to take a copy of my CV with you.
     </p>
-    <a class="pill-button cv" href="docs/craig-neeson-cv.pdf" download>
-      Download my CV
-      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14" />
-      </svg>
-    </a>
+    <ActionLink ring icon="download" class="cv" href="docs/craig-neeson-cv.pdf" download>Download my CV</ActionLink>
     <ul class="links">
       <li v-for="link in links" :key="link.label">
         <a :href="link.href" target="_blank" rel="noopener" class="link">
@@ -57,7 +53,7 @@ const links = [
 
 <style lang="scss" scoped>
 .title {
-  @apply text-2xl lg:text-3xl font-extrabold tracking-tight mt-1;
+  @apply text-2xl lg:text-3xl font-semibold mt-1;
 }
 
 .text {
@@ -65,7 +61,7 @@ const links = [
 }
 
 .cv {
-  @apply mt-5 inline-flex items-center gap-3;
+  @apply mt-5;
 }
 
 .links {

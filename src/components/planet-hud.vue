@@ -2,10 +2,9 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { FADE, windowOpacity, windows } from '@/scene/choreography';
-import { onOverlayFrame } from '@/scene/overlay';
+import { onOverlayFrame, screenOnEarth } from '@/scene/overlay';
 import { ARCS } from '@/scene/planet/arcs';
-import { EARTH_POSITION, earthToWorld, onEarth, PLACES } from '@/scene/planet/geo';
-import { sceneState } from '@/scene/state';
+import { onEarth, PLACES } from '@/scene/planet/geo';
 
 /**
  * The labels over the planet: Belfast named as the camera comes down onto it, and where the arcs land. Positioned every frame from the render loop
@@ -28,21 +27,13 @@ const toggle = (element: HTMLElement | undefined, isShown: boolean) => {
   return isShown;
 };
 
-const world = new Vector3();
-const toCamera = new Vector3();
+const at = { x: 0, y: 0 };
 /** Moves `element` to where `point` (earth group space) is on screen; false if it's behind the planet or off screen. */
 const pin = (element: HTMLElement | undefined, point: Vector3, camera: PerspectiveCamera, width: number, height: number) => {
   if (!element) return false;
-  earthToWorld(point, sceneState.earthRotationY, world);
-  // Facing the camera?
-  toCamera.copy(camera.position).sub(world);
-  const facing = toCamera.dot(world.clone().sub(EARTH_POSITION)) > 0;
-  world.project(camera);
-  const onScreen = facing && world.z < 1 && Math.abs(world.x) < 1.1 && Math.abs(world.y) < 1.1;
-  if (onScreen) {
-    element.style.transform = `translate3d(${((world.x + 1) / 2) * width}px, ${((1 - world.y) / 2) * height}px, 0)`;
-  }
-  return onScreen;
+  const onScreen = screenOnEarth(point, camera, width, height, at);
+  if (onScreen) element.style.transform = `translate3d(${at.x}px, ${at.y}px, 0)`;
+  return !!onScreen;
 };
 
 let stop: (() => void) | undefined;
@@ -139,7 +130,7 @@ $blue: #88b8f2;
 
   .name {
     top: -1.05rem;
-    font-family: 'Funnel Display', Helvetica, Arial, sans-serif;
+    font-family: 'Satoshi', Helvetica, Arial, sans-serif;
     font-size: 1.35rem;
     font-weight: 700;
   }

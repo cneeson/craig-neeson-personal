@@ -82,6 +82,7 @@ import { createHighlight } from '@/scene/planet/highlight';
 import { createArcs } from '@/scene/planet/arcs';
 import { EARTH_MESH_ROTATION, EARTH_POSITION, onEarth, PLACES } from '@/scene/planet/geo';
 import { patchClouds } from '@/scene/planet/clouds';
+import { warmShaders } from '@/scene/warm';
 import { createParisArc } from '@/scene/belfast/paris-arc';
 import { ATMOSPHERE_RADIUS, createAtmosphereMaterial, createEarthMaterial, SUN_DIRECTION } from '@/scene/earth';
 import { clamp01, damp, lerp, smoothstep } from '@/services/three';
@@ -219,7 +220,7 @@ const aim = (cam: PerspectiveCamera, turn: number, pitch: number) => {
 /**
  * The descent from the whole planet down to Northern Ireland and into the clouds (see approachAt): looking at the
  * middle of the planet to start with, framed beside the title (to the right on wide screens, lower down on portrait
- * ones), then on over the horizon, and at the end turning to the way the first shot over the city looks.
+ * ones), then at Belfast, and at the end on over the horizon the way the first shot over the city looks.
  */
 const glideFromOrbit = (cam: PerspectiveCamera, earthRotationY: number, progress: number, portrait: number) => {
   const { arc, height, aim: aimAbove, overview, turn, time } = approachAt(progress, portrait)
@@ -238,7 +239,11 @@ const glideFromOrbit = (cam: PerspectiveCamera, earthRotationY: number, progress
   const ahead = MathUtils.degToRad(aimAbove) - horizon
   const steep = lerp(-MAX_DOWN, -SETTLED_DOWN, time ** 1.5)
   aim(cam, turn * (first - APPROACH_BEARING), (ahead + steep + Math.hypot(ahead - steep, PITCH_KNEE)) / 2)
-  cam.quaternion.copy(lookQuaternion)
+  // Belfast in the middle of the frame on the way down (always ahead, so it's never straight down), coming round to
+  // that look as the clouds close in
+  marker.copy(HOME_MARKER).applyAxisAngle(UP, earthRotationY).add(EARTH_POSITION)
+  lookMatrix.lookAt(cam.position, marker, surfaceUp)
+  cam.quaternion.setFromRotationMatrix(lookMatrix).slerp(lookQuaternion, smoothstep(clamp01((time - 0.65) / 0.35)))
   if (overview <= 0) return
 
   // The planet's middle, with its north up, turned off to the side of the title
@@ -338,7 +343,7 @@ const warmPlanet = (cam: PerspectiveCamera) => {
     for (const texture of [dayMap, bumpMap, cloudsMap, lightsMap]) {
       renderer.initTexture(texture)
     }
-    await renderer.compileAsync(scene.value, cam)
+    await warmShaders(renderer, scene.value, cam)
   })().catch(() => undefined).then(() => { isWarm = true })
 }
 

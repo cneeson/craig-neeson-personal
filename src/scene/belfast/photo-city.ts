@@ -1,6 +1,6 @@
 import {
-    Group, MathUtils, Mesh, MeshBasicMaterial, PerspectiveCamera, Vector2,
-    WebGLRenderer, WebGLRenderTarget,
+    BufferAttribute, Group, InterleavedBufferAttribute, MathUtils, Mesh, MeshBasicMaterial, PerspectiveCamera, Texture,
+    Vector2, WebGLRenderer, WebGLRenderTarget,
 } from 'three';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { TilesRenderer } from '3d-tiles-renderer';
@@ -22,6 +22,33 @@ const MEGABYTE = 2 ** 20;
 const settings = isMobile
     ? { errorTarget: 32, minBytes: 150 * MEGABYTE, maxBytes: 240 * MEGABYTE }
     : { errorTarget: 20, minBytes: 450 * MEGABYTE, maxBytes: 700 * MEGABYTE };
+
+/**
+ * Lets go of a tile's copy in memory once it's on the GPU: its vertices once they're uploaded, and its photo
+ * (decoded, it's far bigger than the download) once that is. Otherwise every tile in the cache is held twice,
+ * and the tab carries the whole cache on top of the GPU's. Nothing reads them back (the city isn't raycast).
+ * Bounds are worked out first, as three needs the vertices for them. Returns the bytes of the photo let go of,
+ * which the cache then can't measure for itself.
+ */
+const freeOnUpload = (mesh: Mesh): number => {
+    const { geometry } = mesh;
+    if (!geometry.boundingSphere) geometry.computeBoundingSphere();
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    // The vertices go once uploaded, at the tile's first draw, after the cache has counted them
+    [...Object.values(geometry.attributes), geometry.index].forEach(attribute => {
+        if (attribute && !(attribute as InterleavedBufferAttribute).isInterleavedBufferAttribute) {
+            (attribute as BufferAttribute).onUpload(function (this: BufferAttribute) {
+                (this as { array: unknown }).array = null;
+            });
+        }
+    });
+    const map = (mesh.material as { photo?: Texture }).photo;
+    if (!map || !(map.image instanceof ImageBitmap)) return 0;
+    const { width, height } = map.image;
+    map.onUpdate = () => (map.image as ImageBitmap).close();
+    // RGBA, plus its mipmaps
+    return width * height * 4 * (map.generateMipmaps ? 4 / 3 : 1);
+};
 
 /** At most this many views ahead of the reader at once. */
 const AHEAD_VIEWS = 2;
@@ -56,24 +83,32 @@ export const createPhotoCity = (
 ) => {
     const tiles = new TilesRenderer();
     // Swaps in the tile shader as each tile is parsed, before the fade plugin (below) prepares its materials
+    // The photos' bytes, freed (so unmeasurable) by the time the cache counts each tile
+    const photoBytes = new WeakMap<Group, number>();
     tiles.registerPlugin({
         name: 'TILE_MATERIAL_PLUGIN',
         processTileModel(scene: Group) {
+            let bytes = 0;
             scene.traverse(object => {
                 const mesh = object as Mesh;
                 if (!mesh.isMesh) return;
                 const original = mesh.material as MeshBasicMaterial;
                 const material = createTileMaterial(original.map);
                 // The tiles renderer finds a tile's textures among its materials' properties, not in shader
-                // uniforms: kept here too, it counts the photo against the cache and frees it (and its
-                // decoded image) when the tile goes. Otherwise none of them are ever counted or freed, and
-                // the GPU fills until the city turns dark
+                // uniforms: kept here too, it frees the photo when the tile goes (it's counted against the
+                // cache by `calculateBytesUsed`). Otherwise none of them are ever freed, and the GPU fills
+                // until the city turns dark
                 if (original.map) Object.assign(material, { photo: original.map });
                 mesh.material = material;
                 original.dispose();
+                bytes += freeOnUpload(mesh);
                 // Uploaded now, while loading in the background, rather than on the frame it first appears
                 if (original.map) renderer.initTexture(original.map);
             });
+            photoBytes.set(scene, bytes);
+        },
+        calculateBytesUsed(tile: unknown, scene: Group | null) {
+            return scene ? photoBytes.get(scene) ?? 0 : 0;
         },
     });
     tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: apiKey, autoRefreshToken: true }));
@@ -105,6 +140,12 @@ export const createPhotoCity = (
         hasFailed = true;
         onFail(error);
     };
+    // Each tile keeps its whole glTF as metadata, the parser and its download included, while only its copyright
+    // (for the attribution) is read from it
+    tiles.addEventListener('load-model', ({ tile }: { tile: { engineData: { metadata?: { asset?: unknown } | null } } }) => {
+        const { engineData } = tile;
+        if (engineData.metadata) engineData.metadata = { asset: engineData.metadata.asset };
+    });
     // The root tileset failing (a bad key, or over quota) means nothing will load
     tiles.addEventListener('load-error', ({ tile, error }) => {
         if (!tile) fail(error);

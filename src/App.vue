@@ -104,7 +104,7 @@ html, body {
 }
 
 #app {
-  font-family: 'Funnel Display', Helvetica, Arial, sans-serif;
+  font-family: 'Satoshi', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: white;
@@ -201,6 +201,12 @@ html, body {
     width: 32rem;
   }
 
+  // Headings in the name's serif
+  h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+
   .eyebrow {
     @apply font-mono text-[11px] tracking-[0.18em] uppercase text-[#88b8f2];
   }
@@ -218,29 +224,14 @@ html, body {
       background: rgba(255, 255, 255, 0.3);
 
       &[aria-current] {
-        background: #88b8f2;
-        box-shadow: 0 0 10px rgba(136, 184, 242, 0.7);
+        background: #f4efe6;
       }
     }
   }
 }
 
-.pill-button {
-  @apply px-5 py-2.5 rounded-full text-sm lg:text-base font-semibold text-white transition;
-
-  background: linear-gradient(135deg, #2a237a, #191752);
-  border: 1px solid rgba(136, 184, 242, 0.5);
-  box-shadow: 0 0 18px rgba(136, 184, 242, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-
-  &:hover,
-  &:focus-visible {
-    box-shadow: 0 0 28px rgba(136, 184, 242, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    transform: translateY(-1px);
-  }
-}
-
 .text-button {
-  @apply px-2 py-2 text-sm lg:text-base text-white/75 underline-offset-4 transition;
+  @apply px-2 py-2 text-sm lg:text-base text-white/70 underline-offset-4 decoration-1 transition;
 
   &:hover,
   &:focus-visible {

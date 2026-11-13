@@ -61,7 +61,12 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - `src/components/site-menu.vue` (top bar; a bottom icon bar on phones), `home-panel.vue`, `about-panel.vue` (the
   captions, written in word by word), `experience-timeline.vue` (the intro card and the strip of employers along the
   bottom), `skills-panel.vue`, `contact-panel.vue` (with the attributions dialog). `src/views/hero.vue` is the title
-  over the planet.
+  over the planet, with the hand-written "based in Belfast" and its arrow, redrawn every frame to Belfast on the
+  planet (`screenOnEarth` in `overlay.ts`).
+- Type: one job per face (loaded in `public/index.html`). Fraunces for the name and headings (the surname always in
+  its light italic), Instrument Serif's italic for a word of emphasis (and the menu's current page), Caveat for the
+  hero's one note and nothing else, Satoshi for the rest. Buttons are `action-link.vue`: words and an arrow, the
+  screen's main action (`ring`) with its arrow in a ring; no pills. Cream (`#f4efe6`) for actions, peach for the hand.
 - `src/components/PlanetScene.vue`: the Tres scene (earth, clouds, atmosphere, stars, markers, bloom + SMAA) and
   the render loop. Must stay inside `<Suspense>` because it awaits textures.
 - `src/scene/earth.ts`: the earth's material (the day map plus NASA Black Marble city lights where the scene's sun
@@ -159,6 +164,12 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   `useTres().renderer` is the renderer itself (typed as WebGL or WebGPU, so it's cast to `WebGLRenderer`), not a ref.
 - The captions are rendered `v-once` because `createCaption` splits their text into word spans. A Vue
   re-render would fight that.
+- **A shader first compiled mid-flight stalls the frame**, so the planet and the city are warmed up ahead
+  (`src/scene/warm.ts`). Three things make a warm-up miss: it must compile into a linear half-float target like the
+  bloom's (three keys programs by output colour space), with the lights that will really be on (the planet's are
+  hidden for the city), and then really draw once, as ANGLE on Metal only finishes a program on its first draw. A
+  program is also let go when its last material is disposed, which tile churn does constantly, so
+  `belfast-photo.vue` keeps two never-drawn tile materials alive.
 - The stars are tiny and rely on bloom to be visible. If they vanish, check the composer first.
 - City scale is 1 unit = 10 m, at the world origin. The planet group is hidden while in the city (and vice versa),
   and the camera's fov/near change on the switch (`setLens`), which happens under full cloud cover.

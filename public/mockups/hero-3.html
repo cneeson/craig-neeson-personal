@@ -29,17 +29,32 @@
   .name .char { display: inline-block; will-change: transform, filter, opacity; }
   /* For the masked rise: each part sits in a window it rises up through, padded for the descenders and the italic's lean */
   .clip { display: inline-block; overflow: clip; padding: 0.1em 0.12em 0.22em; margin: -0.1em -0.12em -0.22em; vertical-align: bottom; }
-  /* The optional line the text rises from: drawn in, then withdrawn once the words are up */
-  .name, .role { position: relative; width: max-content; }
-  .rule { position: absolute; left: 0; right: 0; height: 1px; background: rgba(244, 239, 230, 0.7); transform: scaleX(0); pointer-events: none; }
-  .name .rule { bottom: -0.12em; }
-  .role .rule { bottom: -0.2em; }
   .role { margin-top: 2vw; font-size: 2.2vw; color: #cbd5e1; }
   .role .word { display: inline-block; }
   .role .clip { padding: 0.1em 0.1em 0.25em; margin: -0.1em -0.1em -0.25em; }
   .role i { font-family: 'Instrument Serif', serif; font-size: 1.15em; color: white; }
-  .enter { margin-top: 2.6vw; width: max-content; padding: 0.9vw 2.8vw; border-radius: 999px; font-weight: 600; font-size: 1.4vw;
-    border: 1px solid rgba(136, 184, 242, 0.4); background: rgba(9, 1, 24, 0.6); }
+  /* Today's button, for comparison */
+  .enter.old { margin-top: 2.6vw; width: max-content; padding: 0.9vw 2.8vw; border-radius: 999px; font-weight: 600; font-size: 1.4vw;
+    border: 1px solid rgba(136, 184, 242, 0.4); background: rgba(9, 1, 24, 0.6); color: white; }
+  .enter.old .disc { display: none; }
+
+  /* The proposal: an editorial link, the words in the UI face and a ring holding the arrow. No fill, no glow;
+     the ring fills with the name's ink on hover and the arrow slips through it */
+  .enter:not(.old) { margin-top: 2.8vw; width: max-content; display: inline-flex; align-items: center; gap: 1vw;
+    font: 500 1.35vw 'Satoshi', sans-serif; letter-spacing: 0.01em; color: var(--ink); text-decoration: none; cursor: pointer; }
+  .enter .label { position: relative; padding: 0.3em 0; }
+  .enter .label::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0.1em; height: 1px; background: currentColor;
+    transform: scaleX(0); transform-origin: right; transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1); }
+  .enter .disc { position: relative; display: grid; place-items: center; width: 3.4vw; height: 3.4vw; border-radius: 50%;
+    border: 1px solid rgba(244, 239, 230, 0.45); overflow: hidden;
+    transition: background-color 0.35s, border-color 0.35s, color 0.35s; }
+  .enter .disc svg { width: 40%; height: 40%; grid-area: 1 / 1; transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1); }
+  .enter .disc svg + svg { transform: translateX(-180%); }
+  .enter:not(.old):hover .label::after, .enter:not(.old):focus-visible .label::after { transform: scaleX(1); transform-origin: left; }
+  .enter:not(.old):hover .disc, .enter:not(.old):focus-visible .disc { background: var(--ink); border-color: var(--ink); color: #090118; }
+  .enter:not(.old):hover .disc svg:first-child, .enter:not(.old):focus-visible .disc svg:first-child { transform: translateX(180%); }
+  .enter:not(.old):hover .disc svg + svg, .enter:not(.old):focus-visible .disc svg + svg { transform: translateX(0); }
+  .enter:focus-visible { outline: none; }
 
   /* The marker note: one mask over the whole line, swept on letter by letter at a hand's pace. Padded well
      past the glyphs, so Caveat's loops and the halo behind the ink aren't cut off */
@@ -67,9 +82,9 @@
 <div class="scene"></div>
 
 <section class="hero">
-  <h1 class="name" aria-label="Craig Neeson"><span class="clip" aria-hidden="true"><span class="first">Craig</span></span> <span class="clip" aria-hidden="true"><span class="last">Neeson</span></span><span class="rule" aria-hidden="true"></span></h1>
-  <p class="role"><span class="clip"><span class="word">Senior</span></span> <span class="clip"><i class="word">Frontend</i></span> <span class="clip"><span class="word">Engineer</span></span><span class="rule" aria-hidden="true"></span></p>
-  <div class="enter">Enter</div>
+  <h1 class="name" aria-label="Craig Neeson"><span class="clip" aria-hidden="true"><span class="first">Craig</span></span> <span class="clip" aria-hidden="true"><span class="last">Neeson</span></span></h1>
+  <p class="role"><span class="clip"><span class="word">Senior</span></span> <span class="clip"><i class="word">Frontend</i></span> <span class="clip"><span class="word">Engineer</span></span></p>
+  <a class="enter" href="#" onclick="return false"><span class="label">Come in</span><span class="disc" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span></a>
 
   <span class="note" aria-label="based in Belfast"></span>
   <svg class="arrow" viewBox="0 0 150 90" aria-hidden="true">
@@ -81,7 +96,7 @@
 <div class="controls">
   <button type="button" data-variant="rise" aria-pressed="true">Masked rise</button>
   <button type="button" data-variant="blur" aria-pressed="false">Blur fade</button>
-  <button type="button" data-line aria-pressed="false">Drawn line</button>
+  <button type="button" data-button aria-pressed="false">Old button</button>
   <button type="button" data-slow aria-pressed="false">Slow-mo</button>
   <button type="button" data-replay>Replay</button>
 </div>
@@ -167,8 +182,6 @@
     },
   };
 
-  const rules = document.querySelectorAll('.rule');
-  let withLine = false;
   let variant = 'rise';
   let speed = 1;
   let timeline;
@@ -179,7 +192,6 @@
     gsap.set([...firstChars, ...lastChars, ...words], { clearProps: 'all' });
     gsap.set([shaft, head], { strokeDashoffset: (index, path) => path.getTotalLength() + 5 });
     gsap.set(note, { '--p': '0px' });
-    gsap.set(rules, { scaleX: 0, transformOrigin: 'left center' });
     document.querySelectorAll('.clip').forEach(clip => { clip.style.overflow = variant === 'rise' ? 'clip' : 'visible'; });
 
     timeline = gsap.timeline({ delay: 0.4 });
@@ -193,16 +205,9 @@
     sequence.add(writeNote(), 2.35);
     sequence.to(shaft, { strokeDashoffset: 0, duration: 0.55, ease: 'power1.in' }, '>+0.12');
     sequence.to(head, { strokeDashoffset: 0, duration: 0.22, ease: 'power1.out' }, '>+0.08');
-    sequence.fromTo('.enter', { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.8, ease: 'power2.out' }, '>-0.2');
-    // Each line's rule draws across just ahead of its words, then pulls away to the right once they're up
-    const lead = withLine && variant === 'rise' ? 0.35 : 0;
-    if (lead) {
-      timeline.to(rules[0], { scaleX: 1, duration: 0.5, ease: 'power3.inOut' }, 0);
-      timeline.to(rules[0], { scaleX: 0, transformOrigin: 'right center', duration: 0.6, ease: 'power3.inOut' }, lead + 1.2);
-      timeline.to(rules[1], { scaleX: 1, duration: 0.45, ease: 'power3.inOut' }, lead + 1.15);
-      timeline.to(rules[1], { scaleX: 0, transformOrigin: 'right center', duration: 0.5, ease: 'power3.inOut' }, lead + 2.0);
-    }
-    timeline.add(sequence, lead);
+    sequence.fromTo('.enter', { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: 'power2.out' }, '>-0.25');
+    sequence.fromTo('.enter .disc', { scale: 0.6, rotate: -90 }, { scale: 1, rotate: 0, duration: 0.7, ease: 'back.out(1.6)' }, '<+0.1');
+    timeline.add(sequence, 0);
     timeline.timeScale(speed);
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) timeline.progress(1);
   };
@@ -215,11 +220,13 @@
     document.querySelectorAll('[data-variant]').forEach(other => other.setAttribute('aria-pressed', String(other === button)));
     play();
   }));
-  const line = document.querySelector('[data-line]');
-  line.addEventListener('click', () => {
-    withLine = !withLine;
-    line.setAttribute('aria-pressed', String(withLine));
-    play();
+  const enter = document.querySelector('.enter');
+  const label = enter.querySelector('.label');
+  const swap = document.querySelector('[data-button]');
+  swap.addEventListener('click', () => {
+    const old = enter.classList.toggle('old');
+    label.textContent = old ? 'Enter' : 'Come in';
+    swap.setAttribute('aria-pressed', String(old));
   });
   const slow = document.querySelector('[data-slow]');
   slow.addEventListener('click', () => {

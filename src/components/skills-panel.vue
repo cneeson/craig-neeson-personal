@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { modes, route } from '@/scene/director';
 import { navigate } from '@/services/navigation';
+import ActionLink from './action-link.vue';
 import { iconUrl, skills } from '@/data/skills';
 
 /** Skills: what's stood about the city at each stop, listed here too (for narrow screens that can't see it all). */
@@ -42,15 +43,15 @@ const listed = computed(() => (stop.value === 'arena' ? [] : skills.filter(skill
     </Transition>
     <div class="controls">
       <button v-if="route.step > 0" type="button" class="text-button" @click="navigate('skills', route.step - 1)">Back</button>
-      <button v-if="route.step < stops.length - 1" type="button" class="pill-button" @click="navigate('skills', route.step + 1)">Next</button>
-      <button v-else type="button" class="pill-button" @click="navigate('contact')">Get in touch →</button>
+      <ActionLink v-if="route.step < stops.length - 1" @click="navigate('skills', route.step + 1)">Next</ActionLink>
+      <ActionLink v-else @click="navigate('contact')">Get in touch</ActionLink>
     </div>
   </section>
 </template>
 
 <style lang="scss" scoped>
 .title {
-  @apply text-xl lg:text-2xl font-bold mt-1;
+  @apply text-xl lg:text-2xl font-semibold mt-1;
 }
 
 .text {

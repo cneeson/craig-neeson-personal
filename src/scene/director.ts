@@ -268,7 +268,7 @@ export const startIntro = (destination?: { mode: Mode, step: number }) => {
     intro = gsap.timeline({ paused: true, onComplete: finishIntro })
         // One sweep down onto Northern Ireland, under way at once and gathering pace: the clouds parting over it and its outline traced and
         // Belfast named on the way, then into the clouds, which clear once the city's ready
-        .to(sceneState, { progress: windows.belfast[0], duration: 6.5, ease: (t: number) => t ** 1.5 })
+        .to(sceneState, { progress: windows.belfast[0], duration: 4.5, ease: (t: number) => t ** 1.5 })
         .call(() => {
             // Not progressTween: the first move over the city mustn't stop it short, in the clouds
             settling = gsap.to(sceneState, { progress: CITY_REST, duration: 1.5, ease: 'power1.out' });

@@ -14,7 +14,7 @@ const items: { mode: Mode, label: string, icon: string }[] = [
 
 <template>
   <nav class="site-menu" :class="{ 'is-shown': route.isIntroDone }" aria-label="Site">
-    <button type="button" class="brand" @click="navigate('home')">Craig Neeson</button>
+    <button type="button" class="brand" aria-label="Craig Neeson, home" @click="navigate('home')">Craig <i>Neeson</i></button>
     <ul>
       <li v-for="item in items" :key="item.mode" :class="{ 'is-home': item.mode === 'home' }">
         <button
@@ -23,7 +23,8 @@ const items: { mode: Mode, label: string, icon: string }[] = [
           @click="navigate(item.mode)"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true"><path :d="item.icon" /></svg>
-          <span>{{ item.label }}</span>
+          <!-- The label twice, the hidden copy in the current page's italic, so the menu keeps its width as that moves -->
+          <span class="label" :data-label="item.label">{{ item.label }}</span>
         </button>
       </li>
     </ul>
@@ -31,7 +32,7 @@ const items: { mode: Mode, label: string, icon: string }[] = [
 </template>
 
 <style lang="scss" scoped>
-$blue: #88b8f2;
+$ink: #f4efe6;
 
 .site-menu {
   @apply fixed inset-x-0 top-0 z-40 flex items-center justify-between px-6 lg:px-10 py-4;
@@ -51,40 +52,85 @@ $blue: #88b8f2;
 }
 
 .brand {
-  @apply text-lg lg:text-xl font-extrabold tracking-tight;
+  @apply text-xl lg:text-2xl;
 
+  font-family: 'Fraunces', Georgia, serif;
+  font-variation-settings: 'opsz' 144, 'wght' 700;
+  color: $ink;
   text-shadow: 0 2px 12px rgba(9, 1, 24, 0.8);
+
+  // The surname set apart, as in the title
+  i {
+    font-variation-settings: 'opsz' 144, 'wght' 300;
+  }
 }
 
 ul {
-  @apply flex gap-1;
+  @apply flex gap-2 lg:gap-4;
 }
 
 li.is-home {
   display: none;
 }
 
+// Just the words: the page you're on in Instrument Serif's italic, the face kept for emphasis
 li button {
-  @apply relative px-4 py-2 rounded-full text-sm lg:text-base text-white/80 transition;
+  @apply relative px-3 py-2 text-sm lg:text-base font-medium text-white/70 transition-colors;
 
+  letter-spacing: 0.01em;
   text-shadow: 0 1px 8px rgba(9, 1, 24, 0.9);
 
   svg {
     display: none;
   }
 
+  .label {
+    display: inline-grid;
+    justify-items: center;
+
+    &::after {
+      content: attr(data-label);
+      height: 0;
+      overflow: hidden;
+      visibility: hidden;
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-style: italic;
+      font-size: 1.2em;
+      letter-spacing: 0;
+    }
+  }
+
   &:hover,
   &:focus-visible {
-    @apply text-white;
+    color: $ink;
+  }
 
-    background: rgba(255, 255, 255, 0.08);
+  &:focus-visible {
+    outline: none;
+    text-decoration: underline;
+    text-underline-offset: 0.3em;
   }
 
   &[aria-current='page'] {
-    @apply text-white;
+    color: $ink;
 
-    background: rgba(42, 35, 122, 0.7);
-    box-shadow: inset 0 0 0 1px rgba(136, 184, 242, 0.55), 0 0 18px rgba(136, 184, 242, 0.3);
+    .label {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-style: italic;
+      font-weight: 400;
+      font-size: 1.2em;
+      line-height: 1;
+      letter-spacing: 0;
+
+      // Here the hidden copy's the roman
+      &::after {
+        font-family: 'Satoshi', Helvetica, Arial, sans-serif;
+        font-style: normal;
+        font-weight: 500;
+        font-size: calc(1em / 1.2);
+        letter-spacing: 0.01em;
+      }
+    }
   }
 }
 
@@ -97,7 +143,7 @@ li button {
     padding: 0 0 env(safe-area-inset-bottom);
     transform: translateY(12px);
     background: rgba(9, 1, 24, 0.82);
-    border-top: 1px solid rgba(136, 184, 242, 0.2);
+    border-top: 1px solid rgba(244, 239, 230, 0.12);
     backdrop-filter: blur(10px);
   }
 
@@ -123,10 +169,18 @@ li button {
       fill: currentColor;
     }
 
+    // A thin ring of ink round the page you're on, the label as the others (too small for the italic)
     &[aria-current='page'] {
-      background: transparent;
-      box-shadow: none;
-      color: $blue;
+      box-shadow: inset 0 0 0 1px rgba($ink, 0.45);
+
+      .label {
+        font: inherit;
+        letter-spacing: inherit;
+      }
+    }
+
+    .label::after {
+      display: none;
     }
   }
 }

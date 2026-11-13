@@ -4,6 +4,7 @@ import { differenceInYears } from 'date-fns';
 import { createCaption } from '@/scene/captions';
 import { modes, route } from '@/scene/director';
 import { navigate } from '@/services/navigation';
+import ActionLink from './action-link.vue';
 
 /**
  * About: a few words at each stop, written in word by word as the camera arrives. Under the cranes, backing down
@@ -74,8 +75,8 @@ onBeforeUnmount(() => resizes.disconnect());
         </li>
       </ol>
       <button v-if="route.step > 0" type="button" class="text-button" @click="navigate('about', route.step - 1)">Back</button>
-      <button v-if="!isLast" type="button" class="pill-button" @click="navigate('about', route.step + 1)">Next</button>
-      <button v-else type="button" class="pill-button" @click="navigate('experience')">See my experience →</button>
+      <ActionLink v-if="!isLast" @click="navigate('about', route.step + 1)">Next</ActionLink>
+      <ActionLink v-else @click="navigate('experience')">See my experience</ActionLink>
     </div>
   </section>
 </template>
