@@ -244,18 +244,18 @@ export const createBelfastSign = () => {
             object.quaternion.copy(camera.quaternion).multiply(TILT);
 
             const rings = opacity * smoothstep(clamp01((near - 0.15) / 0.6));
-            set(ring, 'uDraw', span(enter, 0, 0.5));
+            set(ring, 'uDraw', span(enter, 0, 0.6));
             set(ring, 'uOpacity', rings * 0.95);
-            uniformsOf(outer).uDraw.value = span(enter, 0.18, 0.7);
+            uniformsOf(outer).uDraw.value = span(enter, 0.2, 0.75);
             uniformsOf(outer).uOpacity.value = rings * 0.55;
-            const rippling = clamp01((enter - 0.46) / 0.32);
+            const rippling = clamp01((enter - 0.6) / 0.24);
             ripple.scale.setScalar(1 + (1 - (1 - rippling) ** 3) * 0.45);
             uniformsOf(ripple).uOpacity.value = rippling > 0 && rippling < 1 ? rings * 0.6 * (1 - rippling) ** 2 : 0;
 
             const lettering = opacity * smoothstep(clamp01((near - 1) / 1.5));
-            set(name, 'uReveal', clamp01((enter - 0.42) / 0.45));
+            set(name, 'uReveal', clamp01((enter - 0.575) / 0.33));
             set(name, 'uOpacity', lettering);
-            set(country, 'uReveal', clamp01((enter - 0.62) / 0.38));
+            set(country, 'uReveal', clamp01((enter - 0.72) / 0.28));
             set(country, 'uOpacity', lettering * 0.9);
         },
         dispose() {

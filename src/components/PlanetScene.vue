@@ -130,9 +130,11 @@ const CITY_NEAR = 0.3
 // The lens on the way down. As the camera sets off it widens with how far it's closed in, so the planet grows only
 // slowly while the stars stretch out past it (a dolly zoom; `hold` is how much of the planet's growth it takes out,
 // up to `widen` degrees). Then nearer the clouds (`time`, 0 → 1) it widens on to the city's lens, so the ground rushes
-// out to the edges, and there's no jump in the lens behind the clouds.
-const VERTIGO = { hold: 0.6, widen: 9 }
-const RUSH_FROM = 0.55
+// out to the edges, overshooting it by up to `overshoot` degrees as the clouds close in for the drama of the drop, and
+// settling back onto it under them, so there's no jump in the lens behind the clouds.
+const VERTIGO = { hold: 0.8, widen: 14 }
+const RUSH_FROM = 0.5
+const RUSH = { overshoot: 16 }
 /** The tangent of the planet's angular radius from `height` (earth radii) above it. */
 const planetSize = (height: number) => 1 / Math.sqrt((1 + height) ** 2 - 1)
 const glideFov = (height: number, start: number, time: number, arrival: number) => {
@@ -140,7 +142,9 @@ const glideFov = (height: number, start: number, time: number, arrival: number) 
     * (planetSize(height) / planetSize(start)) ** VERTIGO.hold))
   // Easing off as it nears its widest, rather than stopping dead there
   const vertigo = PLANET_LENS.fov + VERTIGO.widen * (1 - Math.exp(-(held - PLANET_LENS.fov) / VERTIGO.widen))
-  return lerp(vertigo, arrival, smoothstep(clamp01((time - RUSH_FROM) / (1 - RUSH_FROM))))
+  const rush = clamp01((time - RUSH_FROM) / (1 - RUSH_FROM))
+  // Widest two-thirds of the way (27/4 · r²(1 − r) peaks at 1 there), and back to nothing by the clouds
+  return lerp(vertigo, arrival, smoothstep(rush)) + RUSH.overshoot * 6.75 * rush * rush * (1 - rush)
 }
 
 // Where the climb out of the clouds starts: just above the planet's clouds (the marker sits on them), a little

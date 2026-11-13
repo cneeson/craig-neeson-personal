@@ -231,7 +231,8 @@ export const entranceAt = (entrance: number) => ({
  */
 export const SIGN_PASS = windows.northernIreland[0] + 0.046;
 export const signAt = (progress: number) => ({
-    enter: clamp01((progress - 0.035) / 0.055),
+    // From early in the descent, so the ring draws round slowly; the lettering keeps to its time (belfast-sign.ts)
+    enter: clamp01((progress - 0.015) / 0.075),
     // Gone the moment the camera's through: it's hung ahead of the camera by how far it is from the pass, which grows
     // again after it, so it would come back up in front
     opacity: progress < SIGN_PASS ? 1 : 0,
