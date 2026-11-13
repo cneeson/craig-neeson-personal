@@ -324,7 +324,7 @@ const landAt = (mode: Mode, step: number) => {
 };
 
 /**
- * Starts the site: the title over the planet, until Enter (or a scroll, swipe or key), then the descent. With
+ * Starts the site: the title over the planet, until Enter (or a key), then the descent. With
  * somewhere to go already (a link to a stop), straight there instead (landAt).
  */
 export const startIntro = (destination?: { mode: Mode, step: number }) => {
@@ -379,8 +379,15 @@ export const returnToHero = () => {
         // on up off it into the clouds
         flyTo(shortOf({ pose: cityPoseAt() }), { duration: ARRIVAL.leave, ease: 'power2.in', lift: 0 });
         climb.call(() => {
+            // On up and back along the line it came in on, facing the same way (the glide arrives on this heading)
             const from = cityPoseAt();
-            flyTo({ pose: { x: from.x, z: from.z + 25, y: from.y + 70, pitch: -38, heading: 174 } }, { duration: 0.7, ease: 'none' });
+            const heading = MathUtils.degToRad(from.heading);
+            flyTo({
+                pose: {
+                    ...from,
+                    x: from.x - Math.sin(heading) * 60, z: from.z + Math.cos(heading) * 60, y: from.y + 70, pitch: from.pitch - 6,
+                },
+            }, { duration: 0.7, ease: 'none' });
         }, [], ARRIVAL.leave).set(sceneState, { progress: CLIMB_FROM });
     }
     if (sceneState.progress > windows.belfast[0]) {

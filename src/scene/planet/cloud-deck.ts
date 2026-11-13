@@ -1,6 +1,6 @@
 import {
-    DoubleSide, Group, MirroredRepeatWrapping, LinearFilter, LinearMipmapLinearFilter, Mesh, OrthographicCamera, PlaneGeometry, Scene, ShaderMaterial,
-    SphereGeometry, Vector3, WebGLRenderer, WebGLRenderTarget,
+    FrontSide, Group, MirroredRepeatWrapping, LinearFilter, LinearMipmapLinearFilter, Mesh, OrthographicCamera, PlaneGeometry, Scene, ShaderMaterial,
+    Quaternion, SphereGeometry, Vector3, WebGLRenderer, WebGLRenderTarget,
 } from 'three';
 import { clamp01, smoothstep } from '@/services/three';
 import { SUN_DIRECTION } from '../earth';
@@ -15,8 +15,18 @@ const [BASE, TOP] = [1.014, 1.0205];
 const EXTENT = 0.2;
 /** How far out from Belfast the deck reaches (radians across the planet), from up high. */
 const REACH = 0.17;
-/** How opaque each slice is: a cloud's core, through every slice, is all but solid; its edges, through few, are thin. */
+/**
+ * How far round from Belfast (radians) each slice is drawn: as far as the deck ever reaches (out past the horizon, from
+ * just above it) and its frayed edge. Only that cap, not the whole sphere, so the far side of the planet and the rest of
+ * the sky don't run the cloud's shader, slice after slice.
+ */
+const CAP = 0.45;
+/**
+ * How opaque the slices are, as each would be in a stack of 14: a cloud's core, through every slice, is all but solid;
+ * its edges, through few, are thin. Fewer slices are each more opaque, so the stack's as dense.
+ */
 const SLICE_OPACITY = 0.3;
+const opacityOfSlices = (slices: number) => 1 - (1 - SLICE_OPACITY) ** (14 / slices);
 /** How far above the deck (earth radii) the camera is when its cloud starts thickening and joining up. */
 const THICKEN_FROM = 0.08;
 
@@ -129,7 +139,6 @@ const createSliceMaterial = (height: number) => new ShaderMaterial({
         varying vec3 vSphere;
         varying vec3 vUp;
         varying vec3 vWorld;
-        ${noiseChunk}
         void main() {
             vec3 sphere = normalize(vSphere);
             float away = acos(clamp(dot(sphere, uCentre), -1.0, 1.0));
@@ -138,8 +147,10 @@ const createSliceMaterial = (height: number) => new ShaderMaterial({
             // Drifting slowly
             vec2 uv = plane / ${(EXTENT * 2).toFixed(3)} + 0.5 + vec2(0.0015, 0.0006) * uTime;
             vec4 cloud = texture2D(uMap, uv);
-            // Finer than the map holds, for close up
-            float d = cloud.r + (noise(sphere * 2200.0 + ${(height * 5.3).toFixed(2)}) - 0.5) * 0.08;
+            // Finer than the map holds, for close up: the map again, far smaller (mirrored round), which is one lookup
+            // where noise was eight hashes a pixel, a slice
+            float fine = texture2D(uMap, uv * 37.0 + ${(height * 0.37).toFixed(3)}).r;
+            float d = cloud.r + (fine - 0.5) * 0.1;
             float h = ${height.toFixed(3)};
             // Rounding off sooner the higher it is: a dome, not a column
             // Spreading and joining up as the camera gets close (uThicken), until it's an unbroken deck
@@ -164,7 +175,8 @@ const createSliceMaterial = (height: number) => new ShaderMaterial({
     `,
     transparent: true,
     depthWrite: false,
-    side: DoubleSide,
+    // The camera's always above the slices it can see (each goes as the camera comes down to it)
+    side: FrontSide,
 });
 
 /**
@@ -181,7 +193,9 @@ export const createCloudDeck = (centre: Vector3, { segments, slices, size }: { s
     const middle = centre.clone().normalize();
     const east = new Vector3(0, 1, 0).cross(middle).normalize();
     const north = middle.clone().cross(east);
-    const geometry = new SphereGeometry(1, segments * 2, segments * 2);
+    // A cap of the unit sphere round Belfast, as finely divided as the planet
+    const geometry = new SphereGeometry(1, segments * 2, Math.ceil((segments * 2 * CAP) / Math.PI) + 4, 0, Math.PI * 2, 0, CAP)
+        .applyQuaternion(new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), middle));
     const object = new Group();
     object.visible = false;
     const layers = Array.from({ length: slices }, (_, i) => {
@@ -198,6 +212,7 @@ export const createCloudDeck = (centre: Vector3, { segments, slices, size }: { s
         object.add(mesh);
         return { mesh, material, radius };
     });
+    const sliceOpacity = opacityOfSlices(slices);
     let isBaked = false;
 
     return {
@@ -235,7 +250,7 @@ export const createCloudDeck = (centre: Vector3, { segments, slices, size }: { s
             // acos(1 / distance) away)
             const reach = Math.max(REACH, Math.acos(Math.min(1, 1 / distance)) * 1.6 * thicken);
             for (const { mesh, material, radius } of layers) {
-                const shown = opacity * SLICE_OPACITY * (1 + thicken * 0.5) * (1 - smoothstep(clamp01((radius + 0.0025 - distance) / 0.0025)));
+                const shown = opacity * sliceOpacity * (1 + thicken * 0.5) * (1 - smoothstep(clamp01((radius + 0.0025 - distance) / 0.0025)));
                 mesh.visible = shown > 0.001;
                 material.uniforms.uOpacity.value = shown;
                 material.uniforms.uTime.value = time;

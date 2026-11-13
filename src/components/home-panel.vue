@@ -18,7 +18,7 @@ const isShown = computed(() => route.isIntroDone && route.mode === 'home');
       <ActionLink @click="navigate('about')">Take the tour</ActionLink>
       <button type="button" class="text-button" @click="navigate('experience')">My experience</button>
     </div>
-    <p class="hint">{{ isMobile ? 'Swipe' : 'Scroll or use the arrow keys' }} to move on</p>
+    <p v-if="!isMobile" class="hint">Or use the arrow keys to move on</p>
   </section>
 </template>
 

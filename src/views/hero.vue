@@ -4,8 +4,9 @@ import { gsap } from 'gsap';
 import ActionLink from '@/components/action-link.vue';
 import { route, skipIntro } from '@/scene/director';
 import { onOverlayFrame, screenOnEarth } from '@/scene/overlay';
-import { onEarth, PLACES } from '@/scene/planet/geo';
+import { EARTH_POSITION, onEarth, PLACES } from '@/scene/planet/geo';
 import { sceneState } from '@/scene/state';
+import { MathUtils, PerspectiveCamera, Vector3 } from 'three';
 
 const first = 'Craig';
 const last = 'Neeson';
@@ -72,6 +73,20 @@ const hide = () => {
 };
 
 /**
+ * Each of the surname's letters is held to its width in the light italic it relaxes into, the bold centred over it,
+ * so each one thins where it stands and the line (centred on portrait screens) never shifts. In em, so it holds as
+ * the type's resized; measured untransformed, as the letters wait rotated below their line.
+ */
+const holdSurname = () => {
+  for (const char of document.querySelectorAll<HTMLElement>('.hero [data-intro="last"]')) {
+    const { fontVariationSettings, transform } = char.style;
+    Object.assign(char.style, { width: '', transform: 'none', fontVariationSettings: "'opsz' 144, 'wght' 300" });
+    const width = char.getBoundingClientRect().width / parseFloat(getComputedStyle(char).fontSize);
+    Object.assign(char.style, { width: `${width}em`, transform, fontVariationSettings });
+  }
+};
+
+/**
  * The title, once the planet's risen into view: the name's letters rise sharp through a line, the surname landing in
  * bold and relaxing into its light italic, then the role word by word. Then the note's written, the arrow drawn from it
  * to Belfast, and the way in appears as the country's border is traced where it lands.
@@ -83,6 +98,7 @@ const writeIn = (delay: number) => {
   // The note's letters must be in their own font before they're measured
   document.fonts.ready.then(() => context?.add(() => {
     if (isLeaving) return;
+    holdSurname();
     const timeline = writing = gsap.timeline({ delay })
       .to('[data-intro="first"]', { yPercent: 0, rotate: 0, duration: 1.1, stagger: 0.05, ease: 'expo.out' }, 0)
       .to('[data-intro="last"]', { yPercent: 0, rotate: 0, duration: 1.1, stagger: 0.045, ease: 'expo.out' }, 0.4)
@@ -150,6 +166,25 @@ const comeBack = () => {
 };
 
 // --- The arrow, from the note to Belfast on the planet, wherever it's turned to ---
+
+/**
+ * On portrait screens Enter sits at the bottom, halfway between the planet's lowest edge and the screen's: the edge
+ * found from the camera each frame (the planet's radius is 1), and eased, so the button doesn't ride the sway.
+ */
+const centre = new Vector3();
+let enterBottom = 0;
+const placeEnter = (camera: PerspectiveCamera, height: number) => {
+  const button = document.querySelector<HTMLElement>('.hero [data-intro="enter"]');
+  if (!button || camera.aspect >= 1) return;
+  centre.copy(EARTH_POSITION).applyMatrix4(camera.matrixWorldInverse);
+  const distance = Math.hypot(centre.y, centre.z);
+  const lowest = Math.atan2(centre.y, -centre.z) - Math.asin(Math.min(1 / distance, 1));
+  const edge = ((1 - Math.tan(lowest) / Math.tan(MathUtils.degToRad(camera.fov / 2))) / 2) * height;
+  const target = (window.innerHeight - edge - button.offsetHeight) / 2;
+  enterBottom = enterBottom ? enterBottom + (target - enterBottom) * 0.08 : target;
+  // Always clear of the home indicator
+  button.style.bottom = `max(env(safe-area-inset-bottom) + 16px, ${Math.round(enterBottom)}px)`;
+};
 
 const BELFAST = onEarth(PLACES.belfast.lat, PLACES.belfast.lon).multiplyScalar(1.01);
 const belfast = { x: 0, y: 0 };
@@ -235,6 +270,7 @@ onMounted(() => {
   stopArrow = onOverlayFrame(camera => {
     // Only while the title's up: the arrow goes the moment Enter's pressed
     if (!route.isHeroUp || !arrow.value || route.isIntroDone) return;
+    placeEnter(camera, arrow.value.clientHeight);
     const at = screenOnEarth(BELFAST, camera, arrow.value.clientWidth, arrow.value.clientHeight, belfast);
     arrow.value.classList.toggle('is-lost', !at);
     if (at) drawArrow(at);
@@ -354,6 +390,13 @@ $peach: #f6b98a;
 
   .last {
     font-style: italic;
+
+    // Held to their light widths (holdSurname), the bold spilling evenly either side
+    .char {
+      display: inline-flex;
+      justify-content: center;
+    }
+
     font-variation-settings: 'opsz' 144, 'wght' 300;
   }
 }
@@ -387,7 +430,16 @@ $peach: #f6b98a;
 }
 
 .enter {
-  @apply mt-8;
+  // On portrait screens, at the bottom under the thumb, clear of the planet (no transform here: the intro moves it)
+  @media (max-aspect-ratio: 1/1) {
+    position: fixed;
+    left: 0;
+    right: 0;
+    // Halfway between the planet and the screen's foot, once placeEnter has found the planet
+    bottom: calc(env(safe-area-inset-bottom) + 7vh);
+    width: fit-content;
+    margin-inline: auto;
+  }
 
   @media (min-aspect-ratio: 1/1) {
     @apply mt-[2.5vw];

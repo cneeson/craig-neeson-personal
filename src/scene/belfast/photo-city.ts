@@ -16,11 +16,13 @@ const GROUND_HEIGHT = 58;
 
 const MEGABYTE = 2 ** 20;
 
-// Phones load coarser tiles and keep less in memory (iOS kills tabs that use too much). Low over the city the
+// Phones keep less in memory (iOS kills tabs that use too much). The error's in CSS pixels, and a phone's screen has
+// a quarter of a desktop's, so even a slightly tighter target asks for well under half the tiles (a looser one left
+// the city lumpy, on screens that are close to the eye). Low over the city the
 // reader's view plus one view ahead take most of the cache; more views than that and the cache fills, the
 // reader's view gets refused the detail it needs, and the city flickers between levels of detail.
 const settings = isMobile
-    ? { errorTarget: 32, minBytes: 150 * MEGABYTE, maxBytes: 240 * MEGABYTE }
+    ? { errorTarget: 16, minBytes: 200 * MEGABYTE, maxBytes: 320 * MEGABYTE }
     : { errorTarget: 20, minBytes: 450 * MEGABYTE, maxBytes: 700 * MEGABYTE };
 
 /**

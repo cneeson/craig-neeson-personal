@@ -56,8 +56,9 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   pose (and tilts portrait screens down, so the city fills the space above the panels). Place shots from the tiles,
   not OSM: the cranes move along their dock.
 - `src/services/navigation.ts`: the address (`#experience/ankorstore`; a mode change pushes history, stepping
-  replaces it), and the input: wheel (one step per flick), swipe, arrows/PageUp/PageDown/Space, Escape/Home to go
-  home. Stepping carries on into the next mode at the ends. `[data-scrolls]` and open dialogs scroll instead.
+  replaces it), and the keys: arrows/PageUp/PageDown/Space, Escape/Home to go home. Stepping carries on into the
+  next mode at the ends. Scrolling and dragging deliberately don't move the scene on; `[data-scrolls]` and open
+  dialogs scroll as usual.
 - `src/components/site-menu.vue` (top bar; a bottom icon bar on phones), `home-panel.vue`, `about-panel.vue` (the
   captions, written in word by word), `experience-timeline.vue` (the intro card and the strip of employers along the
   bottom), `skills-panel.vue`, `contact-panel.vue` (with the attributions dialog). `src/views/hero.vue` is the title
@@ -192,5 +193,5 @@ coarse pointer (e.g. 390×844). Use real GPU flags (`--use-angle=metal --ignore-
 or WebGL falls back to software. Check at least: the hero, the Northern Ireland marker, the glide into the clouds,
 home, each About step (the arcs at `reach` in frame; portrait is the tight case), the overview and every employer
 (cards, dialog, the telescope), each skills stop (labels clear of the panel), contact, a deep link, stepping with the
-wheel, keys and a swipe, and redirecting a move mid-flight. Also test slow tile loads (`page.route` on
+keys (and that the wheel and a swipe don't step), and redirecting a move mid-flight. Also test slow tile loads (`page.route` on
 `tile.googleapis.com`): the clouds should hold, then clear.

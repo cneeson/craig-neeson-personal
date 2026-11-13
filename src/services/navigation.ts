@@ -4,8 +4,8 @@ import { go, modeOrder, modes, returnToHero, route, skipIntro, startIntro, type 
 /**
  * Where the site is lives in the address (`#experience/ankorstore`), so stops can be linked to, the back button
  * works and a reload lands in the same place. The title over the planet is the bare address, before them all, so back
- * from the first stop climbs back out to it. Scrolling, swiping and the arrow keys step from one stop to the next,
- * on through the modes in turn; Escape goes home.
+ * from the first stop climbs back out to it. The arrow keys step from one stop to the next, on through the modes in
+ * turn; Escape goes home. Scrolling and dragging don't move anything on.
  */
 
 const parse = (hash: string): { mode: Mode, step: number } | null => {
@@ -49,56 +49,13 @@ export const step = (direction: 1 | -1) => {
 
 // --- Input ---
 
-/** Somewhere the wheel or a swipe should scroll rather than step (a dialog, the timeline, a long panel). */
+/** Somewhere a finger should scroll the page as usual (a dialog, the timeline, a long panel). */
 const isScrollable = (target: EventTarget | null) =>
     target instanceof Element && !!target.closest('[data-scrolls], dialog[open]');
 const isDialogOpen = () => !!document.querySelector('dialog[open]');
 
-/** Wheel movement (px) that counts as one step, and how long after a step to ignore more of the same flick (s). */
-const WHEEL_STEP = 50;
-const WHEEL_REST = 0.45;
-
-let wheel = 0;
-let lastWheel = 0;
-let lockedUntil = 0;
-
-const onWheel = (event: WheelEvent) => {
-    if (isScrollable(event.target) || isDialogOpen()) return;
-    event.preventDefault();
-    const time = performance.now() / 1000;
-    // A trackpad's momentum keeps sending events: only a fresh gesture, after a pause, steps again
-    if (time - lastWheel > 0.25) wheel = 0;
-    lastWheel = time;
-    if (time < lockedUntil) {
-        lockedUntil = time + WHEEL_REST;
-        return;
-    }
-    wheel += Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
-    if (Math.abs(wheel) < WHEEL_STEP) return;
-    step(wheel > 0 ? 1 : -1);
-    wheel = 0;
-    lockedUntil = time + WHEEL_REST;
-};
-
-let touch: { x: number, y: number, isIgnored: boolean } | null = null;
-const SWIPE = 40;
-
-const onTouchStart = (event: TouchEvent) => {
-    const { clientX: x, clientY: y } = event.touches[0];
-    touch = { x, y, isIgnored: event.touches.length > 1 || isScrollable(event.target) };
-};
-
-const onTouchEnd = (event: TouchEvent) => {
-    if (!touch || touch.isIgnored || isDialogOpen()) return;
-    const { clientX, clientY } = event.changedTouches[0];
-    const [dx, dy] = [touch.x - clientX, touch.y - clientY];
-    touch = null;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE) return;
-    // Up or left is onwards
-    step((Math.abs(dy) > Math.abs(dx) ? dy : dx) > 0 ? 1 : -1);
-};
-
-// Stops the page itself scrolling or bouncing (it doesn't scroll), outside the places that do
+// Scrolling and dragging don't move the scene on (the menu, the buttons and the keys do). This only stops the page
+// itself scrolling or bouncing (it doesn't scroll), outside the places that do.
 const onTouchMove = (event: TouchEvent) => {
     if (!isScrollable(event.target)) event.preventDefault();
 };
@@ -144,23 +101,17 @@ export const startNavigation = () => {
     } else if (location.hash) {
         history.replaceState(null, '', bare());
     }
-    // Setting off from the title (Enter, a scroll, a key) is a step in the history
+    // Setting off from the title (Enter, a key) is a step in the history
     const stopWatching = watch(() => route.isHeroUp, isUp => {
         if (!isUp && !location.hash) history.pushState(null, '', `${bare()}#home`);
     });
     startIntro(destination);
 
-    window.addEventListener('wheel', onWheel, { passive: false });
-    window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchend', onTouchEnd, { passive: true });
     window.addEventListener('touchmove', onTouchMove, { passive: false });
     window.addEventListener('keydown', onKey);
     window.addEventListener('popstate', onPopState);
     return () => {
         stopWatching();
-        window.removeEventListener('wheel', onWheel);
-        window.removeEventListener('touchstart', onTouchStart);
-        window.removeEventListener('touchend', onTouchEnd);
         window.removeEventListener('touchmove', onTouchMove);
         window.removeEventListener('keydown', onKey);
         window.removeEventListener('popstate', onPopState);

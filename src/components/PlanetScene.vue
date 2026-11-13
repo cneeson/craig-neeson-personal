@@ -196,7 +196,7 @@ const highlight = createHighlight()
 const arcs = createArcs()
 const belfastSign = createBelfastSign()
 const cloudDeck = createCloudDeck(HOME_MARKER, {
-  segments: quality.sphereSegments, slices: isMobile ? 8 : 14, size: isMobile ? 1024 : 2048,
+  segments: quality.sphereSegments, slices: isMobile ? 6 : 10, size: isMobile ? 1024 : 2048,
 })
 const signPoint = new Vector3()
 const parisArc = createParisArc()
@@ -309,7 +309,7 @@ const glideFromOrbit = (cam: PerspectiveCamera, earthRotationY: number, progress
   const halfWidth = Math.atan(Math.tan(MathUtils.degToRad(cam.fov / 2)) * cam.aspect)
   offsetQuaternion.setFromAxisAngle(UP, halfWidth * 0.42 * (1 - portrait))
   overviewQuaternion.multiply(offsetQuaternion)
-  offsetQuaternion.setFromAxisAngle(X_AXIS, MathUtils.degToRad(cam.fov / 2) * 0.32 * portrait)
+  offsetQuaternion.setFromAxisAngle(X_AXIS, MathUtils.degToRad(cam.fov / 2) * 0.25 * portrait)
   overviewQuaternion.multiply(offsetQuaternion)
   cam.quaternion.slerp(overviewQuaternion, overview)
 }
