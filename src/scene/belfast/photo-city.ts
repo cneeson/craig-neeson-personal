@@ -1,6 +1,6 @@
 import {
     BufferAttribute, Group, InterleavedBufferAttribute, MathUtils, Mesh, MeshBasicMaterial, PerspectiveCamera, Texture,
-    Vector2, WebGLRenderer, WebGLRenderTarget,
+    Vector2, Vector3, WebGLRenderer, WebGLRenderTarget,
 } from 'three';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { TilesRenderer } from '3d-tiles-renderer';
@@ -192,6 +192,17 @@ export const createPhotoCity = (
 
     return {
         group,
+        /**
+         * Where a place on the earth (degrees, and metres above the ellipsoid) is in the scene, and optionally the way
+         * up there, through the tiles' own frame: far from Belfast the flat conversion in geo.ts drifts, and the earth
+         * curves away. Only right once the root tileset's loaded (the reorientation's set then).
+         */
+        toScene({ lat, lon, height }: { lat: number, lon: number, height: number }, target: Vector3, up?: Vector3) {
+            group.updateMatrixWorld();
+            const [latitude, longitude] = [MathUtils.degToRad(lat), MathUtils.degToRad(lon)];
+            if (up) tiles.ellipsoid.getCartographicToNormal(latitude, longitude, up).transformDirection(tiles.group.matrixWorld);
+            return tiles.ellipsoid.getCartographicToPosition(latitude, longitude, height, target).applyMatrix4(tiles.group.matrixWorld);
+        },
         get isReady() {
             return isReady;
         },

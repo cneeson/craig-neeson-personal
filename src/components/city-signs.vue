@@ -6,6 +6,7 @@ import { cityState, route, type EmployerBeat } from '@/scene/director';
 import { onOverlayFrame } from '@/scene/overlay';
 import { sceneState } from '@/scene/state';
 import { officeAnchors } from '@/scene/belfast/offices';
+import type { SightName } from '@/scene/belfast/telescope';
 import { navigate } from '@/services/navigation';
 import { stops, type Stop } from '@/data/journey';
 import EmployerDialog from './employer-dialog.vue';
@@ -17,14 +18,13 @@ import CompanyLogo from './company-logo.vue';
  * flat to the screen and inside it, so they read on a phone too. Shown in time as the camera arrives.
  */
 
-/** The remote years at Ankorstore have the arc to Paris instead, and their card up in the sky. */
-const SKY_CARDS: EmployerBeat[] = ['ankorstore'];
-/** Seen through the telescope (telescope.ts): under the eyepieces, with how far it's looking. */
+/** Seen through the telescope, or Paris through the binoculars (telescope.ts): under the eyepieces, with how far. */
 const SCOPE_CARDS: Partial<Record<EmployerBeat, string>> = {
   coleraine: '78 km north-west, as the crow flies',
   antrim: '21 km north-west',
+  ankorstore: 'Paris, 860 km south-east',
 };
-const scopeBeats = Object.keys(SCOPE_CARDS) as ('coleraine' | 'antrim')[];
+const scopeBeats = Object.keys(SCOPE_CARDS) as SightName[];
 /** The stops with a building to point at, in the city (those through the telescope have their cards under it). */
 const callouts = (Object.keys(officeAnchors) as EmployerBeat[])
   .filter(beat => !(beat in SCOPE_CARDS))
@@ -104,10 +104,6 @@ onMounted(() => {
       element.classList.toggle('is-in-the-sky', up && !isPointing);
       toggle(element, up);
     });
-    SKY_CARDS.forEach(beat => {
-      const element = calloutElements.get(beat);
-      if (element) toggle(element, isUp(beat));
-    });
     scopeBeats.forEach(beat => {
       const element = calloutElements.get(beat);
       const { open, sight, whip } = cityState.scope;
@@ -153,11 +149,11 @@ onBeforeUnmount(() => stop?.());
     </button>
 
     <div
-      v-for="beat in [...callouts.map(callout => callout.beat), ...SKY_CARDS, ...scopeBeats]"
+      v-for="beat in [...callouts.map(callout => callout.beat), ...scopeBeats]"
       :key="beat"
       :ref="element => element && calloutElements.set(beat, element as HTMLElement)"
       class="callout sign"
-      :class="{ 'is-in-the-sky': SKY_CARDS.includes(beat), 'is-in-the-scope': (scopeBeats as EmployerBeat[]).includes(beat) }"
+      :class="{ 'is-in-the-scope': (scopeBeats as EmployerBeat[]).includes(beat) }"
     >
       <span class="dot" />
       <span class="leader" />

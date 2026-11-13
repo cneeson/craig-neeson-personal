@@ -161,8 +161,9 @@ const approachSplines = {
     arc: createSpline(approachKnots, [-24, -13, -7, -2, -1.5]),
     // Eased in proportion, like a steady descent: the surface keeps coming up at the same rate however close.
     // Starting far enough out for the whole planet to fit, further on portrait screens, which are narrow across.
-    height: createSpline(approachKnots, [3.6, 0.6, 0.12, 0.018, 0.012].map(Math.log)),
-    portraitHeight: createSpline(approachKnots, [7.4, 0.7, 0.13, 0.018, 0.012].map(Math.log)),
+    // Right down at the end, onto the clouds, lowered by then (cloudHeightAt) so it's close to the ground
+    height: createSpline(approachKnots, [3.6, 0.6, 0.12, 0.0056, 0.0035].map(Math.log)),
+    portraitHeight: createSpline(approachKnots, [7.4, 0.7, 0.13, 0.0056, 0.0035].map(Math.log)),
     aim: createSpline(approachKnots, [-15, -15, -14, -11, -11]),
 };
 
@@ -190,6 +191,16 @@ export const approachAt = (progress: number, portrait = 0) => {
         time,
     };
 };
+
+/**
+ * How high the clouds are (the planet's and the deck over Belfast), as a share of their usual height above the ground:
+ * sinking towards it over the last of the way down, so the camera comes right down close to the surface to reach them,
+ * and rising again as it climbs back out to the planet.
+ */
+export const CLOUDS_LOW = 0.3;
+export const cloudHeightAt = (progress: number) => (progress < cityTo
+    ? lerp(1, CLOUDS_LOW, ramp(progress, diveFrom - 0.01, cityFrom))
+    : lerp(CLOUDS_LOW, 1, ramp(progress, cityTo, climbTo)));
 
 /** 0 → 1 → 0 around a point, rising over `before`, staying at 1 for `hold` either side, and falling over `after`. */
 const bump = (progress: number, at: number, before: number, after: number, hold = 0) => smoothstep(progress < at

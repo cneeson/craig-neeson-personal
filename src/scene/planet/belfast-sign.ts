@@ -23,6 +23,37 @@ const TILT = new Quaternion().setFromEuler(new Euler(0.12, -0.07, 0.02));
 /** How many letters it takes each one to come in, overlapping the next ones. */
 const LETTER_OVERLAP = 2.5;
 const MAX_LETTERS = 24;
+/** How much bigger it is on portrait screens (a phone's), where it would otherwise be small across the narrow frame. */
+const PORTRAIT_SCALE = 0.35;
+
+/**
+ * A soft dark glow behind the sign, thickest in the middle and gone past the ring, so the cream lettering and the pale
+ * contours have something to stand on over white cloud.
+ */
+const createBackdrop = () => new Mesh(
+    new PlaneGeometry(RADIUS * 3, RADIUS * 3),
+    new ShaderMaterial({
+        uniforms: { uOpacity: { value: 0 } },
+        vertexShader: /* glsl */ `
+            varying vec2 vPosition;
+            void main() {
+                vPosition = position.xy;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: /* glsl */ `
+            uniform float uOpacity;
+            varying vec2 vPosition;
+            void main() {
+                float r = length(vPosition) / ${RADIUS.toFixed(5)};
+                float glow = 1.0 - smoothstep(0.2, 1.35, r);
+                gl_FragColor = vec4(0.004, 0.0, 0.012, uOpacity * glow * glow * 0.6);
+            }
+        `,
+        transparent: true,
+        depthWrite: false,
+    }),
+);
 
 /** 0 → 1 over [from, to] of `t`, eased. */
 const span = (t: number, from: number, to: number) => smoothstep(clamp01((t - from) / (to - from)));
@@ -197,7 +228,7 @@ export const createBelfastSign = () => {
     const name = createLine(...nameSize, { text: 'Belfast', font: 'Fraunces, Georgia, serif', weight: 600, size: 200, y: 150 });
     const countrySize = [RADIUS * 1.5, RADIUS * 0.15] as const;
     const country = createLine(...countrySize, {
-        text: 'NORTHERN IRELAND', font: 'Satoshi, Helvetica, Arial, sans-serif', weight: 700, size: 60, y: 52, spacing: 18,
+        text: 'NORTHERN IRELAND', font: 'Satoshi, Helvetica, Arial, sans-serif', weight: 900, size: 64, y: 52, spacing: 17,
     });
     // Above the middle, so they read clear of Northern Ireland's outline, with Belfast in the middle of the contour
     const [nameY, countryY] = [RADIUS * 0.5, RADIUS * 0.22];
@@ -215,10 +246,12 @@ export const createBelfastSign = () => {
     // At different depths, so they shift against each other as the camera comes in: the dashed ring furthest back,
     // the lettering out in front of the ring
     outer.position.z = -RADIUS * 0.18;
+    const backdrop = createBackdrop();
+    backdrop.position.z = -RADIUS * 0.25;
     name.position.set(0, nameY, RADIUS * 0.1);
     country.position.set(0, countryY, RADIUS * 0.08);
     const object = new Group();
-    object.add(outer, ripple, ring, country, name);
+    object.add(backdrop, outer, ripple, ring, country, name);
     // In front of the cloud deck under it (which is drawn after the planet's clouds), back to front
     let order = 10;
     object.traverse(child => {
@@ -242,6 +275,7 @@ export const createBelfastSign = () => {
             toCamera.subVectors(over, camera.position).normalize();
             object.position.copy(camera.position).addScaledVector(toCamera, distance);
             object.quaternion.copy(camera.quaternion).multiply(TILT);
+            object.scale.setScalar(1 + PORTRAIT_SCALE * clamp01((1 - camera.aspect) / 0.55));
 
             const rings = opacity * smoothstep(clamp01((near - 0.15) / 0.6));
             set(ring, 'uDraw', span(enter, 0, 0.6));
@@ -256,7 +290,9 @@ export const createBelfastSign = () => {
             set(name, 'uReveal', clamp01((enter - 0.575) / 0.33));
             set(name, 'uOpacity', lettering);
             set(country, 'uReveal', clamp01((enter - 0.72) / 0.28));
-            set(country, 'uOpacity', lettering * 0.9);
+            set(country, 'uOpacity', lettering);
+            // Gathering as the ring draws, and gone with the lettering close up, so it never fills the screen
+            uniformsOf(backdrop).uOpacity.value = lettering * span(enter, 0, 0.6);
         },
         dispose() {
             object.traverse((child) => {

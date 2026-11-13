@@ -88,6 +88,9 @@ export const createTileMaterial = (map: Texture | null) => new ShaderMaterial({
     `,
 });
 
+/** Which way the sun is over the city (world space): low in the south-west, behind the home hover's right shoulder. */
+export const CITY_SUN = new Vector3(0.85, 0.42, 0.31).normalize();
+
 /** A daytime sky: pale haze at the horizon deepening to blue overhead, with a soft glow from the sun. */
 export const createDaySkyMaterial = () => new ShaderMaterial({
     uniforms: {
@@ -95,7 +98,7 @@ export const createDaySkyMaterial = () => new ShaderMaterial({
         uZenith: { value: lin(0.34, 0.54, 0.84) },
         uSunColor: { value: lin(1, 0.93, 0.8) },
         // Ahead and to the right of the flight, low in the sky
-        uSun: { value: new Vector3(0.85, 0.42, 0.31).normalize() },
+        uSun: { value: CITY_SUN.clone() },
     },
     vertexShader: /* glsl */ `
         varying vec3 vDirection;

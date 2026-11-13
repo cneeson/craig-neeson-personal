@@ -13,28 +13,40 @@ interface Office {
     /** The roof's height, and the ground's where it isn't at 0 (out where the tiles' plane leaves the earth). */
     height: number;
     ground?: number;
+    /** Where the roof steps: each wall's own height (from each corner to the next), in place of `height`. */
+    tops?: number[];
+    /**
+     * A pitched roof: `height` is then the eaves', and the walls rise to the ridges' where they pass under them. The
+     * ridges run along `along`, `count` of them side by side (a row of gables), evenly across the footprint.
+     */
+    ridge?: { height: number; along: [number, number]; count?: number };
 }
 
 const OFFICES: Office[] = [
-    // Adelaide Exchange, 24–26 Adelaide Street (way 445786641)
+    // Adelaide Exchange, 24–26 Adelaide Street (way 445786641): the west wing and the range along the south are taller
+    // than the east wing
     {
         beat: 'liberty',
-        height: 3.4,
+        height: 3.7,
+        tops: [3.7, 3.7, 3.7, 3.7, 3.7, 3.2, 3.2, 3.2, 3.2, 3.2, 3.2, 3.2, 3.2, 3.2, 3.2, 3.7, 3.7, 3.7],
         footprint: [[-84.2, 119.3], [-84.4, 117.2], [-84.7, 114.2], [-82.2, 114.1], [-82, 118.1], [-80.5, 118.1],
             [-80.6, 115.7], [-81.4, 115.6], [-81.5, 114.7], [-80.8, 114.7], [-81, 111.6], [-81.5, 111.2],
             [-79.8, 111.1], [-79.7, 112], [-79.4, 112], [-78.9, 119.1], [-80.8, 119.1], [-82.6, 119.2]],
     },
-    // Flax House, 83–91 Adelaide Street (way 1549697622)
-    { beat: 'flexera', height: 3, footprint: [[-85.8, 120.6], [-85.9, 119.3], [-89.4, 119.5], [-89.3, 120.8], [-87, 120.7]] },
-    // Ormeau Business Park, 8 Cromac Avenue, in the Gasworks: the western block, where Locate a Locum's unit was (way 363937763)
-    { beat: 'locum', height: 1.2, footprint: [[-61.2, 155.7], [-59.2, 163.3], [-61.1, 163.8], [-63.1, 156.2]] },
-    // Meadow House, 22 East Bridge Street, by Lanyon station: Formation Works (way 292885433)
+    // Flax House, 83–91 Adelaide Street (way 1549697622), moved onto the building in the tiles
+    { beat: 'flexera', height: 2.1, footprint: [[-86, 121.1], [-86.1, 119.8], [-89.6, 120], [-89.5, 121.3], [-87.2, 121.2]] },
+    // Ormeau Business Park, 8 Cromac Avenue, in the Gasworks: the middle one of the western block's six units, where
+    // Locate a Locum was, under two of the row of gables across the block. Placed from the tiles (the block's footprint in
+    // OSM, way 363937763, is off by 6 m)
     {
-        beat: 'ocula',
-        height: 3.2,
-        footprint: [[-8.7, 86], [-8.6, 88.7], [-7.6, 88.7], [-7.1, 89], [-6.9, 88.6], [-7.1, 87.5], [-6.9, 87.4],
-            [-6.9, 87.8], [-5.8, 87.8], [-5.9, 85.9]],
+        beat: 'locum',
+        height: 1,
+        ridge: { height: 1.2, along: [1, -0.26], count: 2 },
+        footprint: [[-60.73, 159.58], [-60.39, 160.89], [-62.42, 161.42], [-62.76, 160.12]],
     },
+    // Meadow House, 22 East Bridge Street, by Lanyon station: Formation Works (way 292885433, redrawn from the tiles, as
+    // it's 6 m off)
+    { beat: 'ocula', height: 2, footprint: [[-8.6, 86.5], [-6, 86.5], [-6, 88.7], [-8.6, 88.7]] },
     // Nitec, 9 Technology Park, Antrim, 21 km off: only seen through the telescope (way 242023209)
     {
         beat: 'antrim',
@@ -213,15 +225,26 @@ const centreOf = (footprint: [number, number][]) => footprint
 
 /** Where each building's callout points: just over the middle of its roof. */
 export const officeAnchors = Object.fromEntries(OFFICES.map(office =>
-    [office.beat, centreOf(office.footprint).setY(office.height + 0.4)])) as Partial<Record<EmployerBeat, Vector3>>;
+    [office.beat, centreOf(office.footprint).setY((office.ridge?.height ?? office.height) + 0.4)])) as Partial<Record<EmployerBeat, Vector3>>;
 
 /** Walls round the footprint, with each vertex's height (0..1) and its distance from the nearest corner (m). */
-const wallsOf = ({ footprint, height, ground = 0 }: Office) => {
+const wallsOf = ({ footprint, height, ground = 0, ridge, tops }: Office) => {
     const centre = centreOf(footprint);
     const corners = footprint.map(([x, z]) => {
         const out = new Vector3(x - centre.x, 0, z - centre.z);
         return new Vector3(x, 0, z).addScaledVector(out.normalize(), MARGIN);
     });
+    // Across the ridges: how far over each point is (0..count, the gables' eaves at whole numbers), and so how high
+    // the wall's top is there
+    const count = ridge?.count ?? 1;
+    const across = ridge ? new Vector3(-ridge.along[1], 0, ridge.along[0]).normalize() : new Vector3();
+    const offsets = corners.map(corner => corner.clone().sub(centre).dot(across));
+    const [low, high] = [Math.min(...offsets), Math.max(...offsets)];
+    const over = (point: Vector3) => (point.clone().sub(centre).dot(across) - low) / (high - low) * count;
+    const topAt = (point: Vector3, wall: number) => ridge
+        ? height + (ridge.height - height) * (1 - Math.abs((over(point) % 1) * 2 - 1))
+        : tops?.[wall] ?? height;
+
     const positions: number[] = [];
     const heights: number[] = [];
     const edges: number[] = [];
@@ -230,14 +253,25 @@ const wallsOf = ({ footprint, height, ground = 0 }: Office) => {
         const metres = a.distanceTo(b) * 10;
         // Corner lines only at the ends of walls of any length, not along the jogs in a footprint
         const [start, length] = metres < 6 ? [100, 200 + metres] : [0, metres];
-        // Two triangles per wall: (a low, b low, b high) and (a low, b high, a high)
-        const quad: [Vector3, number, number][] = [
-            [a, 0, start], [b, 0, start + metres], [b, 1, start + metres], [a, 0, start], [b, 1, start + metres], [a, 1, start],
-        ];
-        quad.forEach(([point, up, along]) => {
-            positions.push(point.x, up ? height : ground + BASE, point.z);
-            heights.push(up);
-            edges.push(along, length);
+        // Split wherever the wall passes under a ridge or a valley, so its top follows the roof
+        const [from, to] = [over(a), over(b)].map(value => value * 2);
+        const turns = ridge ? Array.from({ length: count * 2 - 1 }, (_, j) => j + 1)
+            .filter(turn => (turn - from) * (turn - to) < 0)
+            .map(turn => (turn - from) / (to - from))
+            .sort((x, y) => x - y) : [];
+        const stops = [a, ...turns.map(t => a.clone().lerp(b, t)), b];
+        stops.slice(1).forEach((q, j) => {
+            const p = stops[j];
+            const [alongP, alongQ] = [start + a.distanceTo(p) * 10, start + a.distanceTo(q) * 10];
+            // Two triangles per piece: (p low, q low, q high) and (p low, q high, p high)
+            const quad: [Vector3, number, number][] = [
+                [p, 0, alongP], [q, 0, alongQ], [q, 1, alongQ], [p, 0, alongP], [q, 1, alongQ], [p, 1, alongP],
+            ];
+            quad.forEach(([point, up, along]) => {
+                positions.push(point.x, up ? topAt(point, i) : ground + BASE, point.z);
+                heights.push(up);
+                edges.push(along, length);
+            });
         });
     });
     const geometry = new BufferGeometry();

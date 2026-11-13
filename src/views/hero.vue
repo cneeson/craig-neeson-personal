@@ -130,9 +130,11 @@ const leave = () => {
   isLeaving = true;
   writing?.kill();
   context?.add(() => {
-    // The button, the note and its arrow go the moment it's pressed, where they are, so nothing holds the eye from the
-    // camera setting off (the note marks a place on the planet rather than hanging in front of it, so it isn't passed)
-    gsap.set(['[data-intro="enter"]', '.hero .note', '.hero .arrow'], { autoAlpha: 0 });
+    // The note and its arrow go the moment it's pressed, where they are, so nothing holds the eye from the camera
+    // setting off (the note marks a place on the planet rather than hanging in front of it, so it isn't passed). The
+    // button as quickly, but softly: easing out, sinking back a little as it goes
+    gsap.set(['.hero .note', '.hero .arrow'], { autoAlpha: 0 });
+    gsap.to('[data-intro="enter"]', { autoAlpha: 0, scale: 0.94, y: 4, duration: 0.3, ease: 'sine.out', overwrite: true });
     if (prefersReducedMotion) {
       leaving = gsap.to('.hero .intro', { autoAlpha: 0, duration: 0.3 });
       return;

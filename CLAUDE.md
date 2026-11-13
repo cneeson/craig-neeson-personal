@@ -90,20 +90,26 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   the render loop calls with the camera; shown and hidden in time by class.
 - `src/components/city-signs.vue`: Experience's text over Belfast. Each employer gets a callout flat to the screen,
   with a dot on its building and a leader up to a card kept inside the viewport (in the sky instead if the building's
-  out of view, as on narrow screens, and always for Ankorstore); the telescope stops' cards wait for the eyepieces. The
+  out of view, as on narrow screens); the telescope stops' cards (Ankorstore's too) wait for the eyepieces. The
   overview has a pin on each building that flies to it. The cards' buttons open `employer-dialog.vue` with the role's
   key points from `src/data/journey.ts` (the stops) and `jobs.ts`. Only the buttons take the pointer, so swipes over
   the rest still step.
 - `src/components/skill-signs.vue`: the skills (`src/data/skills.ts`), each a logo and name over a landmark, and the gig
   poster by the SSE Arena, in a CSS3DRenderer following the city camera, turned to face it. Offsets on a CSS3D
   object's own element are applied outside its matrix, in unscaled world units, so put them on a child.
-- `src/scene/belfast/offices.ts`: the employers' buildings (OSM footprints, rough heights), outlined in light while
-  their stop is up (faintly, all of them, in the overview), and the callouts' anchors. Frame each stop's shot on its
-  building in `shots.ts`.
+- `src/scene/belfast/offices.ts`: the employers' buildings, outlined in light while their stop is up (faintly, all of
+  them, in the overview), and the callouts' anchors. The outlines' tops follow the roofs: a roof that steps gives
+  each wall its own height (`tops`), a pitched one rises to its ridges (`ridge`, several for a row of gables, as on
+  Locate a Locum's unit). OSM footprints can be several metres off the tiles, so check them against the tiles: the
+  Belfast ones were measured by raycasting the tiles (which needs `freeOnUpload` in `photo-city.ts` held off, as it
+  drops the vertices once uploaded). Frame each stop's shot on its building in `shots.ts`.
   `paris-arc.ts` draws the arc from Ormeau Business Park in the Gasworks towards Paris for Ankorstore.
 - `src/scene/belfast/telescope.ts`: the coin-op telescope over City Hall. A camera of its own about a
   kilometre or so short of each place (Coleraine, then Antrim) renders into a texture, shown through the eyepieces by a
   screen-space lens shader (distortion, fringes, wobble, iris, a whip across between them, a reticle on the target).
+  Ankorstore's stop looks the same way at Paris (its office at 101 rue de Sèvres, with the Eiffel Tower behind), once
+  the arc has drawn, through binoculars (two eyepieces even on portrait screens). Paris is placed each frame through
+  `photoCity.toScene` (lat/lon/height through the tiles' own ellipsoid and frame), as nothing else holds up 860 km off.
   Its cameras are extra views for the tiles (`photo-city.ts` `extraViews`): prefetched after the shots, then loaded
   only at their stops. Coleraine is outside the photorealistic coverage (terrain and aerial photos only), so its
   campus buildings are outlined, like Nitec's (`offices.ts`, from OSM). Out there, convert lat/lon with WGS84
@@ -113,16 +119,21 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   and part over it (the centre must be turned into the cloud mesh's spinning space); `highlight.ts` traces the
   outline (`northern-ireland.ts`, from Natural Earth) and scans the land; `belfast-sign.ts` is Belfast's name in a
   contour, hung over it on the way down at the distance of a point on the glide (`SIGN_PASS`), so the camera flies
-  through it; `cloud-deck.ts` is a deck of heaped cloud above the planet's, over Belfast, which the camera comes
+  through it (bigger on portrait screens, over a dark glow so it reads against white cloud); `cloud-deck.ts` is a deck of heaped cloud above the planet's, over Belfast, which the camera comes
   down through after the sign (`deckAt`): a stack of slices over a map of the cloud baked once in the warm-up (each
   slice needs denser cloud the higher it is, so they dome). Close to it, it reaches out past the horizon, the map
-  mirrored beyond its edges, so it seems to go all round the planet; `arcs.ts` draws the arcs to the HQs.
+  mirrored beyond its edges, so it seems to go all round the planet. The cloud layer and the deck sink towards the
+  ground as the camera dives (`cloudHeightAt` in `choreography.ts`), so it comes down close over the land; `arcs.ts` draws the arcs to the HQs.
   `geo.ts` converts lat/lon to the earth group's space (`onEarth`) and holds `EARTH_POSITION`.
 - `src/scene/choreography.ts`: the planet's part, as a pure function of the journey's progress (0..1), which the
   director tweens (the intro's glide, the climb out to `reach` and back). It holds the `windows` (hero, forecast,
   Northern Ireland, Belfast, reach, reveal), the camera/earth keyframes (with optional portrait overrides, joined by
   monotone cubic splines so the camera never stops dead or reverses), and the dive into Belfast (`diveAt`, `veilAt`,
   `isInBelfast`). Progress inside the Belfast window means the city is on screen.
+- `src/scene/look.ts` (`look-pass.vue`, in the composer after SMAA, before the grain): the picture's look. Over the
+  city a warm grade; rays of sun through the last of the cloud as the city comes out of it; and, only while the
+  camera's moving fast (its speed over its height, so the same at any scale), a blur streaking from where it's heading
+  and a colour fringe. Nothing blurs while it's held. `film-grain.vue` (`grain.ts`) adds the grain and vignette.
 - `src/scene/captions.ts`: word-by-word caption entrances, played in time.
 - `src/scene/state.ts`: plain mutable `{ progress, cityReady }`, written by GSAP and the city and read every frame by
   the render loop. Deliberately not reactive.
@@ -142,7 +153,7 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   all on the GPU in two draw calls (models and points): the roads are points in a texture and each car's place is
   worked out from the time. Within 100 units they're little models (small enough to stay in their lanes); further off, points, fading out by 650. They sit
   on a top-down height render of the tiles around the camera, refreshed every second, in the browser only, like the
-  tiles. `photo-materials.ts` holds the tile shader (haze and drifting cloud shadows, shared with the overlays) and
+  tiles. `mist.ts` lays thin sheets of mist over the water (the water mask, blurred), burning off over the first half-minute in the city, and gone when the camera's low. `photo-materials.ts` holds the tile shader (haze and drifting cloud shadows, shared with the overlays) and
   the day sky.
 - `scripts/belfast/water.mjs` → `public/belfast/water.png` (the water mask for `water.ts`, over `geo.ts`'s area), and
   `scripts/belfast/traffic.mjs` → `public/belfast/traffic.bin` (the traffic's roads, layout in the script header). The

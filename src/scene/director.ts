@@ -6,6 +6,7 @@ import { clamp01, damp, lerp } from '@/services/three';
 import { DESCENT_DURATION, descentEase, ENTRANCE_DURATION, windows } from './choreography';
 import { nearestHeading, poseOf, shots, type Pose, type Shot, type ShotName } from './shots';
 import { sceneState } from './state';
+import type { SightName } from './belfast/telescope';
 
 /**
  * The director moves the camera between the stops of each part of the site. Over Belfast it flies from wherever
@@ -64,7 +65,7 @@ export const cityState = {
     offices: Object.fromEntries(employerBeats.map(beat => [beat, 0])) as Record<EmployerBeat, number>,
     paris: { draw: 0, opacity: 0 },
     /** The telescope: how far it's `open`, which `sight` it shows, and the `whip` across from one to the other (-1 → 1). */
-    scope: { open: 0, sight: 'coleraine' as 'coleraine' | 'antrim', whip: -1 },
+    scope: { open: 0, sight: 'coleraine' as SightName, whip: -1 },
     letterbox: 0,
     /** How far the train has pulled away from Lanyon Place (0 → 1, and past it once it's gone). */
     trainAway: 0,
@@ -411,8 +412,9 @@ export const skipIntro = () => {
 
 // --- The city's features, eased every frame ---
 
-const SCOPE_STOPS: StopId[] = ['coleraine', 'antrim'];
-let whipping: { to: 'coleraine' | 'antrim', t: number } | null = null;
+// The telescope's two sights, and the binoculars on Paris for Ankorstore
+const SCOPE_STOPS: StopId[] = ['coleraine', 'antrim', 'ankorstore'];
+let whipping: { to: SightName, t: number } | null = null;
 let trainCue = 0;
 let lastStop: StopId | null = null;
 
@@ -434,8 +436,10 @@ export const tickDirector = (delta: number) => {
     paris.draw = isParis ? clamp01(paris.draw + delta / 2.4) : paris.opacity < 0.01 ? 0 : paris.draw;
 
     // The telescope stays up moving between its two sights, and whips across from one to the other
-    const sight = isExperience && SCOPE_STOPS.includes(stop) ? stop as 'coleraine' | 'antrim' : null;
-    scope.open = damp(scope.open, sight && (arriving || scope.open > 0.5) ? 1 : 0, 5, delta);
+    const sight = isExperience && SCOPE_STOPS.includes(stop) ? stop as SightName : null;
+    // For Paris, once the arc's reached out towards it
+    const isReady = sight !== 'ankorstore' || paris.draw >= 1;
+    scope.open = damp(scope.open, sight && isReady && (arriving || scope.open > 0.5) ? 1 : 0, 5, delta);
     if (sight && sight !== scope.sight && !whipping) {
         if (scope.open < 0.05) scope.sight = sight;
         else whipping = { to: sight, t: 0 };

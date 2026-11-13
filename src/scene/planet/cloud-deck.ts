@@ -241,16 +241,21 @@ export const createCloudDeck = (centre: Vector3, { segments, slices, size }: { s
          * camera comes down through it: the clouds have closed in by then, and from under it the deck would show its
          * edge over the horizon.
          */
-        update(opacity: number, distance: number, time: number) {
-            object.visible = isBaked && opacity > 0.001 && distance > BASE - 0.004;
+        update(opacity: number, distance: number, time: number, lowered = 1) {
+            // Its height above the ground scaled by `lowered` (see cloudHeightAt)
+            const lower = (radius: number) => 1 + (radius - 1) * lowered;
+            object.visible = isBaked && opacity > 0.001 && distance > lower(BASE) - 0.004 * lowered;
             if (!object.visible) return;
             // Thickening over the last stretch down to it
-            const thicken = smoothstep(clamp01((TOP + THICKEN_FROM - distance) / THICKEN_FROM));
+            const thicken = smoothstep(clamp01((lower(TOP) + THICKEN_FROM - distance) / THICKEN_FROM));
             // Reaching out past the horizon as it comes down, so close to it, it's cloud all round (the horizon's
             // acos(1 / distance) away)
             const reach = Math.max(REACH, Math.acos(Math.min(1, 1 / distance)) * 1.6 * thicken);
-            for (const { mesh, material, radius } of layers) {
-                const shown = opacity * sliceOpacity * (1 + thicken * 0.5) * (1 - smoothstep(clamp01((radius + 0.0025 - distance) / 0.0025)));
+            for (const { mesh, material, radius: usual } of layers) {
+                const radius = lower(usual);
+                mesh.scale.setScalar(radius);
+                const gone = 0.0025 * lowered;
+                const shown = opacity * sliceOpacity * (1 + thicken * 0.5) * (1 - smoothstep(clamp01((radius + gone - distance) / gone)));
                 mesh.visible = shown > 0.001;
                 material.uniforms.uOpacity.value = shown;
                 material.uniforms.uTime.value = time;

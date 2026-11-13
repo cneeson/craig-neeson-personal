@@ -8,7 +8,7 @@ import { photoUniforms } from './photo-materials';
 
 /**
  * Up over City Hall, a coin-op telescope looks out to where it started: Ulster University in Coleraine, then
- * Nitec in Antrim. Far too far to see from Belfast, so each has a camera of its own, about a kilometre short of
+ * Nitec in Antrim. And for Ankorstore, binoculars on Paris: its office on the rue de Sèvres, the Eiffel Tower behind. Far too far to see from Belfast, so each has a camera of its own, about a kilometre short of
  * it along the line of sight from City Hall, whose tiles load ahead like the flight's (see photo-city.ts). What
  * it sees is drawn into a texture and shown through the eyepieces, with the lens's distortion, colour fringes
  * and wobble, opening like an iris and whipping across from one to the other.
@@ -26,6 +26,8 @@ interface Sight {
     fov: number;
 }
 
+export type SightName = 'coleraine' | 'antrim' | 'ankorstore';
+
 // The tiles are laid on a plane touching the earth at Belfast, so the ground drops away with distance
 const SIGHTS: Record<'coleraine' | 'antrim', Sight> = {
     // Ulster University's Coleraine campus, about 78 km north-west. Outside the photorealistic tiles' coverage
@@ -36,6 +38,24 @@ const SIGHTS: Record<'coleraine' | 'antrim', Sight> = {
     antrim: { target: new Vector3(-1819.5, 0.3, -1098.7), bearing: 304.2, standOff: 100, height: 26, fov: 14 },
 };
 
+
+/** A place on the earth: degrees, and metres above the WGS84 ellipsoid (the tiles' datum). */
+interface Place { lat: number, lon: number, height: number }
+/** Converts a place to the scene (photo-city.ts `toScene`), with the way up there. */
+export type ToScene = (place: Place, target: Vector3, up?: Vector3) => Vector3;
+
+/**
+ * Paris, some 860 km off: too far round the earth for the flat-plane sights above, so it's placed by latitude and
+ * longitude. From about 600 m east-south-east of Ankorstore's office (101 rue de Sèvres) and 60 m up, looking west
+ * past it to the Eiffel Tower, about 2.2 km beyond it (the ground's about 80 m above the ellipsoid there).
+ */
+const PARIS = {
+    office: { lat: 48.84851, lon: 2.32101, height: 95 },
+    camera: { lat: 48.84589, lon: 2.32817, height: 140 },
+    // Over the office, so it's above the card under the eyepieces and the tower's top is in frame
+    look: { lat: 48.84851, lon: 2.32101, height: 146 },
+    fov: 30,
+};
 
 const createSightCamera = ({ target, bearing, standOff, height, fov }: Sight) => {
     const camera = new PerspectiveCamera(fov, 1, 0.3, 1000);
@@ -63,6 +83,8 @@ const fragmentShader = /* glsl */ `
     uniform float uTime;
     uniform float uAspect;
     uniform float uBinocular;
+    uniform float uRadius;
+    uniform float uGap;
     uniform vec2 uMark;
     varying vec2 vUv;
 
@@ -70,7 +92,7 @@ const fragmentShader = /* glsl */ `
     float eyepieces(vec2 p, float radius, out vec2 centre) {
         // Up a little, leaving room for the card underneath
         if (uBinocular > 0.5) {
-            centre = vec2(p.x < 0.0 ? -0.24 : 0.24, 0.08);
+            centre = vec2(p.x < 0.0 ? -uGap : uGap, 0.08);
         } else {
             centre = vec2(0.0, 0.12);
         }
@@ -83,7 +105,7 @@ const fragmentShader = /* glsl */ `
 
     void main() {
         vec2 p = (vUv - 0.5) * vec2(uAspect, 1.0);
-        float radius = (uBinocular > 0.5 ? 0.33 : min(uAspect * 0.46, 0.36)) * mix(0.2, 1.0, uOpen);
+        float radius = uRadius * mix(0.2, 1.0, uOpen);
         vec2 centre;
         float outside = eyepieces(p, radius, centre);
 
@@ -130,7 +152,16 @@ const fragmentShader = /* glsl */ `
 `;
 
 export const createTelescope = (renderer: WebGLRenderer) => {
-    const cameras = { coleraine: createSightCamera(SIGHTS.coleraine), antrim: createSightCamera(SIGHTS.antrim) };
+    const paris = new PerspectiveCamera(PARIS.fov, 1, 0.3, 1000);
+    const parisTarget = new Vector3();
+    const cameras: Record<SightName, PerspectiveCamera> = {
+        coleraine: createSightCamera(SIGHTS.coleraine), antrim: createSightCamera(SIGHTS.antrim), ankorstore: paris,
+    };
+    const targets: Record<SightName, Vector3> = {
+        coleraine: SIGHTS.coleraine.target, antrim: SIGHTS.antrim.target, ankorstore: parisTarget,
+    };
+    const fovs: Record<SightName, number> = { coleraine: SIGHTS.coleraine.fov, antrim: SIGHTS.antrim.fov, ankorstore: PARIS.fov };
+    const look = new Vector3();
     const renderTarget = new WebGLRenderTarget(1, 1, { type: HalfFloatType });
     const material = new ShaderMaterial({
         uniforms: {
@@ -140,6 +171,8 @@ export const createTelescope = (renderer: WebGLRenderer) => {
             uTime: { value: 0 },
             uAspect: { value: 1 },
             uBinocular: { value: 1 },
+            uRadius: { value: 0.33 },
+            uGap: { value: 0.24 },
             uMark: { value: new Vector2(0.5, 0.5) },
         },
         vertexShader,
@@ -160,13 +193,23 @@ export const createTelescope = (renderer: WebGLRenderer) => {
 
     return {
         overlay,
-        /** Both cameras, for the tiles to load for. */
-        cameras: [cameras.coleraine, cameras.antrim],
+        /** Every sight's camera, for the tiles to load for. */
+        cameras: Object.values(cameras),
+        /**
+         * Puts the Paris camera in place, with `toScene` (the tiles' own frame, once they're set up), upright there
+         * rather than as Belfast's up.
+         */
+        locate(toScene: ToScene) {
+            toScene(PARIS.camera, paris.position, paris.up);
+            toScene(PARIS.office, parisTarget);
+            paris.lookAt(toScene(PARIS.look, look));
+            paris.updateMatrixWorld();
+        },
         /**
          * The cameras to load for, by the sights about to be looked through. Mostly one at a time, as two (on top
          * of the reader's wide view over City Hall) can fill the cache.
          */
-        camerasFor(sights: ('coleraine' | 'antrim')[]) {
+        camerasFor(sights: SightName[]) {
             return sights.map(sight => cameras[sight]);
         },
         /** The CSS size the tiles should pick detail for, as seen through it. */
@@ -178,7 +221,7 @@ export const createTelescope = (renderer: WebGLRenderer) => {
          * what's drawn).
          */
         update(
-            { open, sight: sightName, whip }: { open: number, sight: 'coleraine' | 'antrim', whip: number },
+            { open, sight: sightName, whip }: { open: number, sight: SightName, whip: number },
             elapsed: number, aspect: number, sky: Object3D, world: Object3D[],
         ) {
             overlay.visible = open > 0.001;
@@ -187,12 +230,12 @@ export const createTelescope = (renderer: WebGLRenderer) => {
             if (!overlay.visible) return;
 
             const isSwinging = Math.abs(whip) < 1;
-            const sight = SIGHTS[sightName];
             const camera = cameras[sightName];
+            const isBinoculars = sightName === 'ankorstore';
 
             const isPortrait = aspect < 1;
             // Wider on narrow screens, so what it's looking at fits across
-            const fov = isPortrait ? sight.fov * 1.5 : sight.fov;
+            const fov = isPortrait ? fovs[sightName] * 1.5 : fovs[sightName];
             if (camera.aspect !== aspect || camera.fov !== fov) {
                 [camera.aspect, camera.fov] = [aspect, fov];
                 camera.updateProjectionMatrix();
@@ -229,8 +272,13 @@ export const createTelescope = (renderer: WebGLRenderer) => {
             uniforms.uSwing.value = isSwinging ? (whip < 0 ? 1 + whip : whip - 1) : 0;
             uniforms.uTime.value = elapsed;
             uniforms.uAspect.value = aspect;
-            uniforms.uBinocular.value = isPortrait ? 0 : 1;
-            mark.copy(sight.target).project(camera);
+            // The telescope's twin eyepieces on wide screens, and one on narrow ones; the binoculars always two,
+            // drawn closer together to fit across a phone
+            const isTwin = isBinoculars || !isPortrait;
+            uniforms.uBinocular.value = isTwin ? 1 : 0;
+            uniforms.uRadius.value = isTwin && isPortrait ? aspect * 0.32 : isTwin ? 0.33 : Math.min(aspect * 0.46, 0.36);
+            uniforms.uGap.value = isTwin && isPortrait ? aspect * 0.32 * 0.58 : 0.24;
+            mark.copy(targets[sightName]).project(camera);
             uniforms.uMark.value.set((mark.x + 1) / 2, (mark.y + 1) / 2);
         },
 

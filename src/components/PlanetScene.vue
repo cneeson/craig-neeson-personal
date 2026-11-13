@@ -12,6 +12,8 @@
       />
       <!-- After the bloom, so it doesn't smear the stars -->
       <SMAAPmndrs />
+      <!-- The grade, the sun's rays out of the clouds and the speed blur, on the smoothed picture -->
+      <LookPass ref="lookRef" />
       <!-- Last, so the grain isn't smoothed away -->
       <FilmGrain ref="grainRef" />
     </EffectComposerPmndrs>
@@ -79,10 +81,11 @@ import { BloomPmndrs, EffectComposerPmndrs, SMAAPmndrs } from '@tresjs/post-proc
 import { BlendFunction } from 'postprocessing'
 import CloudVeil from './cloud-veil.vue'
 import FilmGrain from './film-grain.vue'
+import LookPass from './look-pass.vue'
 import { isMobile, prefersReducedMotion, quality } from '@/services/device';
 import {
   approachAt, bloomThresholdAt, diveAt, ENTRANCE_DURATION, entranceAt, RISEN, frameAt, highlightAt, isInBelfast, reachAt,
-  deckAt, SIGN_PASS, signAt, veilAt, windows,
+  cloudHeightAt, deckAt, SIGN_PASS, signAt, veilAt, windows,
 } from '@/scene/choreography';
 import { cameraNudge } from '@/scene/camera-nudge'
 import { cityPoseAt, cityState, firstShot, playEntrance, route, tickDirector } from '@/scene/director';
@@ -99,6 +102,7 @@ import { createNebula } from '@/scene/planet/nebula';
 import { createStarLayer, type StarLayer } from '@/scene/planet/starfield';
 import { createShootingStar } from '@/scene/planet/shooting-star';
 import { warmShaders } from '@/scene/warm';
+import { updateLook } from '@/scene/look';
 import { createParisArc } from '@/scene/belfast/paris-arc';
 import { ATMOSPHERE_RADIUS, createAtmosphereMaterial, createEarthMaterial, SUN_DIRECTION } from '@/scene/earth';
 import { clamp01, damp, lerp, smoothstep } from '@/services/three';
@@ -197,6 +201,7 @@ const planetRef = shallowRef<Group>()
 const sunRef = shallowRef<DirectionalLight>()
 const fillRef = shallowRef<PointLight>()
 const grainRef = shallowRef<{ effect?: { uniforms: Map<string, { value: number }> } }>()
+const lookRef = shallowRef<{ effect?: { uniforms: Map<string, { value: unknown }> } }>()
 const veilRef = shallowRef<{ update(amount: number, travel: number, aspect: number): void }>()
 
 const highlight = createHighlight()
@@ -302,7 +307,8 @@ const glideFromOrbit = (cam: PerspectiveCamera, earthRotationY: number, progress
   const horizon = Math.acos(1 / (1 + height))
   const arrival = poseOf(firstShot(), 0, performance.now() / 1000)
   const start = approachAt(0, portrait).height
-  setLens(cam, glideFov(height, start, time, cityFov(arrival.zoom, cam.aspect)), PLANET_LENS.near)
+  // Close to the ground at the end, the near plane comes in with it, so the surface below isn't cut away
+  setLens(cam, glideFov(height, start, time, cityFov(arrival.zoom, cam.aspect)), Math.min(PLANET_LENS.near, height * 0.25))
   const first = turn > 0 ? MathUtils.degToRad(arrival.heading) : 0
   // Far out, looking at the horizon would be past straight down, where it'd flip right over. So it tilts up from
   // steeply down from the moment it sets off, and eases onto the horizon once it's close (the smooth larger of the
@@ -312,7 +318,8 @@ const glideFromOrbit = (cam: PerspectiveCamera, earthRotationY: number, progress
   aim(cam, turn * (first - APPROACH_BEARING), (ahead + steep + Math.hypot(ahead - steep, PITCH_KNEE)) / 2)
   // Belfast in the middle of the frame on the way down (always ahead, so it's never straight down), coming round to
   // that look as the clouds close in
-  marker.copy(HOME_MARKER).applyAxisAngle(UP, earthRotationY).add(EARTH_POSITION)
+  // (on the clouds, as they're lowered)
+  marker.copy(HOME_UP).multiplyScalar(1 + 0.01 * cloudHeightAt(progress)).applyAxisAngle(UP, earthRotationY).add(EARTH_POSITION)
   lookMatrix.lookAt(cam.position, marker, surfaceUp)
   cam.quaternion.setFromRotationMatrix(lookMatrix).slerp(lookQuaternion, smoothstep(clamp01((time - 0.65) / 0.35)))
   if (overview <= 0) return
@@ -503,6 +510,8 @@ onBeforeRender(({ delta, elapsed }) => {
     const cloudSpin = -elapsed * 0.006
     if (cloudsRef.value) {
       cloudsRef.value.rotation.y = cloudSpin
+      // Lowered towards the ground near the end of the way down (cloudHeightAt); the sphere's radius is 1.01
+      cloudsRef.value.scale.setScalar((1 + 0.01 * cloudHeightAt(progress)) / 1.01)
       clouds.attach(cloudsRef.value.material as MeshBasicMaterial)
     }
 
@@ -524,7 +533,7 @@ onBeforeRender(({ delta, elapsed }) => {
     signPoint.copy(HOME_MARKER).applyAxisAngle(UP, frame.earthRotationY).add(EARTH_POSITION)
     const sign = signAt(progress)
     belfastSign.update(cam, signPoint, signDistance, sign.enter, sign.opacity)
-    cloudDeck.update(deckAt(progress), cam.position.distanceTo(EARTH_POSITION), elapsed)
+    cloudDeck.update(deckAt(progress), cam.position.distanceTo(EARTH_POSITION), elapsed, cloudHeightAt(progress))
   }
 
   // The journey streams the clouds past, and they drift a little on their own
@@ -536,6 +545,7 @@ onBeforeRender(({ delta, elapsed }) => {
     grain.get('amount')!.value = amount
     grain.get('vignette')!.value = vignette
   }
+  updateLook(lookRef.value?.effect?.uniforms, cam, isInCity, veil, delta)
   updateOverlays(cam, progress, elapsed)
 
   invalidate()

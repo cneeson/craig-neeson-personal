@@ -9,6 +9,7 @@ import { useLoop, useTres } from '@tresjs/core';
 import { createPhotoCity } from '@/scene/belfast/photo-city';
 import { cloudShadowUniforms, createDaySkyMaterial } from '@/scene/belfast/photo-materials';
 import { createWater, SkyUniforms } from '@/scene/belfast/water';
+import { createMist } from '@/scene/belfast/mist';
 import { createTrain } from '@/scene/belfast/train';
 import { createTelescope } from '@/scene/belfast/telescope';
 import { createPlane } from '@/scene/belfast/plane';
@@ -57,8 +58,9 @@ const ferry = createFerry(skyMaterial.uniforms.uSun);
 const riverBoat = createRiverBoat(skyMaterial.uniforms.uSun);
 const traffic = createTraffic(skyMaterial.uniforms.uSun);
 const offices = createOfficeHighlights();
+const mist = createMist();
 root.add(sky, photoCity.group, water.mesh, train.object, plane.object, ferry.object,
-  riverBoat.object, traffic.object, offices.object, telescope.overlay);
+  riverBoat.object, traffic.object, offices.object, telescope.overlay, mist.object);
 
 /** Visited in the background once it's shown, in about the order a reader would go. */
 const PREFETCH = (['hello', 'craft', 'overview', 'coleraine', 'liberty', 'flexera', 'locum', 'ankorstore', 'ocula', 'docks', 'arena', 'lagan'] as ShotName[])
@@ -81,6 +83,7 @@ const showAttribution = (isShown: boolean) => {
 onBeforeUnmount(() => {
   photoCity.dispose();
   water.dispose();
+  mist.dispose();
   train.dispose();
   telescope.dispose();
   plane.dispose();
@@ -100,6 +103,7 @@ const animate = (view: PerspectiveCamera, elapsed: number) => {
   sky.position.copy(view.position);
   cloudShadowUniforms.uCloudTime.value = elapsed;
   water.update(elapsed);
+  mist.update(elapsed, shownFor, view);
   train.update(cityState.trainAway);
   plane.update(elapsed % PLANE_EVERY);
   ferry.update(shownFor);
@@ -175,7 +179,9 @@ onBeforeRender(({ delta, elapsed }) => {
   const { scope } = cityState;
   // The telescope's views load while it's up (both while it whips from one to the other)
   const stop = route.mode === 'experience' ? route.stop : null;
-  const sights = stop === 'coleraine' || stop === 'antrim' ? [...new Set([stop, scope.sight])] : [];
+  const sights = stop === 'coleraine' || stop === 'antrim' || stop === 'ankorstore' ? [...new Set([stop, scope.sight])] : [];
+  // Paris by latitude and longitude, through the tiles' frame (set once they're loading)
+  if (photoCity.isReady) telescope.locate(photoCity.toScene);
   photoCity.update(camera as PerspectiveCamera, isFlying, delta, {
     ahead: photoCity.isReady ? (destination ? [destination] : []) : [poseOf(firstShot(), 0, performance.now() / 1000)],
     prefetch: hasArrived ? PREFETCH : [],
