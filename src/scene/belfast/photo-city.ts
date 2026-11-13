@@ -75,8 +75,9 @@ const MAX_WAIT = { partial: 15, nothing: 20 };
  * - Then, while the camera's held at a stop, a prefetch view visits the other shots, one at a time. All of
  *   them decoded is far more than fits in memory, so older tiles are dropped as it goes, but their downloads
  *   stay in the browser's cache (Google allows four hours), so they decode again quickly when they're needed.
- * - `extraViews` (the telescope's, looking out of the city) are visited last by the prefetch, then load
- *   again while the reader is near them (`update`'s `activeViews`).
+ * - `extraViews` (the telescope's, looking out of the city) are visited first by the prefetch, as soon as the
+ *   city's ready (they're the slowest, far from everything else: Paris from the root down), then load again while
+ *   the reader is near them (`update`'s `activeViews`).
  */
 export const createPhotoCity = (
     renderer: WebGLRenderer,
@@ -237,13 +238,13 @@ export const createPhotoCity = (
             } else {
                 tiles.deleteCamera(camera);
             }
-            // Fetching the rest waits until the start is ready, and gives way to the camera moving. No shots to
-            // prefetch (yet), no extra views either
-            const steps = prefetch.length + extraViews.cameras.length;
-            const isPrefetching = isReady && !isMoving && prefetch.length > 0 && prefetchStep < steps;
-            if (isPrefetching && prefetchStep < prefetch.length) useView(prefetchView, prefetch[prefetchStep], camera.aspect);
+            // Fetching the rest waits until the start is ready, and gives way to the camera moving: the extra views
+            // first, then the shots (once there are any)
+            const views = extraViews.cameras.length;
+            const isPrefetching = isReady && !isMoving && prefetchStep < views + prefetch.length;
+            if (isPrefetching && prefetchStep >= views) useView(prefetchView, prefetch[prefetchStep - views], camera.aspect);
             else tiles.deleteCamera(prefetchView);
-            const prefetchingView = isPrefetching ? extraViews.cameras[prefetchStep - prefetch.length] : undefined;
+            const prefetchingView = isPrefetching ? extraViews.cameras[prefetchStep] : undefined;
             extraViews.cameras.forEach(view => {
                 if (view !== prefetchingView && !activeViews.includes(view)) {
                     tiles.deleteCamera(view);

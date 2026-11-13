@@ -64,7 +64,6 @@
   </TresGroup>
 
   <BelfastPhoto v-if="isCityMounted && !hasCityFailed" @failed="hasCityFailed = true" />
-  <primitive :object="parisArc.object" />
   <CloudVeil ref="veilRef" />
 </template>
 
@@ -88,7 +87,7 @@ import {
   cloudHeightAt, deckAt, SIGN_PASS, signAt, veilAt, windows,
 } from '@/scene/choreography';
 import { cameraNudge } from '@/scene/camera-nudge'
-import { cityPoseAt, cityState, firstShot, playEntrance, route, tickDirector } from '@/scene/director';
+import { cityPoseAt, firstShot, playEntrance, route, tickDirector } from '@/scene/director';
 import { CITY_ENDS, cityFov, placeCamera, poseOf } from '@/scene/shots';
 import { sceneState } from '@/scene/state';
 import { updateOverlays } from '@/scene/overlay';
@@ -103,7 +102,6 @@ import { createStarLayer, type StarLayer } from '@/scene/planet/starfield';
 import { createShootingStar } from '@/scene/planet/shooting-star';
 import { warmShaders } from '@/scene/warm';
 import { updateLook } from '@/scene/look';
-import { createParisArc } from '@/scene/belfast/paris-arc';
 import { ATMOSPHERE_RADIUS, createAtmosphereMaterial, createEarthMaterial, SUN_DIRECTION } from '@/scene/earth';
 import { clamp01, damp, lerp, smoothstep } from '@/services/three';
 
@@ -211,7 +209,6 @@ const cloudDeck = createCloudDeck(HOME_MARKER, {
   segments: quality.sphereSegments, slices: isMobile ? 6 : 10, size: isMobile ? 1024 : 2048,
 })
 const signPoint = new Vector3()
-const parisArc = createParisArc()
 // Where the clouds part, over the middle of Northern Ireland
 const NORTHERN_IRELAND = onEarth(PLACES.northernIreland.lat, PLACES.northernIreland.lon)
 const clouds = patchClouds()
@@ -229,7 +226,6 @@ onBeforeUnmount(() => {
   arcs.dispose()
   belfastSign.dispose()
   cloudDeck.dispose()
-  parisArc.dispose()
   nebula.dispose()
   starLayers.forEach(layer => layer.dispose())
   shootingStar.dispose()
@@ -463,7 +459,6 @@ onBeforeRender(({ delta, elapsed }) => {
   cityReveal = sceneState.cityReady ? damp(cityReveal, 1, 3, delta) : 0
   const veil = isOverBelfast ? Math.max(veilAt(progress), 1 - cityReveal) : veilAt(progress)
   if (planetRef.value) planetRef.value.visible = !isInCity
-  parisArc.update(cityState.paris.draw, cityState.paris.opacity, isInCity)
 
   if (isInCity) {
     placeCamera(cam, cameraNudge.pose ?? cityPoseAt(), cam.aspect)

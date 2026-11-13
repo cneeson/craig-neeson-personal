@@ -49,7 +49,7 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   distance, so long hops rise over the roofs; a click mid-flight redirects it), or for `reach` climbs out to the
   planet by tweening `sceneState.progress` through the choreography and back. `route` (reactive) says where it is and
   whether the camera's arriving; `cityState` (plain, read every frame) holds what's eased in time: the offices'
-  highlights, the Paris arc, the telescope, the letterbox, the train. `startIntro` plays the hero and the glide; a
+  highlights, the telescope, the letterbox, the train. `startIntro` plays the hero and the glide; a
   stop asked for during it (a deep link, a click) waits in `pending` until the city has loaded.
 - `src/scene/shots.ts`: the city framings (`{ x, y, z, pitch, heading, zoom }`, scene units and degrees), each with an
   optional `drift` while held, or a time-based `at` (the home hover's slow sweep). `placeCamera` puts a camera at a
@@ -103,14 +103,13 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   Locate a Locum's unit). OSM footprints can be several metres off the tiles, so check them against the tiles: the
   Belfast ones were measured by raycasting the tiles (which needs `freeOnUpload` in `photo-city.ts` held off, as it
   drops the vertices once uploaded). Frame each stop's shot on its building in `shots.ts`.
-  `paris-arc.ts` draws the arc from Ormeau Business Park in the Gasworks towards Paris for Ankorstore.
 - `src/scene/belfast/telescope.ts`: the coin-op telescope over City Hall. A camera of its own about a
   kilometre or so short of each place (Coleraine, then Antrim) renders into a texture, shown through the eyepieces by a
   screen-space lens shader (distortion, fringes, wobble, iris, a whip across between them, a reticle on the target).
-  Ankorstore's stop looks the same way at Paris (its office at 101 rue de Sèvres, with the Eiffel Tower behind), once
-  the arc has drawn, through binoculars (two eyepieces even on portrait screens). Paris is placed each frame through
+  Ankorstore's stop looks the same way at Paris (its office at Morning Auber, by the Opéra, with the Eiffel Tower behind),
+  through binoculars (two eyepieces even on portrait screens). Paris is placed each frame through
   `photoCity.toScene` (lat/lon/height through the tiles' own ellipsoid and frame), as nothing else holds up 860 km off.
-  Its cameras are extra views for the tiles (`photo-city.ts` `extraViews`): prefetched after the shots, then loaded
+  Its cameras are extra views for the tiles (`photo-city.ts` `extraViews`): prefetched first, as soon as the city's ready, then loaded
   only at their stops. Coleraine is outside the photorealistic coverage (terrain and aerial photos only), so its
   campus buildings are outlined, like Nitec's (`offices.ts`, from OSM). Out there, convert lat/lon with WGS84
   east/north/up from the origin (the tiles' frame), not the flat conversion in `geo.ts`, which drifts by nearly a

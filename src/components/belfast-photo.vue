@@ -11,7 +11,7 @@ import { cloudShadowUniforms, createDaySkyMaterial } from '@/scene/belfast/photo
 import { createWater, SkyUniforms } from '@/scene/belfast/water';
 import { createMist } from '@/scene/belfast/mist';
 import { createTrain } from '@/scene/belfast/train';
-import { createTelescope } from '@/scene/belfast/telescope';
+import { createTelescope, type SightName } from '@/scene/belfast/telescope';
 import { createPlane } from '@/scene/belfast/plane';
 import { createFerry, createRiverBoat } from '@/scene/belfast/boats';
 import { createTraffic } from '@/scene/belfast/traffic';
@@ -19,7 +19,7 @@ import { createOfficeHighlights } from '@/scene/belfast/offices';
 import { attribution } from '@/scene/belfast/attribution';
 import { sceneState } from '@/scene/state';
 import { isInBelfast } from '@/scene/choreography';
-import { cityDestination, cityState, firstShot, route } from '@/scene/director';
+import { cityDestination, cityState, firstShot, modes, route } from '@/scene/director';
 import { placeCamera, poseOf, shots, type ShotName } from '@/scene/shots';
 import { camera } from '@/scene/camera';
 import { warmShaders } from '@/scene/warm';
@@ -177,9 +177,13 @@ onBeforeRender(({ delta, elapsed }) => {
   hasArrived ||= isFlying && photoCity.isReady;
   const destination = cityDestination();
   const { scope } = cityState;
-  // The telescope's views load while it's up (both while it whips from one to the other)
-  const stop = route.mode === 'experience' ? route.stop : null;
-  const sights = stop === 'coleraine' || stop === 'antrim' || stop === 'ankorstore' ? [...new Set([stop, scope.sight])] : [];
+  // The telescope's views load while it's up (both while it whips from one to the other), and from the stop before
+  // (Paris is slow to come in), though not from another telescope's, as two of them can fill the cache
+  const stops = route.mode === 'experience' ? modes.experience : [];
+  const stop = stops.find(id => id === route.stop);
+  const next = stop && stops[stops.indexOf(stop) + 1];
+  const isSight = (id?: string): id is SightName => id === 'coleraine' || id === 'antrim' || id === 'ankorstore';
+  const sights = isSight(stop) ? [...new Set([stop, scope.sight])] : isSight(next) ? [next] : [];
   // Paris by latitude and longitude, through the tiles' frame (set once they're loading)
   if (photoCity.isReady) telescope.locate(photoCity.toScene);
   photoCity.update(camera as PerspectiveCamera, isFlying, delta, {

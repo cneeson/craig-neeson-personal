@@ -8,7 +8,7 @@ import { photoUniforms } from './photo-materials';
 
 /**
  * Up over City Hall, a coin-op telescope looks out to where it started: Ulster University in Coleraine, then
- * Nitec in Antrim. And for Ankorstore, binoculars on Paris: its office on the rue de Sèvres, the Eiffel Tower behind. Far too far to see from Belfast, so each has a camera of its own, about a kilometre short of
+ * Nitec in Antrim. And for Ankorstore, binoculars on Paris: its office at Morning Auber by the Opéra, the Eiffel Tower behind. Far too far to see from Belfast, so each has a camera of its own, about a kilometre short of
  * it along the line of sight from City Hall, whose tiles load ahead like the flight's (see photo-city.ts). What
  * it sees is drawn into a texture and shown through the eyepieces, with the lens's distortion, colour fringes
  * and wobble, opening like an iris and whipping across from one to the other.
@@ -46,15 +46,16 @@ export type ToScene = (place: Place, target: Vector3, up?: Vector3) => Vector3;
 
 /**
  * Paris, some 860 km off: too far round the earth for the flat-plane sights above, so it's placed by latitude and
- * longitude. From about 600 m east-south-east of Ankorstore's office (101 rue de Sèvres) and 60 m up, looking west
- * past it to the Eiffel Tower, about 2.2 km beyond it (the ground's about 80 m above the ellipsoid there).
+ * longitude. From about 700 m north-east of Ankorstore's office (the Morning Auber co-working space, 6 rue Auber) and
+ * 65 m up, looking south-west past it to the Eiffel Tower, about 3 km beyond it (the ground's about 90 m above the
+ * ellipsoid there).
  */
 const PARIS = {
-    office: { lat: 48.84851, lon: 2.32101, height: 95 },
-    camera: { lat: 48.84589, lon: 2.32817, height: 140 },
+    office: { lat: 48.87231, lon: 2.32988, height: 115 },
+    camera: { lat: 48.87556, lon: 2.33807, height: 155 },
     // Over the office, so it's above the card under the eyepieces and the tower's top is in frame
-    look: { lat: 48.84851, lon: 2.32101, height: 146 },
-    fov: 30,
+    look: { lat: 48.87231, lon: 2.32988, height: 161 },
+    fov: 26,
 };
 
 const createSightCamera = ({ target, bearing, standOff, height, fov }: Sight) => {

@@ -2,7 +2,7 @@ import { reactive } from 'vue';
 import { gsap } from 'gsap';
 import { MathUtils } from 'three';
 import { prefersReducedMotion } from '@/services/device';
-import { clamp01, damp, lerp } from '@/services/three';
+import { damp, lerp } from '@/services/three';
 import { DESCENT_DURATION, descentEase, ENTRANCE_DURATION, windows } from './choreography';
 import { nearestHeading, poseOf, shots, type Pose, type Shot, type ShotName } from './shots';
 import { sceneState } from './state';
@@ -11,7 +11,7 @@ import type { SightName } from './belfast/telescope';
 /**
  * The director moves the camera between the stops of each part of the site. Over Belfast it flies from wherever
  * the camera is to the stop's shot (shots.ts), up and over on long hops, and keeps the city's features (the
- * outlined offices, the arc to Paris, the telescope, the letterbox) in step with where it's going. Out to the
+ * outlined offices, the telescope, the letterbox) in step with where it's going. Out to the
  * planet and back it plays the old journey's progress (choreography.ts) instead: the glide down from orbit, and
  * the climb back out to the arcs over Europe and the US.
  *
@@ -63,7 +63,6 @@ export const route = reactive({
 export const cityState = {
     /** How strongly each office is outlined (0 → 1). */
     offices: Object.fromEntries(employerBeats.map(beat => [beat, 0])) as Record<EmployerBeat, number>,
-    paris: { draw: 0, opacity: 0 },
     /** The telescope: how far it's `open`, which `sight` it shows, and the `whip` across from one to the other (-1 → 1). */
     scope: { open: 0, sight: 'coleraine' as SightName, whip: -1 },
     letterbox: 0,
@@ -430,16 +429,11 @@ export const tickDirector = (delta: number) => {
         cityState.offices[beat] = damp(cityState.offices[beat], target, 4, delta);
     });
 
-    const isParis = isExperience && stop === 'ankorstore' && arriving;
-    const { paris, scope } = cityState;
-    paris.opacity = damp(paris.opacity, isParis ? 1 : 0, 4, delta);
-    paris.draw = isParis ? clamp01(paris.draw + delta / 2.4) : paris.opacity < 0.01 ? 0 : paris.draw;
+    const { scope } = cityState;
 
     // The telescope stays up moving between its two sights, and whips across from one to the other
     const sight = isExperience && SCOPE_STOPS.includes(stop) ? stop as SightName : null;
-    // For Paris, once the arc's reached out towards it
-    const isReady = sight !== 'ankorstore' || paris.draw >= 1;
-    scope.open = damp(scope.open, sight && isReady && (arriving || scope.open > 0.5) ? 1 : 0, 5, delta);
+    scope.open = damp(scope.open, sight && (arriving || scope.open > 0.5) ? 1 : 0, 5, delta);
     if (sight && sight !== scope.sight && !whipping) {
         if (scope.open < 0.05) scope.sight = sight;
         else whipping = { to: sight, t: 0 };
