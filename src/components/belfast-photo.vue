@@ -104,7 +104,7 @@ const animate = (view: PerspectiveCamera, elapsed: number) => {
   plane.update(elapsed % PLANE_EVERY);
   ferry.update(shownFor);
   riverBoat.update((elapsed + 40) % BOAT_EVERY);
-  traffic.update(elapsed, view, renderer, photoCity.group);
+  traffic.update(elapsed, view, renderer, photoCity.group, photoCity.changes);
   offices.update(cityState.offices, elapsed, true);
   // The offices' outlines too, for Nitec's through the telescope
   telescope.update(cityState.scope, elapsed, view.aspect, sky, [photoCity.group, offices.object]);
@@ -161,9 +161,16 @@ const warmUp = (elapsed: number) => {
     .then(() => keepers.forEach(keeper => (keeper.geometry = new BufferGeometry())));
 };
 
+/**
+ * Whether the reader's been down to the city yet. The other shots are only fetched after that: until then they may
+ * never go, and all of them is hundreds of megabytes of tiles, downloaded and decoded while the planet's on screen.
+ */
+let hasArrived = false;
+
 const { onBeforeRender } = useLoop();
 onBeforeRender(({ delta, elapsed }) => {
   const isFlying = isInBelfast(sceneState.progress);
+  hasArrived ||= isFlying && photoCity.isReady;
   const destination = cityDestination();
   const { scope } = cityState;
   // The telescope's views load while it's up (both while it whips from one to the other)
@@ -171,7 +178,7 @@ onBeforeRender(({ delta, elapsed }) => {
   const sights = stop === 'coleraine' || stop === 'antrim' ? [...new Set([stop, scope.sight])] : [];
   photoCity.update(camera as PerspectiveCamera, isFlying, delta, {
     ahead: photoCity.isReady ? (destination ? [destination] : []) : [poseOf(firstShot(), 0, performance.now() / 1000)],
-    prefetch: PREFETCH,
+    prefetch: hasArrived ? PREFETCH : [],
     isMoving: !!destination,
     activeViews: telescope.camerasFor(sights),
   });

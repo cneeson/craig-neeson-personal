@@ -416,6 +416,7 @@ export const createTraffic = (sun: IUniform<Vector3>) => {
     const clearColor = new Color();
     const [lastCentre, centre, forward] = [new Vector3(Infinity, 0, 0), new Vector3(), new Vector3()];
     let lastCapture = -Infinity;
+    let lastChanges = -1;
 
     /** Draws the heights of `tiles` around `centre`. */
     const capture = (renderer: WebGLRenderer, tiles: Object3D) => {
@@ -474,18 +475,21 @@ export const createTraffic = (sun: IUniform<Vector3>) => {
 
         /**
          * Every frame while the city is shown. Redraws the heights under the traffic, centred a little ahead of the
-         * camera: every second (as finer tiles arrive), more often while it's moving (as new tiles come into view).
+         * camera: up to every half second while it's moving (as new tiles come into view), and otherwise up to every
+         * second while the tiles shown are changing (`tileChanges` goes up), as finer ones arrive. Held still on a
+         * loaded city, not at all.
          */
-        update(elapsed: number, view: PerspectiveCamera, renderer: WebGLRenderer, tiles: Object3D) {
+        update(elapsed: number, view: PerspectiveCamera, renderer: WebGLRenderer, tiles: Object3D, tileChanges: number) {
             uniforms.uTime.value = elapsed;
             uniforms.uPointScale.value = renderer.domElement.height / (2 * Math.tan((view.fov * Math.PI) / 360));
             view.getWorldDirection(forward).setY(0).normalize();
             centre.copy(view.position).addScaledVector(forward, HEIGHT_AREA * HEIGHT_AHEAD).setY(0);
             const since = elapsed - lastCapture;
-            if ((since > 0.5 && centre.distanceTo(lastCentre) > 4) || since > 1) {
+            if ((since > 0.5 && centre.distanceTo(lastCentre) > 4) || (since > 1 && tileChanges !== lastChanges)) {
                 capture(renderer, tiles);
                 lastCentre.copy(centre);
                 lastCapture = elapsed;
+                lastChanges = tileChanges;
             }
         },
 

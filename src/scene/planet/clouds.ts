@@ -70,7 +70,8 @@ export const patchClouds = () => {
                         varying vec3 vSphere;
                         varying vec3 vUp;
                         ${noiseChunk}`)
-                    .replace('#include <alphamap_fragment>', `#include <alphamap_fragment>
+                    // The map's a single channel (red) on the GPU, not the green three reads an alpha map from
+                    .replace('#include <alphamap_fragment>', `diffuseColor.a *= texture2D(alphaMap, vAlphaMapUv).r;
                         vec3 sphere = normalize(vSphere);
                         float away = acos(clamp(dot(sphere, uHoleCentre), -1.0, 1.0));
                         // Broad lobes give the gap its shape, finer noise frays its edge
@@ -87,7 +88,7 @@ export const patchClouds = () => {
                         float warp = (shape - 0.5) * ${r * 1.6} + (detail - 0.5) * ${r * 0.55};
                         // Gathered thickly over and around the country, keeping the texture's structure
                         float region = 1.0 - smoothstep(${r * 1.7}, ${r * 3.4}, away + warp * 1.3);
-                        float cloud = texture2D(alphaMap, vAlphaMapUv).g;
+                        float cloud = texture2D(alphaMap, vAlphaMapUv).r;
                         float thick = 0.62 * smoothstep(0.2, 0.85, cloud * 0.8 + detail * 0.45 + shape * 0.3);
                         diffuseColor.a = mix(diffuseColor.a, max(diffuseColor.a, thick), uCover * region);
                         // Parted from the middle out, thinning gradually towards the gap

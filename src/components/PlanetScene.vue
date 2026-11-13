@@ -67,9 +67,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
+import { defineAsyncComponent, defineComponent, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import {
-  DirectionalLight, Group, MathUtils, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, PointLight, Quaternion, SRGBColorSpace, TextureLoader, Vector3,
+  DirectionalLight, Group, MathUtils, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, PointLight, Quaternion, RedFormat, SRGBColorSpace, TextureLoader, Vector3,
   WebGLRenderer,
 } from 'three'
 import { useLoop, useTres } from '@tresjs/core'
@@ -77,7 +77,6 @@ import { useLoop, useTres } from '@tresjs/core'
 import { BloomPmndrs, EffectComposerPmndrs, SMAAPmndrs } from '@tresjs/post-processing'
 // @ts-ignore-next-line
 import { BlendFunction } from 'postprocessing'
-import BelfastPhoto from './belfast-photo.vue'
 import CloudVeil from './cloud-veil.vue'
 import FilmGrain from './film-grain.vue'
 import { isMobile, prefersReducedMotion, quality } from '@/services/device';
@@ -184,6 +183,10 @@ const [dayMap, bumpMap, cloudsMap, lightsMap] = await Promise.all(
 );
 dayMap.colorSpace = SRGBColorSpace;
 lightsMap.colorSpace = SRGBColorSpace;
+// The bump map and the clouds are grey, so they're kept on the GPU in one channel rather than four: a quarter of the
+// memory (over 60 MB less at full size, with their mipmaps). The shaders read them from red
+bumpMap.format = RedFormat;
+cloudsMap.format = RedFormat;
 const earth = createEarthMaterial({ map: dayMap, bumpMap, lightsMap });
 const atmosphereMaterial = createAtmosphereMaterial(EARTH_POSITION);
 
@@ -231,6 +234,14 @@ onBeforeUnmount(() => {
 // build), as setting it up takes long enough to stall a frame; at once if the site opened straight onto a stop, as
 // there's no entrance to spoil. If they can't load, it's dropped and the clouds stay over the flight.
 const isCityMounted = ref(false)
+// In a chunk of its own (with the tiles renderer and its loaders, the traffic and the rest), so the page doesn't wait
+// on it, fetched while the browser's idle once the page has loaded. If it can't be fetched, the city's dropped as if
+// the tiles had failed
+const BelfastPhoto = defineAsyncComponent(() => import(/* webpackChunkName: "city", webpackPrefetch: true */ './belfast-photo.vue')
+  .catch(error => {
+    hasCityFailed.value = true
+    throw error
+  }))
 if (process.env.VUE_APP_GOOGLE_MAPS_API_KEY) {
   const stop = watch(() => route.isPlanetUp, isUp => {
     if (!isUp) return

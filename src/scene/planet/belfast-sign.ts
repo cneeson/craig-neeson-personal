@@ -195,7 +195,7 @@ const set = (group: Group, key: string, value: number) => group.children.forEach
 export const createBelfastSign = () => {
     const nameSize = [RADIUS * 1.5, RADIUS * 0.4] as const;
     const name = createLine(...nameSize, { text: 'Belfast', font: 'Fraunces, Georgia, serif', weight: 600, size: 200, y: 150 });
-    const countrySize = [RADIUS * 1.2, RADIUS * 0.12] as const;
+    const countrySize = [RADIUS * 1.5, RADIUS * 0.15] as const;
     const country = createLine(...countrySize, {
         text: 'NORTHERN IRELAND', font: 'Satoshi, Helvetica, Arial, sans-serif', weight: 700, size: 60, y: 52, spacing: 18,
     });
