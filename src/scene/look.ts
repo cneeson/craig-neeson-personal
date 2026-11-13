@@ -8,7 +8,7 @@ import { EARTH_POSITION } from '@/scene/planet/geo';
 
 /**
  * The picture's look, in one pass after the bloom and before the grain:
- * - `grade`: over the city, a warm, late-afternoon grade (warm light, cool shade, a touch more colour), so the flat
+ * - `grade`: over the city, a warm, late-afternoon grade (warm light, cool shade, a touch more colour, a little darker), so the flat
  *   daylight of the photos has a mood;
  * - `shafts`: rays of sun streaming down through the last of the cloud as the city comes out of it, from `light`
  *   (a point on screen, above the top on the sun's side);
@@ -40,6 +40,8 @@ export class LookEffect extends Effect {
                 // A gentle S-curve, and a little more colour
                 c = mix(c, c * c * (3.0 - 2.0 * c), 0.25);
                 c = mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, 1.1);
+                // and a little less bright than the photos' flat daylight
+                c *= 0.9;
                 return c * c;
             }
 
@@ -51,8 +53,8 @@ export class LookEffect extends Effect {
                     // Streaked along the line from where the camera's heading, more the further from it, plus a
                     // fringe of red out and blue in towards the edges
                     vec2 away = uv - heading;
-                    vec2 streak = away / max(length(away), 0.001) * speed * 0.035 * min(length(away), 1.0);
-                    vec2 fringe = (uv - 0.5) * speed * 0.006;
+                    vec2 streak = away / max(length(away), 0.001) * speed * 0.018 * min(length(away), 1.0);
+                    vec2 fringe = (uv - 0.5) * speed * 0.003;
                     vec3 sum = vec3(0.0);
                     for (int i = 0; i < SPEED_SAMPLES; i++) {
                         vec2 at = uv + streak * ((float(i) + jitter) / float(SPEED_SAMPLES) - 0.5);
@@ -79,7 +81,7 @@ export class LookEffect extends Effect {
                         decay *= 0.94;
                         at += step;
                     }
-                    colour += rays / float(SHAFT_SAMPLES) * vec3(1.0, 0.82, 0.58) * shafts * 3.0;
+                    colour += rays / float(SHAFT_SAMPLES) * vec3(1.0, 0.82, 0.58) * shafts * 2.2;
                 }
 
                 if (grade > 0.001) colour = mix(colour, graded(colour), grade);
@@ -104,7 +106,7 @@ export class LookEffect extends Effect {
  * How fast the picture's moving: the camera's speed over its height above the ground (city units, or earth radii
  * over the planet), so it's the same measure at any scale. Blurred from `SPEED.from`, fully by `SPEED.to` (per second).
  */
-const SPEED = { from: 1.2, to: 4 };
+const SPEED = { from: 1.6, to: 6 };
 /** How long the sun's rays linger once the city's out of the clouds (s, roughly). */
 const SHAFTS_LINGER = 2.5;
 
