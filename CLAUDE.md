@@ -106,9 +106,13 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 - `src/scene/belfast/telescope.ts`: the coin-op telescope over City Hall. A camera of its own about a
   kilometre or so short of each place (Coleraine, then Antrim) renders into a texture, shown through the eyepieces by a
   screen-space lens shader (distortion, fringes, wobble, iris, a whip across between them, a reticle on the target).
+  Each view starts further back and closes in once the iris is open, and again after the whip (`ZOOM`); the tiles
+  load for the final view.
   Ankorstore's stop looks the same way at Paris (its office at Morning Auber, by the Opéra, with the Eiffel Tower behind),
   through binoculars (two eyepieces even on portrait screens). Paris is placed each frame through
   `photoCity.toScene` (lat/lon/height through the tiles' own ellipsoid and frame), as nothing else holds up 860 km off.
+  The office's outline is placed the same way: an office in `offices.ts` with an `at` (lat/lon) has its footprint in
+  scene units east and south of that point and its heights above the ellipsoid, built in `offices.locate` once the tiles are up.
   Its cameras are extra views for the tiles (`photo-city.ts` `extraViews`): prefetched first, as soon as the city's ready, then loaded
   only at their stops. Coleraine is outside the photorealistic coverage (terrain and aerial photos only), so its
   campus buildings are outlined, like Nitec's (`offices.ts`, from OSM). Out there, convert lat/lon with WGS84

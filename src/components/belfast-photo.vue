@@ -185,7 +185,10 @@ onBeforeRender(({ delta, elapsed }) => {
   const isSight = (id?: string): id is SightName => id === 'coleraine' || id === 'antrim' || id === 'ankorstore';
   const sights = isSight(stop) ? [...new Set([stop, scope.sight])] : isSight(next) ? [next] : [];
   // Paris by latitude and longitude, through the tiles' frame (set once they're loading)
-  if (photoCity.isReady) telescope.locate(photoCity.toScene);
+  if (photoCity.isReady) {
+    telescope.locate(photoCity.toScene);
+    offices.locate(photoCity.toScene);
+  }
   photoCity.update(camera as PerspectiveCamera, isFlying, delta, {
     ahead: photoCity.isReady ? (destination ? [destination] : []) : [poseOf(firstShot(), 0, performance.now() / 1000)],
     prefetch: hasArrived ? PREFETCH : [],

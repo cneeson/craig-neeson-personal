@@ -58,6 +58,12 @@ const PARIS = {
     fov: 26,
 };
 
+/**
+ * Each view starts further off (this much of the way to what it's looking at, again) and closes in to it, as the
+ * telescope's opened (once the iris is nearly open, so it's seen) or swung onto it, over `ZOOM.duration` seconds.
+ */
+const ZOOM = { from: 0.6, duration: 3.2 };
+
 const createSightCamera = ({ target, bearing, standOff, height, fov }: Sight) => {
     const camera = new PerspectiveCamera(fov, 1, 0.3, 1000);
     const radians = (bearing * Math.PI) / 180;
@@ -187,6 +193,12 @@ export const createTelescope = (renderer: WebGLRenderer) => {
     overlay.renderOrder = 1000;
     overlay.visible = false;
 
+    // What's drawn through, backed off from the sight's camera while it closes in (the tiles load for the sight's own)
+    const view = new PerspectiveCamera();
+    const forward = new Vector3();
+    let zoomFrom = 0;
+    let shown: SightName | null = null;
+
     const size = new Vector2();
     const resolution = new Vector2();
     const skyPosition = new Vector3();
@@ -228,7 +240,10 @@ export const createTelescope = (renderer: WebGLRenderer) => {
             overlay.visible = open > 0.001;
             // Sized to the screen in CSS pixels whether or not it's up, for the tiles
             renderer.getSize(resolution);
-            if (!overlay.visible) return;
+            if (!overlay.visible) {
+                shown = null;
+                return;
+            }
 
             const isSwinging = Math.abs(whip) < 1;
             const camera = cameras[sightName];
@@ -242,6 +257,14 @@ export const createTelescope = (renderer: WebGLRenderer) => {
                 camera.updateProjectionMatrix();
             }
 
+            // Closing in from further off, from when it opens or swings onto a new sight
+            if (shown !== sightName || open < 0.85) [shown, zoomFrom] = [sightName, elapsed];
+            const zoom = 1 - (1 - clamp01((elapsed - zoomFrom) / ZOOM.duration)) ** 3;
+            view.copy(camera);
+            camera.getWorldDirection(forward);
+            view.position.addScaledVector(forward, -camera.position.distanceTo(targets[sightName]) * ZOOM.from * (1 - zoom));
+            view.updateMatrixWorld();
+
             renderer.getDrawingBufferSize(size);
             const scale = isMobile ? 0.6 : 0.8;
             const [width, height] = [Math.round(size.x * scale), Math.round(size.y * scale)];
@@ -251,15 +274,15 @@ export const createTelescope = (renderer: WebGLRenderer) => {
             const fogDensity = photoUniforms.uFogDensity.value;
             photoUniforms.uFogDensity.value = fogDensity * 0.45;
             skyPosition.copy(sky.position);
-            sky.position.copy(camera.position);
+            sky.position.copy(view.position);
             sky.updateMatrixWorld();
 
             const [previousTarget, autoClear] = [renderer.getRenderTarget(), renderer.autoClear];
             renderer.setRenderTarget(renderTarget);
             renderer.autoClear = false;
             renderer.clear();
-            renderer.render(sky, camera);
-            world.forEach(object => renderer.render(object, camera));
+            renderer.render(sky, view);
+            world.forEach(object => renderer.render(object, view));
             renderer.setRenderTarget(previousTarget);
             renderer.autoClear = autoClear;
 
@@ -279,7 +302,7 @@ export const createTelescope = (renderer: WebGLRenderer) => {
             uniforms.uBinocular.value = isTwin ? 1 : 0;
             uniforms.uRadius.value = isTwin && isPortrait ? aspect * 0.32 : isTwin ? 0.33 : Math.min(aspect * 0.46, 0.36);
             uniforms.uGap.value = isTwin && isPortrait ? aspect * 0.32 * 0.58 : 0.24;
-            mark.copy(targets[sightName]).project(camera);
+            mark.copy(targets[sightName]).project(view);
             uniforms.uMark.value.set((mark.x + 1) / 2, (mark.y + 1) / 2);
         },
 

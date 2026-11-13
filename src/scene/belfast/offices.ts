@@ -1,5 +1,6 @@
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, Group, Mesh, ShaderMaterial, Vector3 } from 'three';
 import type { EmployerBeat } from '@/scene/director';
+import type { ToScene } from './telescope';
 
 /**
  * The buildings the experience stops at, outlined in light while they're shown. Footprints from
@@ -20,6 +21,11 @@ interface Office {
      * ridges run along `along`, `count` of them side by side (a row of gables), evenly across the footprint.
      */
     ridge?: { height: number; along: [number, number]; count?: number };
+    /**
+     * Far off round the earth (Paris), where nothing flat holds: the footprint is then in scene units east (x) and south
+     * (z) of this place, the heights above the WGS84 ellipsoid, and it's placed through the tiles once they're set up.
+     */
+    at?: { lat: number; lon: number };
 }
 
 const OFFICES: Office[] = [
@@ -212,7 +218,21 @@ const OFFICES: Office[] = [
         ground: -45.5,
         footprint: [[-4864.1, -6107.3], [-4862.9, -6105.9], [-4861.2, -6107.5], [-4862.4, -6108.8]],
     },
+    // Ankorstore's office in Paris, seen through the binoculars: the Morning Auber co-working space, 6 rue Auber,
+    // through to the rue des Mathurins (way 69224179; the ground's about 9 units above the ellipsoid there)
+    {
+        beat: 'ankorstore',
+        at: { lat: 48.87257, lon: 2.32995 },
+        height: 11.4,
+        ground: 9,
+        footprint: [[-0.75, -3.44], [-1.73, 1.86], [-1.27, 2.25], [-0.5, 2.91], [0.13, 3.45], [0.71, 0.24], [1.02, -1.4],
+            [1.35, -3.22]],
+    },
 ];
+
+/** Puts a point in the scene: x, z and y as in the footprints, in scene units. */
+type Place = (x: number, z: number, y: number) => Vector3;
+const flat: Place = (x, z, y) => new Vector3(x, y, z);
 
 /** Sunk a little into the ground, so the outline meets it on slopes. */
 const BASE = -0.6;
@@ -224,11 +244,11 @@ const centreOf = (footprint: [number, number][]) => footprint
     .divideScalar(footprint.length);
 
 /** Where each building's callout points: just over the middle of its roof. */
-export const officeAnchors = Object.fromEntries(OFFICES.map(office =>
+export const officeAnchors = Object.fromEntries(OFFICES.filter(office => !office.at).map(office =>
     [office.beat, centreOf(office.footprint).setY((office.ridge?.height ?? office.height) + 0.4)])) as Partial<Record<EmployerBeat, Vector3>>;
 
 /** Walls round the footprint, with each vertex's height (0..1) and its distance from the nearest corner (m). */
-const wallsOf = ({ footprint, height, ground = 0, ridge, tops }: Office) => {
+const wallsOf = ({ footprint, height, ground = 0, ridge, tops }: Office, place: Place = flat) => {
     const centre = centreOf(footprint);
     const corners = footprint.map(([x, z]) => {
         const out = new Vector3(x - centre.x, 0, z - centre.z);
@@ -268,7 +288,8 @@ const wallsOf = ({ footprint, height, ground = 0, ridge, tops }: Office) => {
                 [p, 0, alongP], [q, 0, alongQ], [q, 1, alongQ], [p, 0, alongP], [q, 1, alongQ], [p, 1, alongP],
             ];
             quad.forEach(([point, up, along]) => {
-                positions.push(point.x, up ? topAt(point, i) : ground + BASE, point.z);
+                const { x, y, z } = place(point.x, point.z, up ? topAt(point, i) : ground + BASE);
+                positions.push(x, y, z);
                 heights.push(up);
                 edges.push(along, length);
             });
@@ -320,7 +341,8 @@ export const createOfficeHighlights = () => {
     const group = new Group();
     group.visible = false;
     const highlights = OFFICES.map(office => {
-        const geometry = wallsOf(office);
+        // Those far off are drawn once they can be placed
+        const geometry = office.at ? new BufferGeometry() : wallsOf(office);
         const uniforms = { uColor: { value: new Color('#88b8f2') }, uOpacity: { value: 0 }, uRise: { value: 0 }, uTime: { value: 0 } };
         const material = (seen: boolean) => new ShaderMaterial({
             uniforms: seen ? uniforms : { ...uniforms, uOpacity: { value: 0 } },
@@ -339,9 +361,26 @@ export const createOfficeHighlights = () => {
         group.add(hidden, seen);
         return { office, geometry, seen, hidden, uniforms };
     });
+    let isLocated = false;
 
     return {
         object: group,
+        /** Once the tiles are set up, places the buildings far off round the earth, through `toScene` (photo-city.ts). */
+        locate(toScene: ToScene) {
+            if (isLocated) return;
+            isLocated = true;
+            highlights.forEach(highlight => {
+                const { at } = highlight.office;
+                if (!at) return;
+                const metres = 111320;
+                const east = metres * Math.cos((at.lat * Math.PI) / 180);
+                const place: Place = (x, z, y) => toScene({ lat: at.lat - (z * 10) / metres, lon: at.lon + (x * 10) / east, height: y * 10 }, new Vector3());
+                const geometry = wallsOf(highlight.office, place);
+                highlight.seen.geometry = highlight.hidden.geometry = geometry;
+                highlight.geometry.dispose();
+                highlight.geometry = geometry;
+            });
+        },
         /** Every frame, with how strongly each is outlined (0 → 1), the time (s) and whether the city is shown. */
         update(amounts: Record<EmployerBeat, number>, elapsed: number, isInCity: boolean) {
             group.visible = isInCity;
