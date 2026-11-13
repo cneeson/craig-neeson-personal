@@ -259,13 +259,8 @@ export const createPhotoCity = (
 
             // Nothing to load for (out over the planet, with nothing ahead)
             if (!tiles.cameras.length) return;
-            // Until the city's first shown, coarser tiles are loaded under the ones in view (and their neighbours with
-            // them), so if it has to be shown before it's finished (a slow connection) it's blurry rather than full
-            // of holes. After that, only the tiles in view: the views ahead have loaded where the camera's going by
-            // the time it gets there, and a tile still loading leaves the one it replaces up. That's nearly 40% fewer
-            // tiles downloaded and decoded over a visit, with nothing to see for it (most of those neighbours are
-            // behind the cameras)
-            tiles.loadSiblings = tiles.loadAncestors = !isReady;
+            // The tiles' neighbours and coarser parents stay loaded too (the library's default), though many are behind
+            // the cameras: without them, tiles coming into view on a move, or in the telescope, leave holes until they load
             tiles.update();
 
             const hasTiles = tiles.visibleTiles.size > 0;
