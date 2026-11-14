@@ -6,8 +6,8 @@ import { stops } from '@/data/journey';
 import CompanyLogo from './company-logo.vue';
 
 /**
- * Experience: a timeline along the bottom, from university to now. Each entry flies to where it happened, where
- * its card (city-signs.vue) opens the details; the first goes back up to the overview of them all.
+ * Experience: a timeline along the bottom, from university to now (now first on phones). Each entry flies to where
+ * it happened, where its card (city-signs.vue) opens the details; the first goes back up to the overview of them all.
  */
 const isShown = computed(() => route.isIntroDone && route.mode === 'experience');
 const isOverview = computed(() => route.stop === 'overview');
@@ -40,7 +40,7 @@ watch(() => route.step, async () => {
             <span class="year">Overview</span>
           </button>
         </li>
-        <li v-for="beat in employerBeats" :key="beat">
+        <li v-for="(beat, i) in employerBeats" :key="beat" :style="{ '--i': i }">
           <button
             type="button"
             class="entry"
@@ -94,6 +94,18 @@ $blue: #88b8f2;
     @apply relative flex items-center gap-1 px-4 overflow-x-auto max-w-full;
 
     scrollbar-width: none;
+
+    // Most recent first on phones (after the overview), where the strip scrolls and the later ones would be out of
+    // sight; in order from university on wider screens
+    @media (max-width: 767px) {
+      li {
+        order: calc(100 - var(--i, 100));
+      }
+
+      li:first-child {
+        order: 0;
+      }
+    }
 
     // The line the entries sit on
     &::before {
