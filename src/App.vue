@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
 import { TresCanvas } from '@tresjs/core'
 import PlanetScene from './components/PlanetScene.vue';
 import CityAttribution from './components/city-attribution.vue';
@@ -34,6 +34,10 @@ const gl = {
 }
 
 const letterbox = ref<HTMLElement>();
+
+// On phones the panels are text straight over the city, with this shade behind them (not over the callouts,
+// which carry their own cards)
+const isShaded = computed(() => route.isIntroDone && (route.mode !== 'experience' || route.stop === 'overview'));
 
 // The mode, for styles that depend on it (such as how much of the bottom of the screen is taken)
 watchEffect(() => {
@@ -76,6 +80,7 @@ onBeforeUnmount(() => {
   <CityAttribution />
 
   <Hero />
+  <div class="shade" :class="{ 'is-shown': isShaded }" aria-hidden="true" />
   <main>
     <HomePanel />
     <AboutPanel />
@@ -175,6 +180,45 @@ html, body {
 
 // --- Shared by the mode panels ---
 
+// On phones the panels' words sit at the top, over the sky, and their buttons at the bottom, each on a shade
+// from the edge of the screen, leaving the middle to the city
+.shade {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+  }
+
+  &::before {
+    top: 0;
+    height: 46%;
+    background: linear-gradient(to bottom,
+      rgba(9, 1, 24, 0.88) 0%, rgba(9, 1, 24, 0.74) 38%, rgba(9, 1, 24, 0.35) 70%, transparent);
+  }
+
+  &::after {
+    bottom: 0;
+    height: calc(var(--menu-bottom) + 7rem);
+    background: linear-gradient(to top, rgba(9, 1, 24, 0.8) 40%, transparent);
+  }
+
+  &.is-shown {
+    opacity: 1;
+  }
+
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
 .panel-card {
   @apply fixed z-30 p-5 lg:p-7 rounded-2xl;
 
@@ -198,6 +242,39 @@ html, body {
     visibility: visible;
     transform: none;
     transition: opacity 0.6s ease 0.15s, transform 0.6s ease 0.15s;
+  }
+
+  // On phones, no card: the words at the top, under the attribution, and the buttons at the bottom, over the
+  // menu. Only the buttons take the pointer, so the city's signs in between can still be tapped.
+  @media (max-width: 767px) {
+    top: calc(env(safe-area-inset-top) + 2.5rem);
+    left: 1.25rem;
+    right: 1.25rem;
+    bottom: calc(var(--menu-bottom) + 0.75rem);
+    max-height: none;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    text-shadow: 0 1px 14px rgba(9, 1, 24, 0.9);
+    transform: translateY(-12px);
+    pointer-events: none;
+
+    a,
+    button {
+      pointer-events: auto;
+    }
+
+    .controls {
+      margin-top: auto;
+      padding-top: 1rem;
+    }
   }
 
   @media (min-width: 768px) {
@@ -224,7 +301,12 @@ html, body {
   }
 
   .controls {
-    @apply mt-5 flex items-center gap-3;
+    @apply flex items-center gap-3;
+
+    // At the bottom on phones (see above), under the words on wider screens
+    @media (min-width: 768px) {
+      margin-top: 1.25rem;
+    }
   }
 
   .dots {

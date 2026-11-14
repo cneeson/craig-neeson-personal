@@ -5,7 +5,10 @@ import { navigate } from '@/services/navigation';
 import ActionLink from './action-link.vue';
 import { iconUrl, skills } from '@/data/skills';
 
-/** Skills: what's stood about the city at each stop, listed here too (for narrow screens that can't see it all). */
+/**
+ * Skills: what's stood about the city at each stop, listed here too on wider screens (on phones the city's labels
+ * are enough, and the panel stays small).
+ */
 const stops = modes.skills;
 const copy: Record<typeof stops[number], { title: string, text: string }> = {
   docks: {
@@ -59,7 +62,7 @@ const listed = computed(() => (stop.value === 'arena' ? [] : skills.filter(skill
 }
 
 .list {
-  @apply mt-3 flex flex-wrap gap-2;
+  @apply mt-3 hidden md:flex flex-wrap gap-2;
 
   li {
     @apply flex items-center gap-2 px-3 py-1 rounded-full text-sm;

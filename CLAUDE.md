@@ -41,7 +41,9 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
 ## Layout
 
 - `src/App.vue`: page shell. The fixed `.scene` canvas, the overlays, the letterbox, the hero, the mode panels and
-  the menu, and the shared panel styles. `html[data-mode]` carries the mode; `--menu-bottom` (the bottom menu on
+  the menu, and the shared panel styles. On desktop the panels are cards at the bottom left; on phones they're
+  bare text over a shade (`.shade`), the words at the top over the sky and the buttons (`.controls`) at the bottom,
+  with shorter copy (the desktop-only parts are `hidden md:inline`), leaving the middle of the screen to the city. `html[data-mode]` carries the mode; `--menu-bottom` (the bottom menu on
   phones) and `--chrome-bottom` (plus the timeline in Experience) say how much of the bottom of the screen is taken.
 - `src/scene/director.ts`: **what's on screen is driven by the director, not scroll.** `modes` lists each mode's
   stops (home; about: hello, craft, reach; experience: overview then the employers; skills: docks, arena, lagan;
@@ -53,7 +55,8 @@ from `public/CNAME`. Nothing is built into the repo: `docs/` is legacy output an
   stop asked for during it (a deep link, a click) waits in `pending` until the city has loaded.
 - `src/scene/shots.ts`: the city framings (`{ x, y, z, pitch, heading, zoom }`, scene units and degrees), each with an
   optional `drift` while held, or a time-based `at` (the home hover's slow sweep). `placeCamera` puts a camera at a
-  pose (and tilts portrait screens down, so the city fills the space above the panels). Place shots from the tiles,
+  pose (with no extra tilt on portrait screens: there the panels' words sit at the top and their buttons at the
+  bottom, so what's framed belongs in the middle). Place shots from the tiles,
   not OSM: the cranes move along their dock.
 - `src/services/navigation.ts`: the address (`#experience/ankorstore`; a mode change pushes history, stepping
   replaces it), and the keys: arrows/PageUp/PageDown/Space, Escape/Home to go home. Stepping carries on into the

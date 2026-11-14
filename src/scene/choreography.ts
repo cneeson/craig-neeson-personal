@@ -64,7 +64,7 @@ const keyframes: Keyframe[] = [
     },
     {
         at: windows.reach[1], earthRotationY: 0.5, cameraZ: 14.2, cameraRotationX: -0.33,
-        portrait: { cameraZ: 15.6, cameraRotationX: -0.3 },
+        portrait: { cameraZ: 15.6, cameraRotationX: -0.22 },
     },
     // Right out to the whole planet and the sun, then drifting on as the content arrives
     { at: windows.reveal[1], earthRotationY: 0.7, cameraZ: 17, cameraRotationX: -0.25, cameraRotationY: 0, portrait: {} },

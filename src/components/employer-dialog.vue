@@ -5,6 +5,8 @@
       <p class="eyebrow">{{ stop.place }} · {{ stop.dates }}</p>
       <h2 id="employer-dialog-title"><CompanyLogo :stop="stop" :size="36" /></h2>
       <p class="role">{{ stop.role }}</p>
+      <!-- The card's line, which phones leave off the card (unless it's below, for a job with no points yet) -->
+      <p v-if="stop.jobs.every(job => job.keyPoints.length)" class="lead md:hidden">{{ stop.line }}</p>
 
       <ul v-if="stop.details" class="points">
         <li v-for="detail in stop.details" :key="detail">{{ detail }}</li>
@@ -111,6 +113,10 @@ const formatDates = (job: Job) => {
 
 .placeholder {
   @apply mt-3 text-slate-200;
+}
+
+.lead {
+  @apply mt-1 mb-2 text-white leading-snug;
 }
 
 .link {

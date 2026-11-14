@@ -349,6 +349,11 @@ $blue: #88b8f2;
     margin-top: 8px;
     font-size: 14px;
     line-height: 1.4;
+
+    // On phones the card stays small, and the line's in the dialog
+    @media (max-width: 767px) {
+      display: none;
+    }
   }
 
   .more {

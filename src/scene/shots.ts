@@ -132,8 +132,11 @@ export const CITY_ENDS = {
 /** The city camera's field of view: wider on portrait screens, which are narrow across. */
 export const cityFov = (zoom: number, aspect: number) => Math.min(100, lerp(50, 64, portraitness(aspect)) * zoom);
 
-/** How far (degrees) portrait screens look further down, so the city fills the screen above the panels. */
-const PORTRAIT_TILT = -9;
+/**
+ * How far (degrees) portrait screens look further down. None: phones have the panels' words over the sky at the top
+ * and their buttons at the bottom, so what's framed belongs in the middle.
+ */
+const PORTRAIT_TILT = 0;
 
 const target = new Vector3();
 /** Puts `camera` at `pose` (with its lens, for `aspect`). */

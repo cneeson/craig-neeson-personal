@@ -26,7 +26,10 @@ watch(() => route.step, async () => {
     <div class="intro panel-card" :class="{ 'is-shown': isShown && isOverview }">
       <p class="eyebrow">Experience</p>
       <h2 class="title">From the north coast to Lanyon Place.</h2>
-      <p class="text">University, then six teams, five of them here in Belfast. Pick one on the timeline, or step through them in order.</p>
+      <p class="text">
+        University, then six teams, five of them here in Belfast.<span class="hidden md:inline"> Pick one on the
+          timeline, or step through them in order.</span><span class="md:hidden"> Pick one below.</span>
+      </p>
     </div>
 
     <nav class="timeline" aria-label="Timeline">

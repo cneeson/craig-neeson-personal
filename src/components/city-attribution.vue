@@ -14,7 +14,7 @@ const logo = `${process.env.BASE_URL}belfast/google-logo.png`;
 
 <style lang="scss" scoped>
 .city-attribution {
-  @apply fixed z-10 flex items-center gap-2 pointer-events-none;
+  @apply fixed z-[31] flex items-center gap-2 pointer-events-none;
 
   // Clear of the panels: along the top on phones, bottom right on wider screens
   left: 0.75rem;

@@ -29,24 +29,33 @@ const links = [
 
 <template>
   <section class="contact panel-card" :class="{ 'is-shown': isShown }" aria-label="Contact" data-scrolls>
-    <p class="eyebrow">Contact</p>
+    <div class="top">
+      <p class="eyebrow">Contact</p>
+      <!-- Up here on phones, out of the way; under the links on wider screens -->
+      <button type="button" class="credits md:hidden" @click="isAttributionsOpen = true">Credits</button>
+    </div>
     <h2 class="title">Let's build something together.</h2>
     <p class="text">
-      I'm currently open to hybrid Senior Frontend Developer roles based in Dublin and Belfast. I'd love to hear from you,
-      and please feel free to take a copy of my CV with you.
+      <span class="hidden md:inline">I'm currently open to hybrid Senior Frontend Developer roles based in Dublin and
+        Belfast. I'd love to hear from you, and please feel free to take a copy of my CV with you.</span>
+      <span class="md:hidden">Open to hybrid Senior Frontend roles in Dublin and Belfast. I'd love to hear from you.</span>
     </p>
-    <ActionLink primary icon="download" class="cv" href="docs/craig-neeson-cv.pdf" download>Download my CV</ActionLink>
-    <ul class="links">
-      <li v-for="link in links" :key="link.label">
-        <a :href="link.href" target="_blank" rel="noopener" class="link">
-          <svg viewBox="0 0 24 24" class="w-7 h-7" fill="currentColor" aria-hidden="true">
-            <path :d="link.path" />
-          </svg>
-          <span>{{ link.label }}</span>
-        </a>
-      </li>
-    </ul>
-    <button type="button" class="credits" @click="isAttributionsOpen = true">Credits & attributions</button>
+    <div class="actions">
+      <ActionLink primary icon="download" href="docs/craig-neeson-cv.pdf" download>
+        <span class="hidden md:inline">Download my CV</span><span class="md:hidden">My CV</span>
+      </ActionLink>
+      <ul class="links">
+        <li v-for="link in links" :key="link.label">
+          <a :href="link.href" target="_blank" rel="noopener" class="link" :aria-label="link.label">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path :d="link.path" />
+            </svg>
+            <span class="hidden md:inline">{{ link.label }}</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+    <button type="button" class="credits hidden md:block" @click="isAttributionsOpen = true">Credits & attributions</button>
   </section>
   <AttributionsModal :is-open="isAttributionsOpen" @close="isAttributionsOpen = false" />
 </template>
@@ -57,22 +66,27 @@ const links = [
 }
 
 .text {
-  @apply mt-3 text-sm lg:text-base text-white/85 leading-relaxed;
+  @apply mt-2 md:mt-3 text-sm lg:text-base text-white/85 leading-relaxed;
 }
 
-.cv {
-  @apply mt-5;
+.top {
+  @apply flex items-baseline justify-between;
+}
+
+// The CV and the links side by side at the bottom on phones, the links under it on wider screens
+.actions {
+  @apply mt-auto md:mt-5 flex items-center gap-5 md:flex-col md:items-start md:gap-6;
 }
 
 .links {
-  @apply mt-6 flex gap-6;
+  @apply flex gap-5 md:gap-6;
 }
 
 .link {
   @apply flex flex-col items-center gap-2 text-xs text-slate-300 transition;
 
   svg {
-    @apply text-white transition-transform;
+    @apply w-6 h-6 md:w-7 md:h-7 text-white transition-transform;
   }
 
   &:hover,
@@ -87,7 +101,11 @@ const links = [
 }
 
 .credits {
-  @apply mt-6 block text-xs text-white/60 underline underline-offset-4;
+  @apply text-xs text-white/60 underline underline-offset-4;
+
+  @media (min-width: 768px) {
+    @apply mt-6;
+  }
 
   &:hover,
   &:focus-visible {
